@@ -1,0 +1,59 @@
+{
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports": "explicit"
+  },
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/node_modules": true,
+    "**/dist": true
+  },
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "editor.formatOnPaste": true,
+  "editor.snippetSuggestions": "top",
+  "editor.suggestSelection": "first",
+  "editor.tabCompletion": "on",
+  "files.autoSave": "off",
+  "editor.wordWrap": "on",
+  "editor.cursorSmoothCaretAnimation": "on",
+  "editor.fontSize": 13,
+  "editor.fontFamily": "JetBrains Mono", // Kod için güzel font
+  "editor.fontLigatures": true, // Özel karakter birleştirmeleri
+  "editor.minimap.enabled": false, // Sağdaki minimap'i kapat
+  "editor.bracketPairColorization.enabled": true, // Parantezleri renklendir
+  "editor.guides.bracketPairs": true, // Parantez çizgileri
+  "editor.lineHeight": 1.5,
+  "editor.cursorBlinking": "smooth",
+  "editor.cursorWidth": 2,
+
+  // Yazı animasyonu için
+  "editor.smoothScrolling": true,
+
+  // Terminal için de aynı efekt
+  "terminal.integrated.smoothScrolling": true,
+  "terminal.integrated.cursorBlinking": true,
+
+  // Opsiyonel: Daha yumuşak scroll
+  "workbench.list.smoothScrolling": true,
+  "editor.cursorStyle": "line",
+  "window.autoDetectColorScheme": false,
+  "workbench.iconTheme": "material-icon-theme",
+  "material-icon-theme.folders.color": "#26a69a",
+  "material-icon-theme.activeIconPack": "angular", // veya react, nest, vue
+  "material-icon-theme.hidesExplorerArrows": true,
+  "workbench.colorCustomizations": {
+    "list.activeSelectionBackground": "#2d3748",
+    "list.hoverBackground": "#2d3748",
+    "list.inactiveSelectionBackground": "#2d3748"
+  }
+}
