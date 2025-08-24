@@ -23,6 +23,18 @@ export interface Comment {
     // user yerine users
     display_name: string;
   };
+  // Yeni alanlar
+  is_editing?: boolean;
+  vote_count?: number;
+  user_vote?: number; // -1: dislike, 0: no vote, 1: like
+}
+
+export interface CommentVote {
+  id: string;
+  comment_id: string;
+  user_id: string;
+  value: number; // -1 veya 1
+  created_at: string;
 }
 
 export interface User {
@@ -46,6 +58,14 @@ export interface PinDetailModalProps {
   comments: Comment[];
   onAddComment: (text: string) => Promise<boolean>;
   loading?: boolean;
+}
+
+export interface CommentActionsProps {
+  comment: Comment;
+  currentUserId: string;
+  onEdit: (commentId: string, newText: string) => Promise<boolean>;
+  onDelete: (commentId: string) => Promise<boolean>;
+  onVote: (commentId: string, value: number) => Promise<boolean>;
 }
 
 // Database Operations

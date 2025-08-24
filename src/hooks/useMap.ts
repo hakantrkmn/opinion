@@ -1,3 +1,4 @@
+import { createClient } from "@/lib/supabase/client";
 import type { Comment, CreatePinData, MapBounds, Pin } from "@/types";
 import maplibregl from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
@@ -23,6 +24,11 @@ export const useMap = () => {
     pinName: string;
     comments: Comment[];
   } | null>(null);
+  // State'e user ekleyelim
+  const [user, setUser] = useState<any>(null);
+
+  // mapPins state'ini ekleyelim
+  const [mapPins, setMapPins] = useState<Pin[]>([]);
 
   // Pin hook'unu kullan
   const {
@@ -32,6 +38,9 @@ export const useMap = () => {
     getPinComments,
     addComment,
     loadPins: loadPinsFromDB,
+    editComment,
+    deleteComment,
+    voteComment,
   } = usePins();
 
   // Debug için pins state'ini izle
@@ -166,6 +175,20 @@ export const useMap = () => {
     );
   };
 
+  // Kullanıcı bilgisini al
+  const getUser = async () => {
+    const supabase = createClient();
+    const {
+      data: { user: currentUser },
+    } = await supabase.auth.getUser();
+    setUser(currentUser);
+  };
+
+  // useEffect ile kullanıcı bilgisini al
+  useEffect(() => {
+    getUser();
+  }, []);
+
   // Kullanıcı marker'ını ekleme
   const addUserMarker = (lng: number, lat: number) => {
     if (!map.current) return;
@@ -235,9 +258,8 @@ export const useMap = () => {
     // Pin'leri DB'den yükle
     await loadPinsFromDB(mapBounds);
 
-    // Haritadaki pin'leri temizle ve yeniden ekle
-    clearMapPins();
-    addPinsToMap();
+    // Pin'leri state'e set et (komponentler otomatik render olacak)
+    setMapPins(pins);
   };
 
   // Haritadaki pin'leri temizle
@@ -256,10 +278,13 @@ export const useMap = () => {
 
   // Pin'leri haritaya ekle
   const addPinsToMap = () => {
-    console.log("Current pins state:", pins); // Debug için
-    console.log("Pins length:", pins.length); // Debug için
+    if (!map.current) return;
+
+    // Önceki pin'leri temizle
+    clearMapPins();
+
+    // Yeni pin'leri ekle
     pins.forEach((pin) => {
-      console.log("Adding pin:", pin.name, pin.location);
       addPinToMap(pin);
     });
   };
@@ -288,7 +313,7 @@ export const useMap = () => {
       element: pinElement,
       anchor: "bottom",
     })
-      .setLngLat([lng, lat]) // parseLocation'dan gelen koordinatları kullan
+      .setLngLat([lng, lat])
       .addTo(map.current);
 
     // Pin'e tıklama olayı
@@ -296,6 +321,11 @@ export const useMap = () => {
       e.stopPropagation();
       showPinPopup(pin);
     });
+  };
+
+  // Pin'e tıklama handler'ı
+  const handlePinClick = (pin: Pin) => {
+    showPinPopup(pin);
   };
 
   // Pin popup'ı gösterme
@@ -389,6 +419,78 @@ export const useMap = () => {
       return success;
     } catch (error) {
       console.error("Yorum ekleme hatası:", error);
+      return false;
+    }
+  };
+
+  // Yorum düzenleme
+  const handleEditComment = async (
+    commentId: string,
+    newText: string
+  ): Promise<boolean> => {
+    if (!selectedPin) return false;
+
+    try {
+      const success = await editComment(commentId, newText);
+      if (success) {
+        // Yorumları yenile
+        const updatedComments = await getPinComments(selectedPin.pinId);
+        if (updatedComments) {
+          setSelectedPin((prev) =>
+            prev ? { ...prev, comments: updatedComments } : null
+          );
+        }
+      }
+      return success;
+    } catch (error) {
+      console.error("Yorum düzenleme hatası:", error);
+      return false;
+    }
+  };
+
+  // Yorum silme
+  const handleDeleteComment = async (commentId: string): Promise<boolean> => {
+    if (!selectedPin) return false;
+
+    try {
+      const success = await deleteComment(commentId);
+      if (success) {
+        // Yorumları yenile
+        const updatedComments = await getPinComments(selectedPin.pinId);
+        if (updatedComments) {
+          setSelectedPin((prev) =>
+            prev ? { ...prev, comments: updatedComments } : null
+          );
+        }
+      }
+      return success;
+    } catch (error) {
+      console.error("Yorum silme hatası:", error);
+      return false;
+    }
+  };
+
+  // Yorum oylama
+  const handleVoteComment = async (
+    commentId: string,
+    value: number
+  ): Promise<boolean> => {
+    if (!selectedPin) return false;
+
+    try {
+      const success = await voteComment(commentId, value);
+      if (success) {
+        // Yorumları yenile
+        const updatedComments = await getPinComments(selectedPin.pinId);
+        if (updatedComments) {
+          setSelectedPin((prev) =>
+            prev ? { ...prev, comments: updatedComments } : null
+          );
+        }
+      }
+      return success;
+    } catch (error) {
+      console.error("Yorum oylama hatası:", error);
       return false;
     }
   };
@@ -535,5 +637,11 @@ export const useMap = () => {
     setSelectedPin,
     pinsLoading,
     handleAddComment,
+    handleEditComment,
+    handleDeleteComment,
+    handleVoteComment,
+    user,
+    mapPins,
+    handlePinClick,
   };
 };

@@ -3,6 +3,7 @@
 import { useMap } from "@/hooks/useMap";
 import { useEffect } from "react";
 import PinDetailModal from "./PinDetailModal";
+import PinMarker from "./PinMarker";
 import PinModal from "./PinModal";
 
 export default function Map() {
@@ -26,6 +27,13 @@ export default function Map() {
     setSelectedPin,
     pinsLoading,
     handleAddComment, // usePins'den gelen
+    // Yeni fonksiyonları ekleyelim
+    handleEditComment,
+    handleDeleteComment,
+    handleVoteComment,
+    user, // User'ı ekleyelim
+    mapPins,
+    handlePinClick,
   } = useMap();
 
   useEffect(() => {
@@ -159,12 +167,26 @@ export default function Map() {
             setShowPinDetailModal(false);
             setSelectedPin(null);
           }}
-          pinName={selectedPin.pinName}
-          comments={selectedPin.comments}
-          onAddComment={handleAddCommentCode}
+          pinName={selectedPin?.pinName || ""}
+          comments={selectedPin?.comments || []}
+          onAddComment={handleAddComment}
+          onEditComment={handleEditComment}
+          onDeleteComment={handleDeleteComment}
+          onVoteComment={handleVoteComment}
+          currentUserId={user?.id || ""}
           loading={pinsLoading}
         />
       )}
+
+      {/* Pin Marker'ları */}
+      {mapPins.map((pin) => (
+        <PinMarker
+          key={pin.id}
+          pin={pin}
+          map={mapContainer.current} // map.current yerine mapContainer.current
+          onPinClick={handlePinClick}
+        />
+      ))}
     </div>
   );
 }

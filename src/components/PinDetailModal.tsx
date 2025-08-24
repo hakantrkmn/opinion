@@ -2,6 +2,7 @@
 
 import type { Comment } from "@/types";
 import { useState } from "react";
+import CommentItem from "./CommentItem";
 
 interface PinDetailModalProps {
   isOpen: boolean;
@@ -9,6 +10,10 @@ interface PinDetailModalProps {
   pinName: string;
   comments: Comment[];
   onAddComment: (text: string) => Promise<boolean>;
+  onEditComment: (commentId: string, newText: string) => Promise<boolean>;
+  onDeleteComment: (commentId: string) => Promise<boolean>;
+  onVoteComment: (commentId: string, value: number) => Promise<boolean>;
+  currentUserId: string;
   loading?: boolean;
 }
 
@@ -18,6 +23,10 @@ export default function PinDetailModal({
   pinName,
   comments,
   onAddComment,
+  onEditComment,
+  onDeleteComment,
+  onVoteComment,
+  currentUserId,
   loading = false,
 }: PinDetailModalProps) {
   const [newComment, setNewComment] = useState("");
@@ -85,30 +94,14 @@ export default function PinDetailModal({
           ) : (
             <div className="space-y-4">
               {comments.map((comment) => (
-                <div
+                <CommentItem
                   key={comment.id}
-                  className="border-b border-gray-200 pb-4 last:border-b-0"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-medium text-gray-800">
-                      {comment.users?.display_name || "Anonim"}
-                    </h4>
-                    <span className="text-xs text-gray-500">
-                      {new Date(comment.created_at).toLocaleDateString(
-                        "tr-TR",
-                        {
-                          day: "numeric",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        }
-                      )}
-                    </span>
-                  </div>
-                  <p className="text-gray-600 text-sm leading-relaxed">
-                    {comment.text}
-                  </p>
-                </div>
+                  comment={comment}
+                  currentUserId={currentUserId}
+                  onEdit={onEditComment}
+                  onDelete={onDeleteComment}
+                  onVote={onVoteComment}
+                />
               ))}
             </div>
           )}

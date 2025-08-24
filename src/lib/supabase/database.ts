@@ -87,7 +87,7 @@ export const pinService = {
         }
 
         const [lng, lat] = parseLocation(pin.location);
-        console.log("Pin bounds check:", pin.name, [lng, lat], bounds); // Debug için
+        console.log("Pin bounds check:", pin.name, [lng, lat], bounds);
 
         const isInBounds =
           lat >= bounds.minLat &&
@@ -95,7 +95,7 @@ export const pinService = {
           lng >= bounds.minLng &&
           lng <= bounds.maxLng;
 
-        console.log("Is in bounds:", isInBounds); // Debug için
+        console.log("Is in bounds:", isInBounds);
         return isInBounds;
       });
 
@@ -153,9 +153,60 @@ export const pinService = {
         return { comments: null, error: error.message };
       }
 
-      console.log("Fetched comments:", comments); // Debug için
+      console.log("Fetched comments:", comments);
 
-      return { comments: comments || [], error: null };
+      // Her yorum için vote bilgilerini getir
+      const commentsWithVotes = await Promise.all(
+        (comments || []).map(async (comment) => {
+          try {
+            // Toplam vote sayısını getir
+            const { data: votes } = await supabase
+              .from("comment_votes")
+              .select("value")
+              .eq("comment_id", comment.id);
+
+            // Kullanıcının oyunu getir
+            const {
+              data: { user },
+            } = await supabase.auth.getUser();
+            let userVote = 0;
+
+            if (user) {
+              const { data: userVoteData } = await supabase
+                .from("comment_votes")
+                .select("value")
+                .eq("comment_id", comment.id)
+                .eq("user_id", user.id)
+                .maybeSingle();
+
+              userVote = userVoteData?.value || 0;
+            }
+
+            // Vote sayısını hesapla
+            const voteCount =
+              votes?.reduce((sum, vote) => sum + vote.value, 0) || 0;
+
+            return {
+              ...comment,
+              vote_count: voteCount,
+              user_vote: userVote,
+            };
+          } catch (voteError) {
+            console.warn(
+              "Vote fetch error for comment:",
+              comment.id,
+              voteError
+            );
+            return {
+              ...comment,
+              vote_count: 0,
+              user_vote: 0,
+            };
+          }
+        })
+      );
+
+      return { comments: commentsWithVotes, error: null };
     } catch (error) {
       console.error("getPinComments error:", error);
       return { comments: null, error: "Yorumlar yüklenirken hata oluştu" };
@@ -201,6 +252,138 @@ export const pinService = {
       return { comment, error: null };
     } catch (error) {
       return { comment: null, error: "Yorum eklenirken hata oluştu" };
+    }
+  },
+
+  // Yorum düzenleme
+  async updateComment(
+    commentId: string,
+    newText: string
+  ): Promise<{ success: boolean; error: string | null }> {
+    try {
+      const supabase = createClient();
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !user) {
+        return { success: false, error: "Kullanıcı bulunamadı" };
+      }
+
+      const { error } = await supabase
+        .from("comments")
+        .update({ text: newText, updated_at: new Date().toISOString() })
+        .eq("id", commentId)
+        .eq("user_id", user.id); // Sadece kendi yorumunu düzenleyebilir
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true, error: null };
+    } catch (error) {
+      return { success: false, error: "Yorum güncellenirken hata oluştu" };
+    }
+  },
+
+  // Yorum silme
+  async deleteComment(
+    commentId: string
+  ): Promise<{ success: boolean; error: string | null }> {
+    try {
+      const supabase = createClient();
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !user) {
+        return { success: false, error: "Kullanıcı bulunamadı" };
+      }
+
+      const { error } = await supabase
+        .from("comments")
+        .delete()
+        .eq("id", commentId)
+        .eq("user_id", user.id); // Sadece kendi yorumunu silebilir
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true, error: null };
+    } catch (error) {
+      return { success: false, error: "Yorum silinirken hata oluştu" };
+    }
+  },
+
+  // Yorum oylama
+  async voteComment(
+    commentId: string,
+    value: number
+  ): Promise<{ success: boolean; error: string | null }> {
+    try {
+      const supabase = createClient();
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !user) {
+        return { success: false, error: "Kullanıcı bulunamadı" };
+      }
+
+      console.log(
+        "Voting on comment:",
+        commentId,
+        "value:",
+        value,
+        "user:",
+        user.id
+      );
+
+      // Önce mevcut oyu kontrol et
+      const { data: existingVote, error: checkError } = await supabase
+        .from("comment_votes")
+        .select("*")
+        .eq("comment_id", commentId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      console.log("Existing vote:", existingVote, "check error:", checkError);
+
+      if (existingVote) {
+        // Mevcut oyu güncelle
+        const { error } = await supabase
+          .from("comment_votes")
+          .update({ value })
+          .eq("id", existingVote.id);
+
+        console.log("Update vote error:", error);
+
+        if (error) {
+          return { success: false, error: error.message };
+        }
+      } else {
+        // Yeni oy ekle
+        const { error } = await supabase.from("comment_votes").insert({
+          comment_id: commentId,
+          user_id: user.id,
+          value,
+        });
+
+        console.log("Insert vote error:", error);
+
+        if (error) {
+          return { success: false, error: error.message };
+        }
+      }
+
+      return { success: true, error: null };
+    } catch (error) {
+      console.error("voteComment error:", error);
+      return { success: false, error: "Oy verilirken hata oluştu" };
     }
   },
 
@@ -258,7 +441,7 @@ const parseLocation = (location: any): [number, number] => {
   // GeoJSON formatı kontrol et
   if (location.type === "Point" && location.coordinates) {
     const [lng, lat] = location.coordinates;
-    console.log("Parsed coordinates from DB:", [lng, lat]); // Debug için
+    console.log("Parsed coordinates from DB:", [lng, lat]);
     return [lng, lat];
   }
 

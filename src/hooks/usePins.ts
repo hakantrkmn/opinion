@@ -44,19 +44,21 @@ export const usePins = () => {
     setError(null);
 
     try {
-      const { pins: fetchedPins, error: pinsError } = await pinService.getPins(bounds);
-      
+      const { pins: fetchedPins, error: pinsError } = await pinService.getPins(
+        bounds
+      );
+
       if (pinsError) {
         setError(pinsError);
         return;
       }
 
-      console.log('Fetched pins:', fetchedPins); // Debug için
+      console.log("Fetched pins:", fetchedPins); // Debug için
       setPins(fetchedPins || []); // Burada set ediliyor
-      console.log('Set pins state:', fetchedPins || []); // Debug için
+      console.log("Set pins state:", fetchedPins || []); // Debug için
     } catch (error) {
-      console.error('loadPins error:', error);
-      setError('Pin\'ler yüklenirken hata oluştu');
+      console.error("loadPins error:", error);
+      setError("Pin'ler yüklenirken hata oluştu");
     } finally {
       setLoading(false);
     }
@@ -168,6 +170,92 @@ export const usePins = () => {
     setPins([]);
   }, []);
 
+  // Yorum düzenleme
+  const editComment = useCallback(
+    async (commentId: string, newText: string): Promise<boolean> => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const { success, error: editError } = await pinService.updateComment(
+          commentId,
+          newText
+        );
+
+        if (editError) {
+          setError(editError);
+          return false;
+        }
+
+        return success;
+      } catch (error) {
+        console.error("editComment error:", error);
+        setError("Yorum düzenlenirken hata oluştu");
+        return false;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  // Yorum silme
+  const deleteComment = useCallback(
+    async (commentId: string): Promise<boolean> => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const { success, error: deleteError } = await pinService.deleteComment(
+          commentId
+        );
+
+        if (deleteError) {
+          setError(deleteError);
+          return false;
+        }
+
+        return success;
+      } catch (error) {
+        console.error("deleteComment error:", error);
+        setError("Yorum silinirken hata oluştu");
+        return false;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  // Yorum oylama
+  const voteComment = useCallback(
+    async (commentId: string, value: number): Promise<boolean> => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const { success, error: voteError } = await pinService.voteComment(
+          commentId,
+          value
+        );
+
+        if (voteError) {
+          setError(voteError);
+          return false;
+        }
+
+        return success;
+      } catch (error) {
+        console.error("voteComment error:", error);
+        setError("Oy verilirken hata oluştu");
+        return false;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
   return {
     // State
     pins,
@@ -181,6 +269,9 @@ export const usePins = () => {
     addComment,
     deletePin,
     updatePin,
+    editComment,
+    deleteComment,
+    voteComment,
 
     // Utilities
     clearError,
