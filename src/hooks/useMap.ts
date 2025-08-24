@@ -634,6 +634,11 @@ export const useMap = () => {
       map.current.on("moveend", () => {
         loadPinsFromMapWithCache();
       });
+
+      // Harita zoom olduğunda da pin'leri yeniden yükle
+      map.current.on("zoomend", () => {
+        loadPinsFromMapWithCache();
+      });
     }
   };
 

@@ -77,27 +77,28 @@ export default function PinMarker({ pin, map, onPinClick }: PinMarkerProps) {
     // Koordinatları çıkar
     const [lng, lat] = parseLocation(pin.location);
 
-    // React component'ini DOM element'e çevir
-    const tempDiv = document.createElement("div");
-    const root = document.createElement("div");
-    tempDiv.appendChild(root);
+    // Pin element'i için container oluştur
+    const pinContainer = document.createElement("div");
 
     // generatePinElementHTML fonksiyonunu kullan
-    root.innerHTML = generatePinElementHTML(pin);
+    pinContainer.innerHTML = generatePinElementHTML(pin);
+
+    // Click handler'ı ekle
+    const pinElement = pinContainer.firstElementChild as HTMLElement;
+    if (pinElement) {
+      pinElement.addEventListener("click", (e) => {
+        e.stopPropagation();
+        onPinClick(pin);
+      });
+    }
 
     // Marker oluştur
     markerRef.current = new maplibregl.Marker({
-      element: root.firstElementChild as HTMLElement,
+      element: pinElement,
       anchor: "bottom",
     })
       .setLngLat([lng, lat])
       .addTo(map);
-
-    // Pin'e tıklama olayı
-    root.addEventListener("click", (e) => {
-      e.stopPropagation();
-      onPinClick(pin);
-    });
 
     // Cleanup
     return () => {
