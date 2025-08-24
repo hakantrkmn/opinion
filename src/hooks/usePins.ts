@@ -53,9 +53,9 @@ export const usePins = () => {
         return;
       }
 
-      console.log("Fetched pins:", fetchedPins); // Debug için
+      console.log("Fetched pins:", fetchedPins?.length); // Debug için
       setPins(fetchedPins || []); // Burada set ediliyor
-      console.log("Set pins state:", fetchedPins || []); // Debug için
+      return { pins: fetchedPins || [], error: null };
     } catch (error) {
       console.error("loadPins error:", error);
       setError("Pin'ler yüklenirken hata oluştu");

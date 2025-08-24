@@ -1,7 +1,10 @@
 import { createClient } from "@/lib/supabase/client";
 import type { Comment, CreatePinData, MapBounds, Pin } from "@/types";
+import { SimpleMapCache } from "@/utils/mapCache";
+import { parseLocation } from "@/utils/mapUtils";
+import { mapStyles } from "@/utils/variables";
 import maplibregl from "maplibre-gl";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { LongPressEventType, useLongPress } from "use-long-press";
 import { usePins } from "./usePins";
 
@@ -44,76 +47,14 @@ export const useMap = () => {
   } = usePins();
 
   // Debug için pins state'ini izle
-  useEffect(() => {
-    console.log("Pins state changed:", pins);
-  }, [pins]);
-
-  // Harita stilleri
-  const mapStyles = {
-    light: {
-      tiles: [
-        "https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png",
-        "https://cartodb-basemaps-b.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png",
-        "https://cartodb-basemaps-c.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png",
-        "https://cartodb-basemaps-d.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png",
-      ],
-      attribution: "© CartoDB Light",
-    },
-    dark: {
-      tiles: [
-        "https://cartodb-basemaps-a.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png",
-        "https://cartodb-basemaps-b.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png",
-        "https://cartodb-basemaps-c.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png",
-        "https://cartodb-basemaps-d.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png",
-      ],
-      attribution: "© CartoDB Dark",
-    },
-    voyager: {
-      tiles: [
-        "https://cartodb-basemaps-a.global.ssl.fastly.net/rastertiles/voyager/{z}/{x}/{y}.png",
-        "https://cartodb-basemaps-b.global.ssl.fastly.net/rastertiles/voyager/{z}/{x}/{y}.png",
-        "https://cartodb-basemaps-c.global.ssl.fastly.net/rastertiles/voyager/{z}/{x}/{y}.png",
-        "https://cartodb-basemaps-d.global.ssl.fastly.net/rastertiles/voyager/{z}/{x}/{y}.png",
-      ],
-      attribution: "© CartoDB Voyager",
-    },
-  };
-
-  // PostGIS location'dan koordinatları çıkar (GeoJSON formatı)
-  const parseLocation = (location: any): [number, number] => {
-    if (!location) {
-      console.warn("Invalid location:", location);
-      return [0, 0];
-    }
-
-    // GeoJSON formatı kontrol et
-    if (location.type === "Point" && location.coordinates) {
-      const [lng, lat] = location.coordinates;
-      console.log("Parsed coordinates:", [lng, lat]); // Debug için
-      return [lng, lat];
-    }
-
-    // String formatı kontrol et (eski format)
-    if (typeof location === "string") {
-      const match = location.match(/POINT\(([^)]+)\)/);
-      if (match) {
-        const [lng, lat] = match[1].split(" ").map(Number);
-        return [lng, lat];
-      }
-    }
-
-    console.warn("Could not parse location:", location);
-    return [0, 0];
-  };
 
   // Uzun basma callback'i
-  const onLongPress = (e: any) => {
+  const onLongPress = (e: React.SyntheticEvent) => {
     if (!map.current) return;
-
-    // Mouse event'inden koordinatları al
+    const nativeEvent = e.nativeEvent as PointerEvent;
     const rect = map.current.getContainer().getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = nativeEvent.clientX - rect.left;
+    const y = nativeEvent.clientY - rect.top;
 
     const lngLat = map.current.unproject([x, y]);
 
@@ -159,7 +100,7 @@ export const useMap = () => {
 
           // Konum alındıktan sonra pin'leri yükle
           setTimeout(() => {
-            loadPinsFromMap();
+            loadPinsFromMapWithCache();
           }, 1000);
         }
       },
@@ -179,9 +120,9 @@ export const useMap = () => {
   const getUser = async () => {
     const supabase = createClient();
     const {
-      data: { user: currentUser },
-    } = await supabase.auth.getUser();
-    setUser(currentUser);
+      data: { session: sessionData },
+    } = await supabase.auth.getSession();
+    setUser(sessionData?.user);
   };
 
   // useEffect ile kullanıcı bilgisini al
@@ -236,33 +177,80 @@ export const useMap = () => {
         setShowPinModal(false);
         setTempPin(null);
         // Haritayı yenile
-        loadPinsFromMap();
+        loadPinsFromMapWithCache();
       }
     } catch (error) {
       console.error("Pin oluşturma hatası:", error);
     }
   };
 
-  // Haritadan pin'leri yükle
-  const loadPinsFromMap = async () => {
-    if (!map.current) return;
+  // Cache instance'ı
+  const mapCache = useRef(new SimpleMapCache());
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-    const bounds = map.current.getBounds();
-    const mapBounds: MapBounds = {
-      minLat: bounds.getSouth(),
-      maxLat: bounds.getNorth(),
-      minLng: bounds.getWest(),
-      maxLng: bounds.getEast(),
-    };
+  // Cache'li pin yükleme
+  const loadPinsFromMapWithCache = useCallback(
+    async (forceRefresh = false) => {
+      if (!map.current) return;
 
-    // Pin'leri DB'den yükle
-    await loadPinsFromDB(mapBounds);
+      const bounds = map.current.getBounds();
+      const zoom = Math.floor(map.current.getZoom());
 
-    // Pin'leri state'e set et (komponentler otomatik render olacak)
-    setMapPins(pins);
-  };
+      const mapBounds: MapBounds = {
+        minLat: bounds.getSouth(),
+        maxLat: bounds.getNorth(),
+        minLng: bounds.getWest(),
+        maxLng: bounds.getEast(),
+      };
 
-  // Haritadaki pin'leri temizle
+      // Debug: Cache key'i logla
+      const cacheKey = `${mapBounds.minLat.toFixed(
+        1
+      )}_${mapBounds.maxLat.toFixed(1)}_${mapBounds.minLng.toFixed(
+        1
+      )}_${mapBounds.maxLng.toFixed(1)}_${zoom}`;
+      console.log("Cache key:", cacheKey);
+
+      // Force refresh ise cache'i temizle
+      if (forceRefresh) {
+        mapCache.current.clearArea(mapBounds, zoom);
+      }
+
+      // Önce cache'den kontrol et
+      const cachedPins = mapCache.current.get(mapBounds, zoom);
+      console.log(
+        "Cached pins found:",
+        cachedPins ? cachedPins.length : "none"
+      );
+
+      if (cachedPins && !forceRefresh) {
+        console.log("Using cached pins:", cachedPins.length);
+        setMapPins(cachedPins);
+        return;
+      }
+
+      // Cache'de yoksa veya force refresh ise DB'den çek
+      console.log("Fetching pins from DB...");
+      setIsRefreshing(true);
+
+      try {
+        const pinData = await loadPinsFromDB(mapBounds);
+        // Cache'e kaydet
+        mapCache.current.set(mapBounds, zoom, pinData?.pins || []);
+        console.log("Pins cached:", pinData?.pins?.length);
+      } finally {
+        setIsRefreshing(false);
+      }
+    },
+    [loadPinsFromDB, pins]
+  );
+
+  // Refresh fonksiyonu
+  const refreshPins = useCallback(() => {
+    loadPinsFromMapWithCache(true);
+  }, [loadPinsFromMapWithCache]);
+
+  // Haritadan pin'leri temizle
   const clearMapPins = () => {
     if (!map.current) return;
 
@@ -532,7 +520,7 @@ export const useMap = () => {
           addUserMarker(userLocation[0], userLocation[1]);
         }
         // Harita stili değiştiğinde pin'leri yeniden yükle
-        loadPinsFromMap();
+        loadPinsFromMapWithCache();
       }
     });
 
@@ -586,12 +574,12 @@ export const useMap = () => {
         console.log("CartoDB haritası yüklendi!");
         getUserLocation();
         // Harita yüklendiğinde pin'leri yükle
-        loadPinsFromMap();
+        loadPinsFromMapWithCache();
       });
 
-      // Harita hareket ettiğinde pin'leri yenile
+      // Harita hareket ettiğinde cache'li yükleme
       map.current.on("moveend", () => {
-        loadPinsFromMap();
+        loadPinsFromMapWithCache();
       });
     }
   };
@@ -619,6 +607,7 @@ export const useMap = () => {
 
   return {
     mapContainer,
+    map, // map ref'ini export edin
     currentStyle,
     locationPermission,
     userLocation,
@@ -643,5 +632,7 @@ export const useMap = () => {
     user,
     mapPins,
     handlePinClick,
+    refreshPins,
+    isRefreshing,
   };
 };

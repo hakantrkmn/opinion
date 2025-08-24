@@ -57,7 +57,7 @@ export const pinService = {
     }
   },
 
-  // Harita alanındaki pin'leri getir
+  // Harita alanındaki pin'leri getir (OPTIMIZED)
   async getPins(
     bounds: MapBounds
   ): Promise<{ pins: Pin[] | null; error: string | null }> {
@@ -66,64 +66,32 @@ export const pinService = {
 
       console.log("Getting pins for bounds:", bounds);
 
-      // Önce tüm pin'leri getir (bounds filtresi olmadan)
-      const { data: pins, error } = await supabase
-        .from("pins")
-        .select("*")
-        .order("created_at", { ascending: false });
+      // RPC function'ı çağır
+      const { data: pins, error } = await supabase.rpc("get_pins_in_bounds", {
+        min_lat: bounds.minLat,
+        max_lat: bounds.maxLat,
+        min_lng: bounds.minLng,
+        max_lng: bounds.maxLng,
+      });
 
       if (error) {
         console.error("getPins error:", error);
         return { pins: null, error: error.message };
       }
 
-      console.log("Found pins:", pins);
+      // Pin'leri doğru formata çevir
+      const formattedPins: Pin[] = (pins || []).map((pin: any) => ({
+        id: pin.id,
+        user_id: pin.user_id,
+        name: pin.name,
+        location: pin.location,
+        created_at: pin.created_at,
+        updated_at: pin.updated_at,
+        user: { display_name: pin.user_display_name },
+        comments_count: pin.comments_count,
+      }));
 
-      // Client-side'da bounds filtresi uygula
-      const filteredPins = (pins || []).filter((pin) => {
-        if (!pin.location) {
-          console.warn("Pin without location:", pin);
-          return false;
-        }
-
-        const [lng, lat] = parseLocation(pin.location);
-        console.log("Pin bounds check:", pin.name, [lng, lat], bounds);
-
-        const isInBounds =
-          lat >= bounds.minLat &&
-          lat <= bounds.maxLat &&
-          lng >= bounds.minLng &&
-          lng <= bounds.maxLng;
-
-        console.log("Is in bounds:", isInBounds);
-        return isInBounds;
-      });
-
-      // Her pin için user bilgisini ve comment count'u getir
-      const pinsWithDetails = await Promise.all(
-        filteredPins.map(async (pin) => {
-          // User bilgisini getir
-          const { data: user } = await supabase
-            .from("users")
-            .select("display_name")
-            .eq("id", pin.user_id)
-            .single();
-
-          // Comment count'u getir
-          const { count } = await supabase
-            .from("comments")
-            .select("*", { count: "exact", head: true })
-            .eq("pin_id", pin.id);
-
-          return {
-            ...pin,
-            user: user || { display_name: "Unknown" },
-            comments_count: count || 0,
-          };
-        })
-      );
-
-      return { pins: pinsWithDetails, error: null };
+      return { pins: formattedPins, error: null };
     } catch (error) {
       console.error("getPins error:", error);
       return { pins: null, error: "Pin'ler yüklenirken hata oluştu" };

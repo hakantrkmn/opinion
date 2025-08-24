@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import PinDetailModal from "./PinDetailModal";
 import PinMarker from "./PinMarker";
 import PinModal from "./PinModal";
+import { RefreshButton } from "./RefreshButton";
 
 export default function Map() {
   const {
@@ -32,8 +33,11 @@ export default function Map() {
     handleDeleteComment,
     handleVoteComment,
     user, // User'ı ekleyelim
+    map,
     mapPins,
     handlePinClick,
+    refreshPins,
+    isRefreshing,
   } = useMap();
 
   useEffect(() => {
@@ -183,10 +187,13 @@ export default function Map() {
         <PinMarker
           key={pin.id}
           pin={pin}
-          map={mapContainer.current} // map.current yerine mapContainer.current
+          map={map.current} // ✅ map.current kullanın (maplibregl.Map instance'ı)
           onPinClick={handlePinClick}
         />
       ))}
+
+      {/* Refresh butonu */}
+      <RefreshButton onRefresh={refreshPins} isRefreshing={isRefreshing} />
     </div>
   );
 }

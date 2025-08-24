@@ -30,10 +30,10 @@ export async function middleware(request: NextRequest) {
   );
 
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  if (!user && !request.nextUrl.pathname.startsWith("/auth")) {
+  if (!session && !request.nextUrl.pathname.startsWith("/auth")) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth";
     return NextResponse.redirect(url);

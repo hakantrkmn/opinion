@@ -1,6 +1,7 @@
 "use client";
 
 import type { Pin } from "@/types";
+import { parseLocation } from "@/utils/mapUtils";
 import maplibregl from "maplibre-gl";
 import { useEffect, useRef } from "react";
 
@@ -14,30 +15,6 @@ export default function PinMarker({ pin, map, onPinClick }: PinMarkerProps) {
   const markerRef = useRef<maplibregl.Marker | null>(null);
 
   // PostGIS location'dan koordinatları çıkar
-  const parseLocation = (location: any): [number, number] => {
-    if (!location) {
-      console.warn("Invalid location:", location);
-      return [0, 0];
-    }
-
-    // GeoJSON formatı kontrol et
-    if (location.type === "Point" && location.coordinates) {
-      const [lng, lat] = location.coordinates;
-      return [lng, lat];
-    }
-
-    // String formatı kontrol et (eski format)
-    if (typeof location === "string") {
-      const match = location.match(/POINT\(([^)]+)\)/);
-      if (match) {
-        const [lng, lat] = match[1].split(" ").map(Number);
-        return [lng, lat];
-      }
-    }
-
-    console.warn("Could not parse location:", location);
-    return [0, 0];
-  };
 
   useEffect(() => {
     if (!map) return;

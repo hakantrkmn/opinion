@@ -1,14 +1,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Database Types
+export interface GeoJSONPoint {
+  type: "Point";
+  coordinates: [number, number]; // [longitude, latitude]
+  crs?: {
+    type: "name";
+    properties: { name: string };
+  };
+}
+
+// Pin interface'ini güncelle
 export interface Pin {
   id: string;
   user_id: string;
   name: string;
-  location: string; // PostGIS formatında
+  location: GeoJSONPoint; // ✅ Doğru tip
   created_at: string;
-  user?: {
-    display_name: string;
-  };
+  updated_at: string;
+  user?: { display_name: string };
   comments_count?: number;
 }
 
