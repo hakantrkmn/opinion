@@ -593,7 +593,7 @@ export const useMap = () => {
 
   // Harita başlatma
   const initializeMap = () => {
-    if (map.current) return;
+    console.log("initializeMap");
 
     if (mapContainer.current) {
       map.current = new maplibregl.Map({

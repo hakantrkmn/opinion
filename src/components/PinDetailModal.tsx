@@ -162,20 +162,26 @@ export default function PinDetailModal({
         {/* Add Comment */}
         <div className="p-6 border-t border-amber-200/50 bg-amber-50/30">
           <form onSubmit={handleSubmit} className="flex space-x-3">
-            <input
-              type="text"
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Düşüncelerinizi paylaşın..."
-              className="flex-1 px-4 py-3 border border-amber-200 rounded-lg bg-white/70 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 disabled:bg-amber-100/50 text-amber-900 placeholder-amber-600 transition-all duration-200"
-              disabled={false}
-            />
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Düşüncelerinizi paylaşın..."
+                className="w-full px-4 py-3 pr-12 border border-amber-200 rounded-lg bg-white/70 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 disabled:bg-amber-100/50 text-amber-900 placeholder-amber-600 transition-all duration-200 font-serif"
+                disabled={false}
+              />
+              <div className="absolute right-3 top-3 text-amber-500 opacity-60">
+                💭
+              </div>
+            </div>
             <button
               type="submit"
               disabled={!newComment.trim()}
-              className="px-6 py-3 bg-gradient-to-r from-amber-600 to-yellow-600 text-white rounded-lg hover:from-amber-700 hover:to-yellow-700 transition-all duration-200 disabled:from-amber-400 disabled:to-yellow-400 disabled:cursor-not-allowed transform hover:scale-105 font-medium"
+              className="px-6 py-3 bg-gradient-to-r from-amber-600 to-yellow-600 text-white rounded-lg hover:from-amber-700 hover:to-yellow-700 transition-all duration-200 disabled:from-amber-400 disabled:to-yellow-400 disabled:cursor-not-allowed transform hover:scale-105 font-medium font-serif flex items-center space-x-2"
             >
-              Paylaş
+              <span>📤</span>
+              <span>Paylaş</span>
             </button>
           </form>
         </div>

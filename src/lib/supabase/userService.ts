@@ -18,7 +18,8 @@ export const userService = {
     stats: {
       totalPins: number;
       totalComments: number;
-      totalVotes: number;
+      totalLikes: number;
+      totalDislikes: number;
     } | null;
     error: string | null;
   }> {
@@ -37,19 +38,23 @@ export const userService = {
         .select("*", { count: "exact", head: true })
         .eq("user_id", userId);
 
-      // Toplam oy sayısı (aldığı oylar)
+      // Kullanıcının aldığı oylar
       const { data: votes } = await supabase
         .from("comment_votes")
         .select("value")
         .eq("user_id", userId);
 
-      const totalVotes = votes?.reduce((sum, vote) => sum + vote.value, 0) || 0;
+      // Like ve dislike sayısını hesapla
+      const totalLikes = votes?.filter((vote) => vote.value === 1).length || 0;
+      const totalDislikes =
+        votes?.filter((vote) => vote.value === -1).length || 0;
 
       return {
         stats: {
           totalPins: pinCount || 0,
           totalComments: commentCount || 0,
-          totalVotes,
+          totalLikes: totalLikes,
+          totalDislikes: totalDislikes,
         },
         error: null,
       };

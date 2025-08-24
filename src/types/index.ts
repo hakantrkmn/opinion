@@ -36,6 +36,11 @@ export interface Comment {
   is_editing?: boolean;
   vote_count?: number;
   user_vote?: number; // -1: dislike, 0: no vote, 1: like
+  // Supabase JOIN'dan gelen vote verileri
+  comment_votes?: Array<{
+    value: number;
+    user_id?: string;
+  }>;
 }
 
 export interface CommentVote {

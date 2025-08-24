@@ -43,9 +43,10 @@ export default function Map() {
 
   const { getPinComments } = usePins();
 
+  //just work once on mount
   useEffect(() => {
     initializeMap();
-  });
+  }, []);
 
   // Konum izni reddedildiğinde gösterilecek overlay
   if (locationPermission === "denied") {

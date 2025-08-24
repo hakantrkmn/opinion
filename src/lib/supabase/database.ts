@@ -116,12 +116,25 @@ export const pinService = {
     try {
       const supabase = createClient();
 
+      // Kullanıcı bilgisini al
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        console.error("User not authenticated:", userError);
+        return { comments: null, error: "Kullanıcı bulunamadı" };
+      }
+
+      // Tek query ile comment'ları ve vote'ları birlikte çek
       const { data: comments, error } = await supabase
         .from("comments")
         .select(
           `
           *,
-          users!inner(display_name)
+          users!inner(display_name),
+          comment_votes!left(value)
         `
         )
         .eq("pin_id", pinId)
@@ -132,58 +145,31 @@ export const pinService = {
         return { comments: null, error: error.message };
       }
 
-      console.log("Fetched comments:", comments);
+      console.log("Fetched comments with votes:", comments);
 
-      // Her yorum için vote bilgilerini getir
-      const commentsWithVotes = await Promise.all(
-        (comments || []).map(async (comment) => {
-          try {
-            // Toplam vote sayısını getir
-            const { data: votes } = await supabase
-              .from("comment_votes")
-              .select("value")
-              .eq("comment_id", comment.id);
+      // Comment'ları vote bilgileriyle birlikte işle
+      const commentsWithVotes = (comments || []).map((comment) => {
+        // comment_votes array'ini al (her vote bir object)
+        const votes = comment.comment_votes || [];
 
-            // Kullanıcının oyunu getir
-            const {
-              data: { user },
-            } = await supabase.auth.getUser();
-            let userVote = 0;
+        // Toplam vote sayısını hesapla (sum of all vote values)
+        const voteCount = votes.reduce(
+          (sum: number, vote: any) => sum + (vote.value || 0),
+          0
+        );
 
-            if (user) {
-              const { data: userVoteData } = await supabase
-                .from("comment_votes")
-                .select("value")
-                .eq("comment_id", comment.id)
-                .eq("user_id", user.id)
-                .maybeSingle();
+        // Kullanıcının oyunu bul
+        const userVote =
+          votes.find((vote: any) => vote.user_id === user.id)?.value || 0;
 
-              userVote = userVoteData?.value || 0;
-            }
-
-            // Vote sayısını hesapla
-            const voteCount =
-              votes?.reduce((sum, vote) => sum + vote.value, 0) || 0;
-
-            return {
-              ...comment,
-              vote_count: voteCount,
-              user_vote: userVote,
-            };
-          } catch (voteError) {
-            console.warn(
-              "Vote fetch error for comment:",
-              comment.id,
-              voteError
-            );
-            return {
-              ...comment,
-              vote_count: 0,
-              user_vote: 0,
-            };
-          }
-        })
-      );
+        return {
+          ...comment,
+          vote_count: voteCount,
+          user_vote: userVote,
+          // comment_votes array'ini koru - component'ta sayıları hesaplamak için gerekli
+          // comment_votes: undefined,
+        };
+      });
 
       return { comments: commentsWithVotes, error: null };
     } catch (error) {
