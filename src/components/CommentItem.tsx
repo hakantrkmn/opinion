@@ -20,14 +20,22 @@ export default function CommentItem({
 }: CommentItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(comment.text);
-  const [submitting, setSubmitting] = useState(false);
+
+  // Local state for optimistic updates
+  const [localVote, setLocalVote] = useState(comment.user_vote || 0);
+  const [localCount, setLocalCount] = useState(comment.vote_count || 0);
 
   const isOwnComment = comment.user_id === currentUserId;
 
-  const handleEdit = async () => {
-    if (!editText.trim() || submitting) return;
+  // Use local state, fallback to comment props
+  const currentVote =
+    localVote !== undefined ? localVote : comment.user_vote || 0;
+  const currentCount =
+    localCount !== undefined ? localCount : comment.vote_count || 0;
 
-    setSubmitting(true);
+  const handleEdit = async () => {
+    if (!editText.trim()) return;
+
     try {
       const success = await onEdit(comment.id, editText.trim());
       if (success) {
@@ -35,34 +43,56 @@ export default function CommentItem({
       }
     } catch (error) {
       console.error("Düzenleme hatası:", error);
-    } finally {
-      setSubmitting(false);
     }
   };
 
   const handleDelete = async () => {
     if (!confirm("Bu yorumu silmek istediğinizden emin misiniz?")) return;
 
-    setSubmitting(true);
     try {
       await onDelete(comment.id);
     } catch (error) {
       console.error("Silme hatası:", error);
-    } finally {
-      setSubmitting(false);
     }
   };
 
   const handleVote = async (value: number) => {
-    if (submitting) return;
+    // Temp ID'leri kontrol et - gerçek UUID değilse vote yapma
+    if (comment.id.startsWith("temp-")) {
+      console.log("Temp comment ID - vote geçici olarak devre dışı");
+      return;
+    }
 
-    setSubmitting(true);
+    // Optimistic update - hemen UI'yi güncelle
+    const currentVote =
+      localVote !== undefined ? localVote : comment.user_vote || 0;
+    const currentCount =
+      localCount !== undefined ? localCount : comment.vote_count || 0;
+
+    // Eğer aynı butona tekrar basıldıysa (toggle)
+    if (currentVote === value) {
+      // Vote'u kaldır
+      setLocalVote(0);
+      setLocalCount(currentCount - 1);
+    } else {
+      // Yeni vote veya vote değiştir
+      const countChange = currentVote === 0 ? 1 : 2; // 0->1: +1, 1->-1: +2, -1->1: +2
+      setLocalVote(value);
+      setLocalCount(currentCount + countChange);
+    }
+
     try {
-      await onVote(comment.id, value);
+      const success = await onVote(comment.id, value);
+      if (!success) {
+        // Başarısız olursa geri al
+        setLocalVote(currentVote || 0);
+        setLocalCount(currentCount || 0);
+      }
     } catch (error) {
       console.error("Oy verme hatası:", error);
-    } finally {
-      setSubmitting(false);
+      // Hata durumunda geri al
+      setLocalVote(currentVote || 0);
+      setLocalCount(currentCount || 0);
     }
   };
 
@@ -89,23 +119,20 @@ export default function CommentItem({
             onChange={(e) => setEditText(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             rows={3}
-            disabled={submitting}
           />
           <div className="flex space-x-2">
             <button
               onClick={handleEdit}
-              disabled={submitting}
-              className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 disabled:bg-gray-400"
+              className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
             >
-              {submitting ? "Kaydediliyor..." : "Kaydet"}
+              Kaydet
             </button>
             <button
               onClick={() => {
                 setIsEditing(false);
                 setEditText(comment.text);
               }}
-              disabled={submitting}
-              className="px-3 py-1 bg-gray-500 text-white text-sm rounded hover:bg-gray-600 disabled:bg-gray-400"
+              className="px-3 py-1 bg-gray-500 text-white text-sm rounded hover:bg-gray-600"
             >
               İptal
             </button>
@@ -123,28 +150,29 @@ export default function CommentItem({
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => handleVote(1)}
-                disabled={submitting}
-                className={`p-1 rounded transition-colors ${
-                  comment.user_vote === 1
-                    ? "text-green-600 bg-green-100"
-                    : "text-gray-500 hover:text-green-600"
+                disabled={comment.id.startsWith("temp-")}
+                className={`px-2 py-1 text-xs rounded transition-colors ${
+                  comment.id.startsWith("temp-")
+                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                    : currentVote === 1
+                    ? "bg-green-100 text-green-800 border border-green-200"
+                    : "bg-gray-100 text-gray-600 hover:bg-green-50 hover:text-green-600 border border-gray-200"
                 }`}
               >
-                👍{" "}
-                {comment.vote_count && comment.vote_count > 0
-                  ? comment.vote_count
-                  : ""}
+                Beğen {currentCount > 0 ? `(${currentCount})` : ""}
               </button>
               <button
                 onClick={() => handleVote(-1)}
-                disabled={submitting}
-                className={`p-1 rounded transition-colors ${
-                  comment.user_vote === -1
-                    ? "text-red-600 bg-red-100"
-                    : "text-gray-500 hover:text-red-600"
+                disabled={comment.id.startsWith("temp-")}
+                className={`px-2 py-1 text-xs rounded transition-colors ${
+                  comment.id.startsWith("temp-")
+                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                    : currentVote === -1
+                    ? "bg-red-100 text-red-800 border border-red-200"
+                    : "bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-600 border border-gray-200"
                 }`}
               >
-                👎
+                Beğenme
               </button>
             </div>
 

@@ -24,3 +24,30 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* MapLibre Popup Customization */
+.maplibregl-popup {
+  border-radius: 12px !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  border: none !important;
+  overflow: hidden !important;
+}
+
+.maplibregl-popup-content {
+  padding: 0 !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+.maplibregl-popup-tip {
+  border-top-color: white !important;
+  border-width: 8px !important;
+}
+
+/* Custom popup class */
+.custom-popup .maplibregl-popup-content {
+  background: transparent !important;
+  box-shadow: none !important;
+}

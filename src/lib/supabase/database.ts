@@ -21,7 +21,7 @@ export const pinService = {
 
       console.log("Creating pin with data:", data);
 
-      // Pin oluştur (PostGIS formatında)
+      // Transaction ile hem pin hem de ilk yorumu oluştur
       const { data: pin, error: pinError } = await supabase
         .from("pins")
         .insert({
@@ -37,18 +37,29 @@ export const pinService = {
         return { pin: null, error: pinError.message };
       }
 
-      // İlk yorumu ekle
-      const { error: commentError } = await supabase.from("comments").insert({
-        pin_id: pin.id,
-        user_id: user.id,
-        text: data.comment,
-        is_first_comment: true,
-      });
+      // İlk yorumu ekle (is_first_comment = true ile)
+      const { data: comment, error: commentError } = await supabase
+        .from("comments")
+        .insert({
+          pin_id: pin.id,
+          user_id: user.id,
+          text: data.comment,
+          is_first_comment: true,
+        })
+        .select("*")
+        .single();
 
       if (commentError) {
         console.error("Comment creation error:", commentError);
-        return { pin: null, error: commentError.message };
+        // Pin oluşturuldu ama yorum eklenemedi - pin'i sil
+        await supabase.from("pins").delete().eq("id", pin.id);
+        return { pin: null, error: "İlk yorum eklenirken hata oluştu" };
       }
+
+      console.log("Pin ve ilk yorum başarıyla oluşturuldu:", {
+        pinId: pin.id,
+        commentId: comment.id,
+      });
 
       return { pin, error: null };
     } catch (error) {
@@ -218,7 +229,7 @@ export const pinService = {
       }
 
       return { comment, error: null };
-    } catch (error) {
+    } catch {
       return { comment: null, error: "Yorum eklenirken hata oluştu" };
     }
   },
@@ -250,7 +261,7 @@ export const pinService = {
       }
 
       return { success: true, error: null };
-    } catch (error) {
+    } catch {
       return { success: false, error: "Yorum güncellenirken hata oluştu" };
     }
   },
@@ -281,7 +292,7 @@ export const pinService = {
       }
 
       return { success: true, error: null };
-    } catch (error) {
+    } catch {
       return { success: false, error: "Yorum silinirken hata oluştu" };
     }
   },
@@ -393,35 +404,8 @@ export const pinService = {
       }
 
       return { success: true, error: null };
-    } catch (error) {
+    } catch {
       return { success: false, error: "Pin silinirken hata oluştu" };
     }
   },
-};
-
-// PostGIS location'dan koordinatları çıkar (GeoJSON formatı)
-const parseLocation = (location: any): [number, number] => {
-  if (!location) {
-    console.warn("Invalid location:", location);
-    return [0, 0];
-  }
-
-  // GeoJSON formatı kontrol et
-  if (location.type === "Point" && location.coordinates) {
-    const [lng, lat] = location.coordinates;
-    console.log("Parsed coordinates from DB:", [lng, lat]);
-    return [lng, lat];
-  }
-
-  // String formatı kontrol et (eski format)
-  if (typeof location === "string") {
-    const match = location.match(/POINT\(([^)]+)\)/);
-    if (match) {
-      const [lng, lat] = match[1].split(" ").map(Number);
-      return [lng, lat];
-    }
-  }
-
-  console.warn("Could not parse location:", location);
-  return [0, 0];
 };

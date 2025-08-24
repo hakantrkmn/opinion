@@ -1,3 +1,7 @@
+import {
+  generatePinElementHTML,
+  generatePinPopupHTML,
+} from "@/components/PinMarker";
 import { createClient } from "@/lib/supabase/client";
 import type { Comment, CreatePinData, MapBounds, Pin } from "@/types";
 import { SimpleMapCache } from "@/utils/mapCache";
@@ -28,7 +32,22 @@ export const useMap = () => {
     comments: Comment[];
   } | null>(null);
   // State'e user ekleyelim
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{ id: string; email: string } | null>(null);
+
+  const getUser = async () => {
+    const supabase = createClient();
+    const {
+      data: { session: sessionData },
+    } = await supabase.auth.getSession();
+    if (sessionData?.user) {
+      setUser({
+        id: sessionData.user.id,
+        email: sessionData.user.email || "",
+      });
+    } else {
+      setUser(null);
+    }
+  };
 
   // mapPins state'ini ekleyelim
   const [mapPins, setMapPins] = useState<Pin[]>([]);
@@ -117,14 +136,6 @@ export const useMap = () => {
   };
 
   // Kullanıcı bilgisini al
-  const getUser = async () => {
-    const supabase = createClient();
-    const {
-      data: { session: sessionData },
-    } = await supabase.auth.getSession();
-    setUser(sessionData?.user);
-  };
-
   // useEffect ile kullanıcı bilgisini al
   useEffect(() => {
     getUser();
@@ -161,26 +172,41 @@ export const useMap = () => {
 
   // Pin oluşturma (DB ile entegre)
   const createPin = async (data: { pinName: string; comment: string }) => {
-    if (!tempPin) return;
+    if (!tempPin) {
+      console.error("Temp pin bulunamadı");
+      return;
+    }
 
     try {
+      console.log("Pin oluşturuluyor:", data, "Konum:", tempPin);
+
       const createPinData: CreatePinData = {
         lat: tempPin[1],
         lng: tempPin[0],
-        pinName: data.pinName, // name yerine pinName kullan
+        pinName: data.pinName,
         comment: data.comment,
       };
 
       const success = await createPinInDB(createPinData);
 
       if (success) {
+        console.log("Pin başarıyla oluşturuldu");
         setShowPinModal(false);
         setTempPin(null);
-        // Haritayı yenile
-        loadPinsFromMapWithCache();
+
+        // Kısa bir gecikme sonrası haritayı yenile (DB'nin güncellenmesi için)
+        setTimeout(() => {
+          loadPinsFromMapWithCache(true); // Force refresh
+        }, 500);
+
+        // Başarı mesajı gösterilebilir
+        console.log("Pin ve ilk yorum başarıyla oluşturuldu!");
+      } else {
+        console.error("Pin oluşturma başarısız");
       }
     } catch (error) {
       console.error("Pin oluşturma hatası:", error);
+      // Hata mesajı kullanıcıya gösterilebilir
     }
   };
 
@@ -242,7 +268,7 @@ export const useMap = () => {
         setIsRefreshing(false);
       }
     },
-    [loadPinsFromDB, pins]
+    [loadPinsFromDB]
   );
 
   // Refresh fonksiyonu
@@ -264,8 +290,97 @@ export const useMap = () => {
     });
   };
 
+  // Pin popup'ı gösterme
+  const showPinPopup = useCallback(
+    async (pin: Pin) => {
+      if (!map.current) return;
+
+      // PostGIS location'dan koordinatları çıkar
+      const [lng, lat] = parseLocation(pin.location);
+
+      // Pin popup content - component kullanarak oluştur
+      const popupContent = generatePinPopupHTML(pin);
+
+      const popup = new maplibregl.Popup({
+        closeButton: false,
+        closeOnClick: false,
+        maxWidth: "350px",
+        className: "custom-popup",
+      })
+        .setLngLat([lng, lat]) // parseLocation'dan gelen koordinatları kullan
+        .setHTML(popupContent)
+        .addTo(map.current);
+
+      // Popup'a tıklama olayı
+      setTimeout(() => {
+        const popupElement = document.getElementById("pin-popup");
+        if (popupElement) {
+          popupElement.addEventListener("click", async (e) => {
+            e.stopPropagation();
+
+            // Modal açılırken DB sorgusu yap (şimdilik basit tutalım)
+            const comments = await getPinComments(pin.id);
+
+            if (comments) {
+              setSelectedPin({
+                pinId: pin.id,
+                pinName: pin.name,
+                comments,
+              });
+              setShowPinDetailModal(true);
+              popup.remove();
+            }
+          });
+        }
+      }, 100);
+
+      // Haritaya tıklayınca popup'ı kapat
+      const handleMapClick = () => {
+        popup.remove();
+        map.current?.off("click", handleMapClick);
+      };
+
+      map.current.on("click", handleMapClick);
+    },
+    [getPinComments]
+  );
+
+  // Pin'i haritaya ekleme
+  const addPinToMap = useCallback(
+    (pin: Pin) => {
+      if (!map.current) return;
+
+      // PostGIS location'dan koordinatları çıkar
+      const [lng, lat] = parseLocation(pin.location);
+
+      // Pin elementini oluştur (component kullanarak)
+      const pinElement = document.createElement("div");
+      pinElement.className = "pin-marker";
+      pinElement.innerHTML = generatePinElementHTML(pin);
+
+      new maplibregl.Marker({
+        element: pinElement,
+        anchor: "bottom",
+      })
+        .setLngLat([lng, lat])
+        .addTo(map.current);
+
+      // Pin'e tıklama olayı
+      pinElement.addEventListener("click", (e) => {
+        e.stopPropagation();
+        showPinPopup(pin);
+      });
+    },
+    [showPinPopup]
+  );
+
+  // Pin'e tıklama handler'ı
+  const handlePinClick = (pin: Pin) => {
+    showPinPopup(pin);
+  };
+
   // Pin'leri haritaya ekle
-  const addPinsToMap = () => {
+  const addPinsToMap = useCallback(() => {
     if (!map.current) return;
 
     // Önceki pin'leri temizle
@@ -275,138 +390,81 @@ export const useMap = () => {
     pins.forEach((pin) => {
       addPinToMap(pin);
     });
-  };
-
-  // Pin'i haritaya ekleme
-  const addPinToMap = (pin: Pin) => {
-    if (!map.current) return;
-
-    // PostGIS location'dan koordinatları çıkar
-    const [lng, lat] = parseLocation(pin.location);
-
-    const pinElement = document.createElement("div");
-    pinElement.className = "pin-marker";
-    pinElement.innerHTML = `
-      <div class="relative">
-        <div class="w-6 h-6 bg-red-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center cursor-pointer hover:bg-red-600 transition-colors">
-          <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
-          </svg>
-        </div>
-        <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-3 border-r-3 border-t-3 border-transparent border-t-red-500"></div>
-      </div>
-    `;
-
-    const marker = new maplibregl.Marker({
-      element: pinElement,
-      anchor: "bottom",
-    })
-      .setLngLat([lng, lat])
-      .addTo(map.current);
-
-    // Pin'e tıklama olayı
-    pinElement.addEventListener("click", (e) => {
-      e.stopPropagation();
-      showPinPopup(pin);
-    });
-  };
-
-  // Pin'e tıklama handler'ı
-  const handlePinClick = (pin: Pin) => {
-    showPinPopup(pin);
-  };
-
-  // Pin popup'ı gösterme
-  const showPinPopup = async (pin: Pin) => {
-    if (!map.current) return;
-
-    // PostGIS location'dan koordinatları çıkar
-    const [lng, lat] = parseLocation(pin.location);
-
-    const popupContent = `
-      <div class="p-4 max-w-sm cursor-pointer hover:bg-gray-50 transition-colors" id="pin-popup">
-        <div class="mb-3">
-          <h3 class="text-xl font-bold text-gray-800 leading-tight">
-            ${pin.name}
-          </h3>
-        </div>
-        <div class="mb-3">
-          <p class="text-sm text-gray-600">
-            Oluşturan: <span class="font-medium">${
-              pin.user?.display_name || "Anonim"
-            }</span>
-          </p>
-        </div>
-        <div class="flex items-center">
-          <svg class="w-4 h-4 text-gray-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd" />
-          </svg>
-          <span class="text-sm text-gray-600">${
-            pin.comments_count || 0
-          } yorum</span>
-        </div>
-      </div>
-    `;
-
-    const popup = new maplibregl.Popup({
-      closeButton: true,
-      closeOnClick: false,
-      maxWidth: "350px",
-    })
-      .setLngLat([lng, lat]) // parseLocation'dan gelen koordinatları kullan
-      .setHTML(popupContent)
-      .addTo(map.current);
-
-    // Popup'a tıklama olayı
-    setTimeout(() => {
-      const popupElement = document.getElementById("pin-popup");
-      if (popupElement) {
-        popupElement.addEventListener("click", async (e) => {
-          e.stopPropagation();
-
-          // Yorumları DB'den getir
-          const comments = await getPinComments(pin.id);
-
-          if (comments) {
-            setSelectedPin({
-              pinId: pin.id,
-              pinName: pin.name,
-              comments,
-            });
-            setShowPinDetailModal(true);
-            popup.remove();
-          }
-        });
-      }
-    }, 100);
-
-    // Haritaya tıklayınca popup'ı kapat
-    const handleMapClick = () => {
-      popup.remove();
-      map.current?.off("click", handleMapClick);
-    };
-
-    map.current.on("click", handleMapClick);
-  };
+  }, [addPinToMap, pins]);
 
   // Yorum ekleme
   const handleAddComment = async (text: string): Promise<boolean> => {
     if (!selectedPin) return false;
 
     try {
-      const success = await addComment(selectedPin.pinId, text);
-      if (success) {
-        // Yorumları yenile
-        const updatedComments = await getPinComments(selectedPin.pinId);
-        if (updatedComments) {
-          setSelectedPin((prev) =>
-            prev ? { ...prev, comments: updatedComments } : null
-          );
-        }
+      // Önce yeni yorumu anlık olarak ekle (loading olmadan)
+      if (user) {
+        const newComment: Comment = {
+          id: `temp-${Date.now()}`, // Geçici ID, gerçek ID DB'den gelecek
+          pin_id: selectedPin.pinId,
+          user_id: user.id,
+          text: text,
+          is_first_comment: false,
+          created_at: new Date().toISOString(),
+          users: {
+            display_name: user.email.split("@")[0], // Basit display name
+          },
+          vote_count: 0,
+          user_vote: 0,
+        };
+
+        setSelectedPin((prev) =>
+          prev ? { ...prev, comments: [...prev.comments, newComment] } : null
+        );
+
+        // Haritadaki pin'i de güncelle (yorum sayısı)
+        setMapPins((prevPins) =>
+          prevPins.map((pin) =>
+            pin.id === selectedPin.pinId
+              ? { ...pin, comments_count: (pin.comments_count || 0) + 1 }
+              : pin
+          )
+        );
       }
+
+      // DB'ye ekle (arka planda)
+      const success = await addComment(selectedPin.pinId, text);
+
+      if (!success && user) {
+        // Başarısız olursa, eklenen yorumu kaldır
+        setSelectedPin((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            comments: prev.comments.filter((c) => !c.id.startsWith("temp-")),
+          };
+        });
+
+        // Haritadaki yorum sayısını da geri al
+        setMapPins((prevPins) =>
+          prevPins.map((pin) =>
+            pin.id === selectedPin.pinId
+              ? { ...pin, comments_count: (pin.comments_count || 0) - 1 }
+              : pin
+          )
+        );
+      }
+
       return success;
     } catch (error) {
       console.error("Yorum ekleme hatası:", error);
+
+      // Hata durumunda, eklenen yorumu kaldır
+      if (user) {
+        setSelectedPin((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            comments: prev.comments.filter((c) => !c.id.startsWith("temp-")),
+          };
+        });
+      }
+
       return false;
     }
   };
@@ -458,7 +516,7 @@ export const useMap = () => {
     }
   };
 
-  // Yorum oylama
+  // Yorum oylama - artık local state güncellemesi yapıyor
   const handleVoteComment = async (
     commentId: string,
     value: number
@@ -466,16 +524,11 @@ export const useMap = () => {
     if (!selectedPin) return false;
 
     try {
+      // DB'ye vote işlemini gönder (arka planda)
       const success = await voteComment(commentId, value);
-      if (success) {
-        // Yorumları yenile
-        const updatedComments = await getPinComments(selectedPin.pinId);
-        if (updatedComments) {
-          setSelectedPin((prev) =>
-            prev ? { ...prev, comments: updatedComments } : null
-          );
-        }
-      }
+
+      // Local state güncellemesi - CommentItem zaten optimistic update yapıyor
+      // Bu fonksiyon sadece DB işlemini yapıyor
       return success;
     } catch (error) {
       console.error("Yorum oylama hatası:", error);
@@ -591,7 +644,7 @@ export const useMap = () => {
       clearMapPins();
       addPinsToMap();
     }
-  }, [pins]);
+  }, [pins, addPinsToMap]);
 
   // Cleanup
   useEffect(() => {

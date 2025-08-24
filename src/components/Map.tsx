@@ -1,6 +1,7 @@
 "use client";
 
 import { useMap } from "@/hooks/useMap";
+import { usePins } from "@/hooks/usePins";
 import { useEffect } from "react";
 import PinDetailModal from "./PinDetailModal";
 import PinMarker from "./PinMarker";
@@ -40,15 +41,11 @@ export default function Map() {
     isRefreshing,
   } = useMap();
 
+  const { getPinComments } = usePins();
+
   useEffect(() => {
     initializeMap();
   });
-
-  // Yorum ekleme fonksiyonu
-  const handleAddCommentCode = async (text: string): Promise<boolean> => {
-    // useMap'ten gelen handleAddComment'i kullan
-    return await handleAddComment(text);
-  };
 
   // Konum izni reddedildiğinde gösterilecek overlay
   if (locationPermission === "denied") {
@@ -99,7 +96,9 @@ export default function Map() {
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white px-4 py-2 rounded-lg shadow-lg">
           <div className="flex items-center space-x-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-            <span className="text-sm text-gray-600">Pin'ler yükleniyor...</span>
+            <span className="text-sm text-gray-600">
+              Pin&apos;ler yükleniyor...
+            </span>
           </div>
         </div>
       )}
@@ -170,6 +169,10 @@ export default function Map() {
           onClose={() => {
             setShowPinDetailModal(false);
             setSelectedPin(null);
+            // Modal kapatıldığında haritadaki popup'ları temizle
+            const existingPopups =
+              document.querySelectorAll(".maplibregl-popup");
+            existingPopups.forEach((popup) => popup.remove());
           }}
           pinName={selectedPin?.pinName || ""}
           comments={selectedPin?.comments || []}
@@ -179,6 +182,15 @@ export default function Map() {
           onVoteComment={handleVoteComment}
           currentUserId={user?.id || ""}
           loading={pinsLoading}
+          onRefresh={async () => {
+            // Pin'in yorumlarını yeniden çek
+            if (selectedPin) {
+              const comments = await getPinComments(selectedPin.pinId);
+              if (comments) {
+                setSelectedPin((prev) => (prev ? { ...prev, comments } : null));
+              }
+            }
+          }}
         />
       )}
 

@@ -85,12 +85,9 @@ export const usePins = () => {
     []
   );
 
-  // Pin'e yorum ekle
+  // Pin'e yorum ekle - artık loading yapmıyor
   const addComment = useCallback(
     async (pinId: string, text: string): Promise<boolean> => {
-      setLoading(true);
-      setError(null);
-
       try {
         const { comment, error: commentError } = await pinService.addComment(
           pinId,
@@ -98,7 +95,7 @@ export const usePins = () => {
         );
 
         if (commentError) {
-          setError(commentError);
+          console.error("addComment error:", commentError);
           return false;
         }
 
@@ -116,10 +113,8 @@ export const usePins = () => {
 
         return false;
       } catch (err) {
-        setError("Yorum eklenirken beklenmeyen hata oluştu");
+        console.error("addComment error:", err);
         return false;
-      } finally {
-        setLoading(false);
       }
     },
     []
@@ -227,12 +222,9 @@ export const usePins = () => {
     []
   );
 
-  // Yorum oylama
+  // Yorum oylama - artık loading yapmıyor
   const voteComment = useCallback(
     async (commentId: string, value: number): Promise<boolean> => {
-      setLoading(true);
-      setError(null);
-
       try {
         const { success, error: voteError } = await pinService.voteComment(
           commentId,
@@ -240,17 +232,14 @@ export const usePins = () => {
         );
 
         if (voteError) {
-          setError(voteError);
+          console.error("voteComment error:", voteError);
           return false;
         }
 
         return success;
       } catch (error) {
         console.error("voteComment error:", error);
-        setError("Oy verilirken hata oluştu");
         return false;
-      } finally {
-        setLoading(false);
       }
     },
     []
