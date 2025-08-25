@@ -43,12 +43,36 @@ export interface Comment {
   }>;
 }
 
+// Enhanced Comment interface for optimistic updates
+export interface EnhancedComment extends Comment {
+  // Optimistic update fields
+  isOptimistic?: boolean;
+  tempId?: string;
+
+  // Calculated fields
+  netScore: number;
+  likeCount: number;
+  dislikeCount: number;
+
+  // UI state
+  isVoting?: boolean;
+  voteError?: string;
+}
+
 export interface CommentVote {
   id: string;
   comment_id: string;
   user_id: string;
   value: number; // -1 veya 1
   created_at: string;
+}
+
+export interface VoteData {
+  commentId: string;
+  likeCount: number;
+  dislikeCount: number;
+  userVote: number;
+  netScore: number;
 }
 
 export interface User {

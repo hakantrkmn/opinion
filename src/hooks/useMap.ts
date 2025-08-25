@@ -3,14 +3,20 @@ import {
   generatePinPopupHTML,
 } from "@/components/PinMarker";
 import { createClient } from "@/lib/supabase/client";
-import type { Comment, CreatePinData, MapBounds, Pin } from "@/types";
+import type {
+  Comment,
+  CreatePinData,
+  EnhancedComment,
+  MapBounds,
+  Pin,
+} from "@/types";
 import { SimpleMapCache } from "@/utils/mapCache";
 import { parseLocation } from "@/utils/mapUtils";
 import { mapStyles } from "@/utils/variables";
 import maplibregl from "maplibre-gl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LongPressEventType, useLongPress } from "use-long-press";
-import { usePins } from "./usePins";
+import { usePinsWithOptimistic } from "./usePinsWithOptimistic";
 
 export const useMap = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -29,7 +35,7 @@ export const useMap = () => {
   const [selectedPin, setSelectedPin] = useState<{
     pinId: string;
     pinName: string;
-    comments: Comment[];
+    comments: (Comment | EnhancedComment)[];
   } | null>(null);
   // State'e user ekleyelim
   const [user, setUser] = useState<{ id: string; email: string } | null>(null);
@@ -52,7 +58,7 @@ export const useMap = () => {
   // mapPins state'ini ekleyelim
   const [mapPins, setMapPins] = useState<Pin[]>([]);
 
-  // Pin hook'unu kullan
+  // Pin hook'unu kullan (optimistic version)
   const {
     pins,
     loading: pinsLoading,
@@ -63,7 +69,8 @@ export const useMap = () => {
     editComment,
     deleteComment,
     voteComment,
-  } = usePins();
+    hasOptimisticUpdates,
+  } = usePinsWithOptimistic();
 
   // Debug için pins state'ini izle
 
@@ -392,79 +399,27 @@ export const useMap = () => {
     });
   }, [addPinToMap, pins]);
 
-  // Yorum ekleme
+  // Yorum ekleme (optimistic hook kullanarak)
   const handleAddComment = async (text: string): Promise<boolean> => {
     if (!selectedPin) return false;
 
     try {
-      // Önce yeni yorumu anlık olarak ekle (loading olmadan)
-      if (user) {
-        const newComment: Comment = {
-          id: `temp-${Date.now()}`, // Geçici ID, gerçek ID DB'den gelecek
-          pin_id: selectedPin.pinId,
-          user_id: user.id,
-          text: text,
-          is_first_comment: false,
-          created_at: new Date().toISOString(),
-          users: {
-            display_name: user.email.split("@")[0], // Basit display name
-          },
-          vote_count: 0,
-          user_vote: 0,
-        };
-
-        setSelectedPin((prev) =>
-          prev ? { ...prev, comments: [...prev.comments, newComment] } : null
-        );
-
-        // Haritadaki pin'i de güncelle (yorum sayısı)
-        setMapPins((prevPins) =>
-          prevPins.map((pin) =>
-            pin.id === selectedPin.pinId
-              ? { ...pin, comments_count: (pin.comments_count || 0) + 1 }
-              : pin
-          )
-        );
-      }
-
-      // DB'ye ekle (arka planda)
+      // Optimistic hook otomatik olarak optimistic update yapacak
       const success = await addComment(selectedPin.pinId, text);
 
-      if (!success && user) {
-        // Başarısız olursa, eklenen yorumu kaldır
-        setSelectedPin((prev) => {
-          if (!prev) return null;
-          return {
-            ...prev,
-            comments: prev.comments.filter((c) => !c.id.startsWith("temp-")),
-          };
-        });
-
-        // Haritadaki yorum sayısını da geri al
-        setMapPins((prevPins) =>
-          prevPins.map((pin) =>
-            pin.id === selectedPin.pinId
-              ? { ...pin, comments_count: (pin.comments_count || 0) - 1 }
-              : pin
-          )
-        );
+      if (success) {
+        // Başarılı olursa yorumları yenile ki gerçek ID'ler gelsin
+        const updatedComments = await getPinComments(selectedPin.pinId);
+        if (updatedComments) {
+          setSelectedPin((prev) =>
+            prev ? { ...prev, comments: updatedComments } : null
+          );
+        }
       }
 
       return success;
     } catch (error) {
       console.error("Yorum ekleme hatası:", error);
-
-      // Hata durumunda, eklenen yorumu kaldır
-      if (user) {
-        setSelectedPin((prev) => {
-          if (!prev) return null;
-          return {
-            ...prev,
-            comments: prev.comments.filter((c) => !c.id.startsWith("temp-")),
-          };
-        });
-      }
-
       return false;
     }
   };
@@ -516,7 +471,7 @@ export const useMap = () => {
     }
   };
 
-  // Yorum oylama - artık local state güncellemesi yapıyor
+  // Yorum oylama (optimistic hook kullanarak)
   const handleVoteComment = async (
     commentId: string,
     value: number
@@ -524,11 +479,19 @@ export const useMap = () => {
     if (!selectedPin) return false;
 
     try {
-      // DB'ye vote işlemini gönder (arka planda)
+      // Optimistic hook otomatik olarak optimistic update yapacak
       const success = await voteComment(commentId, value);
 
-      // Local state güncellemesi - CommentItem zaten optimistic update yapıyor
-      // Bu fonksiyon sadece DB işlemini yapıyor
+      if (success) {
+        // Başarılı olursa yorumları yenile ki güncel vote sayıları gelsin
+        const updatedComments = await getPinComments(selectedPin.pinId);
+        if (updatedComments) {
+          setSelectedPin((prev) =>
+            prev ? { ...prev, comments: updatedComments } : null
+          );
+        }
+      }
+
       return success;
     } catch (error) {
       console.error("Yorum oylama hatası:", error);

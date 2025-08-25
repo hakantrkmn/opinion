@@ -3,12 +3,12 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import type { Comment } from "@/types";
+import type { Comment, EnhancedComment } from "@/types";
 import { Calendar, Edit2, Save, ThumbsDown, ThumbsUp, Trash2, User, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface CommentItemProps {
-  comment: Comment;
+  comment: Comment | EnhancedComment;
   currentUserId: string;
   onEdit: (commentId: string, newText: string) => Promise<boolean>;
   onDelete: (commentId: string) => Promise<boolean>;
@@ -25,10 +25,42 @@ export default function CommentItem({
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(comment.text);
 
+  // Check if this is an enhanced comment with optimistic data
+  const isEnhancedComment = 'isOptimistic' in comment;
+  const isOptimistic = isEnhancedComment && comment.isOptimistic;
+
   // Local state for optimistic updates
   const [localVote, setLocalVote] = useState(comment.user_vote || 0);
 
-  // Calculate like/dislike counts from comment votes
+  // Use enhanced comment data if available, otherwise calculate from comment_votes
+  let initialLikeCount = 0;
+  let initialDislikeCount = 0;
+
+  if (isEnhancedComment && comment.likeCount !== undefined) {
+    // Use pre-calculated values from EnhancedComment
+    initialLikeCount = comment.likeCount;
+    initialDislikeCount = comment.dislikeCount;
+  } else if (comment.comment_votes) {
+    // Calculate from comment_votes for regular comments
+    const getLikeDislikeCounts = (
+      commentVotes: Array<{ value: number; user_id?: string }>
+    ) => {
+      const likeCount = commentVotes.filter((vote) => vote.value === 1).length;
+      const dislikeCount = commentVotes.filter(
+        (vote) => vote.value === -1
+      ).length;
+      return { likeCount, dislikeCount };
+    };
+
+    const counts = getLikeDislikeCounts(comment.comment_votes);
+    initialLikeCount = counts.likeCount;
+    initialDislikeCount = counts.dislikeCount;
+  }
+
+  const [localLikeCount, setLocalLikeCount] = useState(initialLikeCount);
+  const [localDislikeCount, setLocalDislikeCount] = useState(initialDislikeCount);
+
+  // Helper function to calculate like/dislike counts
   const getLikeDislikeCounts = (
     commentVotes: Array<{ value: number; user_id?: string }>
   ) => {
@@ -39,18 +71,13 @@ export default function CommentItem({
     return { likeCount, dislikeCount };
   };
 
-  const { likeCount: initialLikeCount, dislikeCount: initialDislikeCount } =
-    comment.comment_votes
-      ? getLikeDislikeCounts(comment.comment_votes)
-      : { likeCount: 0, dislikeCount: 0 };
-
-  const [localLikeCount, setLocalLikeCount] = useState(initialLikeCount);
-  const [localDislikeCount, setLocalDislikeCount] =
-    useState(initialDislikeCount);
-
   // Update local states when comment prop changes
   useEffect(() => {
-    if (comment.comment_votes) {
+    if (isEnhancedComment && comment.likeCount !== undefined) {
+      // Use pre-calculated values from EnhancedComment
+      setLocalLikeCount(comment.likeCount);
+      setLocalDislikeCount(comment.dislikeCount);
+    } else if (comment.comment_votes) {
       const { likeCount, dislikeCount } = getLikeDislikeCounts(
         comment.comment_votes
       );
@@ -61,7 +88,7 @@ export default function CommentItem({
       setLocalDislikeCount(0);
     }
     setLocalVote(comment.user_vote || 0);
-  }, [comment.comment_votes, comment.user_vote, comment.id]);
+  }, [comment.comment_votes, comment.user_vote, comment.id, isEnhancedComment]);
 
   const isOwnComment = comment.user_id === currentUserId;
 
@@ -93,9 +120,9 @@ export default function CommentItem({
   };
 
   const handleVote = async (value: number) => {
-    // Check for temp IDs - don't allow voting on temporary comments
-    if (comment.id.startsWith("temp-")) {
-      console.log("Temp comment ID - voting temporarily disabled");
+    // Don't allow voting on optimistic comments
+    if (isOptimistic || comment.id.startsWith("temp-")) {
+      console.log("Optimistic comment - voting temporarily disabled");
       return;
     }
 
@@ -231,7 +258,7 @@ export default function CommentItem({
                   variant={currentVote === 1 ? "default" : "outline"}
                   size="sm"
                   onClick={() => handleVote(1)}
-                  disabled={comment.id.startsWith("temp-")}
+                  disabled={isOptimistic || comment.id.startsWith("temp-")}
                   className="h-7 sm:h-8 text-xs sm:text-sm"
                 >
                   <ThumbsUp className="h-3 w-3 mr-1" />
@@ -241,7 +268,7 @@ export default function CommentItem({
                   variant={currentVote === -1 ? "destructive" : "outline"}
                   size="sm"
                   onClick={() => handleVote(-1)}
-                  disabled={comment.id.startsWith("temp-")}
+                  disabled={isOptimistic || comment.id.startsWith("temp-")}
                   className="h-7 sm:h-8 text-xs sm:text-sm"
                 >
                   <ThumbsDown className="h-3 w-3 mr-1" />
@@ -250,7 +277,7 @@ export default function CommentItem({
               </div>
 
               {/* Edit/Delete buttons */}
-              {isOwnComment && (
+              {isOwnComment && !isOptimistic && (
                 <div className="flex space-x-2">
                   <Button
                     variant="ghost"
@@ -270,6 +297,14 @@ export default function CommentItem({
                     <Trash2 className="h-3 w-3 mr-1" />
                     <span className="hidden sm:inline">Delete</span>
                   </Button>
+                </div>
+              )}
+
+              {/* Show loading indicator for optimistic comments */}
+              {isOptimistic && isOwnComment && (
+                <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                  <div className="w-3 h-3 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin"></div>
+                  <span>Saving...</span>
                 </div>
               )}
             </div>

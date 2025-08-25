@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { Comment } from "@/types";
+import type { Comment, EnhancedComment } from "@/types";
 import { Loader2, MapPin, MessageCircle, RefreshCcw, Send } from "lucide-react";
 import { useState } from "react";
 import CommentItem from "./CommentItem";
@@ -13,7 +13,7 @@ interface PinDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   pinName: string;
-  comments: Comment[];
+  comments: (Comment | EnhancedComment)[];
   onAddComment: (text: string) => Promise<boolean>;
   onEditComment: (commentId: string, newText: string) => Promise<boolean>;
   onDeleteComment: (commentId: string) => Promise<boolean>;

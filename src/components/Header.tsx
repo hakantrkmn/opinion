@@ -1,14 +1,13 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { createClient } from "@/lib/supabase/server";
+import { useAuth } from "@/contexts/AuthContext";
 import { LogOut, Search, User } from "lucide-react";
 import Link from "next/link";
 
-export default async function Header() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export default function Header() {
+  const { user } = useAuth();
 
   return (
     <header className="bg-background border-b border-border shadow-sm relative z-20">
