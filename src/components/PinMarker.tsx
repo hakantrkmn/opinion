@@ -34,15 +34,14 @@ export function PinElement({ pin, onClick }: PinElementProps) {
             <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
             </svg>
-            ${
-              pin.comments_count && pin.comments_count > 0
-                ? `
+            ${pin.comments_count && pin.comments_count > 0
+          ? `
               <div class="absolute -top-1 -right-1 bg-white text-gray-700 text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold shadow-sm z-10">
                 ${pin.comments_count > 99 ? "99+" : pin.comments_count}
               </div>
             `
-                : ""
-            }
+          : ""
+        }
           </div>
           <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-3 border-r-3 border-t-3 border-transparent border-t-red-500"></div>
         </div>
@@ -115,21 +114,21 @@ export default function PinMarker({ pin, map, onPinClick }: PinMarkerProps) {
 export function generatePinPopupHTML(pin: Pin): string {
   const userName = pin.user?.display_name || "Anonim";
   const commentCount = pin.comments_count || 0;
-  const createdDate = new Date(pin.created_at).toLocaleDateString("tr-TR", {
+  const createdDate = new Date(pin.created_at).toLocaleDateString("en-US", {
     day: "numeric",
     month: "short",
     year: "numeric",
   });
 
-  // Pin'in aktiflik seviyesine göre badge
+  // Activity level badge based on comment count
   const getActivityBadge = (count?: number) => {
     if (!count || count === 0)
-      return { text: "Yeni", color: "bg-green-100 text-green-800" };
+      return { text: "New", color: "bg-green-100 text-green-800" };
     if (count <= 3)
-      return { text: "Aktif", color: "bg-blue-100 text-blue-800" };
+      return { text: "Active", color: "bg-blue-100 text-blue-800" };
     if (count <= 10)
-      return { text: "Popüler", color: "bg-yellow-100 text-yellow-800" };
-    return { text: "Çok Aktif", color: "bg-purple-100 text-purple-800" };
+      return { text: "Popular", color: "bg-yellow-100 text-yellow-800" };
+    return { text: "Very Active", color: "bg-purple-100 text-purple-800" };
   };
 
   const activityBadge = getActivityBadge(commentCount);
@@ -157,7 +156,7 @@ export function generatePinPopupHTML(pin: Pin): string {
       <div class="mb-3">
         <div class="flex items-center justify-between">
           <p class="text-sm text-gray-600">
-            Oluşturan: <span class="font-medium">${userName}</span>
+            Created by: <span class="font-medium">${userName}</span>
           </p>
           <p class="text-xs text-gray-400">${createdDate}</p>
         </div>
@@ -168,11 +167,11 @@ export function generatePinPopupHTML(pin: Pin): string {
           <svg class="w-4 h-4 text-gray-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd" />
           </svg>
-          <span class="text-sm text-gray-600 font-medium">${commentCount} yorum</span>
+          <span class="text-sm text-gray-600 font-medium">${commentCount} ${commentCount === 1 ? 'comment' : 'comments'}</span>
         </div>
 
         <div class="text-xs text-gray-400">
-          📍 Pin'i aç
+          Click to open
         </div>
       </div>
     </div>
@@ -198,15 +197,14 @@ export function generatePinElementHTML(pin: Pin): string {
         <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
           <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
         </svg>
-        ${
-          pin.comments_count && pin.comments_count > 0
-            ? `
+        ${pin.comments_count && pin.comments_count > 0
+      ? `
           <div class="absolute -top-1 -right-1 bg-white text-gray-700 text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold shadow-sm z-10">
             ${pin.comments_count > 99 ? "99+" : pin.comments_count}
           </div>
         `
-            : ""
-        }
+      : ""
+    }
       </div>
       <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-3 border-r-3 border-t-3 border-transparent border-t-red-500"></div>
     </div>

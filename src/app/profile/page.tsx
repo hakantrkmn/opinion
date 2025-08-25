@@ -17,9 +17,9 @@ export default async function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-yellow-50/30 to-amber-100/50 relative overflow-hidden">
+    <div className="min-h-screen bg-background">
       <Header />
-      <main className="relative z-10">
+      <main>
         <ProfileClient user={user} />
       </main>
     </div>

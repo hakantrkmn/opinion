@@ -1,6 +1,12 @@
 "use client";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
+import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -21,18 +27,18 @@ export default function Auth() {
     try {
       const { error } = isLogin
         ? await supabase.auth.signInWithPassword({
-            email,
-            password,
-          })
+          email,
+          password,
+        })
         : await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-              data: {
-                display_name: displayName,
-              },
+          email,
+          password,
+          options: {
+            data: {
+              display_name: displayName,
             },
-          });
+          },
+        });
       console.log(error);
       if (error) {
         setError(error.message);
@@ -40,99 +46,96 @@ export default function Auth() {
       } else {
         console.log("success");
 
-        router.push("/"); // Tam sayfa yenileme
+        router.push("/"); // Full page refresh
       }
     } catch (err) {
-      setError("Bir hata oluştu");
+      setError("An error occurred");
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-2xl font-bold text-center mb-6">
-          {isLogin ? "Giriş Yap" : "Kayıt Ol"}
-        </h2>
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1 text-center">
+          <CardTitle className="text-xl sm:text-2xl font-bold">
+            {isLogin ? "Sign In" : "Create Account"}
+          </CardTitle>
+          <CardDescription className="text-sm sm:text-base px-2">
+            {isLogin
+              ? "Enter your credentials to access your account"
+              : "Create a new account to start sharing your opinions"
+            }
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="px-4 sm:px-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {!isLogin && (
+              <div className="space-y-2">
+                <Label htmlFor="displayName">Display Name</Label>
+                <Input
+                  id="displayName"
+                  type="text"
+                  placeholder="Enter your display name"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  required={!isLogin}
+                />
+              </div>
+            )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {!isLogin && (
-            <div>
-              <label
-                htmlFor="displayName"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Görünen Ad
-              </label>
-              <input
-                id="displayName"
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                required={!isLogin}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
               />
             </div>
-          )}
 
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-gray-700"
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <Button type="submit" disabled={loading} className="w-full text-sm sm:text-base">
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {loading ? "Loading..." : isLogin ? "Sign In" : "Create Account"}
+            </Button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <Button
+              variant="link"
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setDisplayName("");
+                setError(null);
+              }}
+              className="text-sm"
             >
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            />
+              {isLogin
+                ? "Don't have an account? Sign up"
+                : "Already have an account? Sign in"}
+            </Button>
           </div>
-
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Şifre
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          {error && <div className="text-red-600 text-sm">{error}</div>}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 disabled:opacity-50"
-          >
-            {loading ? "Yükleniyor..." : isLogin ? "Giriş Yap" : "Kayıt Ol"}
-          </button>
-        </form>
-
-        <div className="mt-4 text-center">
-          <button
-            onClick={() => {
-              setIsLogin(!isLogin);
-              setDisplayName(""); // Toggle'da display name'i temizle
-            }}
-            className="text-blue-500 hover:text-blue-600 text-sm"
-          >
-            {isLogin
-              ? "Hesabınız yok mu? Kayıt olun"
-              : "Zaten hesabınız var mı? Giriş yapın"}
-          </button>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { useMap } from "@/hooks/useMap";
 import { usePins } from "@/hooks/usePins";
 import { useEffect } from "react";
@@ -55,18 +56,15 @@ export default function Map() {
         <div className="bg-white p-8 rounded-lg shadow-lg max-w-md text-center">
           <div className="text-red-500 text-6xl mb-4"></div>
           <h2 className="text-xl font-semibold text-gray-800 mb-4">
-            Konum İzni Gerekli
+            Location Permission Required
           </h2>
           <p className="text-gray-600 mb-6">
-            Bu uygulamayı kullanabilmek için konum izninizi vermeniz gerekiyor.
-            Lütfen tarayıcı ayarlarından konum iznini açın.
+            To use this application, you need to grant location permission.
+            Please enable location access in your browser settings.
           </p>
-          <button
-            onClick={getUserLocation}
-            className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            Tekrar Dene
-          </button>
+          <Button onClick={getUserLocation}>
+            Try Again
+          </Button>
         </div>
       </div>
     );
@@ -78,7 +76,7 @@ export default function Map() {
       <div className="w-full h-full min-h-[600px] flex items-center justify-center bg-gray-100">
         <div className="bg-white p-8 rounded-lg shadow-lg text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Konumunuz alınıyor...</p>
+          <p className="text-gray-600">Getting your location...</p>
         </div>
       </div>
     );
@@ -98,79 +96,72 @@ export default function Map() {
           <div className="flex items-center space-x-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
             <span className="text-sm text-gray-600">
-              Pin&apos;ler yükleniyor...
+              Loading pins...
             </span>
           </div>
         </div>
       )}
 
-      {/* Harita Stili Değiştirme Butonları */}
-      <div className="absolute bottom-20 right-4 bg-white rounded-lg shadow-lg p-1">
+      {/* Map Style Toggle Buttons */}
+      <div className="absolute bottom-20 right-4 bg-background rounded-lg shadow-lg p-1 border">
         <div className="flex space-x-1">
-          <button
+          <Button
             onClick={() => changeMapStyle("light")}
-            className={`px-2 py-1 text-xs rounded transition-colors ${
-              currentStyle === "light"
-                ? "bg-blue-500 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-            title="Açık Tema"
+            variant={currentStyle === "light" ? "default" : "ghost"}
+            size="sm"
+            title="Light Theme"
           >
-            ☀️
-          </button>
+            Light
+          </Button>
 
-          <button
+          <Button
             onClick={() => changeMapStyle("dark")}
-            className={`px-2 py-1 text-xs rounded transition-colors ${
-              currentStyle === "dark"
-                ? "bg-blue-500 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-            title="Koyu Tema"
+            variant={currentStyle === "dark" ? "default" : "ghost"}
+            size="sm"
+            title="Dark Theme"
           >
-            🌙
-          </button>
+            Dark
+          </Button>
 
-          <button
+          <Button
             onClick={() => changeMapStyle("voyager")}
-            className={`px-2 py-1 text-xs rounded transition-colors ${
-              currentStyle === "voyager"
-                ? "bg-blue-500 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
+            variant={currentStyle === "voyager" ? "default" : "ghost"}
+            size="sm"
             title="Voyager"
           >
-            🗺️
-          </button>
+            Voyager
+          </Button>
         </div>
       </div>
 
-      {/* Konum Butonu */}
+      {/* Location Button */}
       {userLocation && (
-        <button
+        <Button
           onClick={goToUserLocation}
-          className="fixed bottom-4 right-4 bg-white p-2 rounded-lg shadow hover:bg-gray-50 transition-colors z-50"
-          title="Konumuma Git"
+          variant="outline"
+          size="icon"
+          className="fixed bottom-4 right-4 z-50 shadow-lg"
+          title="Go to My Location"
         >
           📍
-        </button>
+        </Button>
       )}
 
-      {/* Pin Oluşturma Modal */}
+      {/* Pin Creation Modal */}
       <PinModal
         isOpen={showPinModal}
         onClose={() => setShowPinModal(false)}
         onCreatePin={createPin}
       />
 
-      {/* Pin Detay Modal */}
+      {/* Pin Detail Modal */}
       {selectedPin && (
         <PinDetailModal
           isOpen={showPinDetailModal}
           onClose={() => {
             setShowPinDetailModal(false);
             setSelectedPin(null);
-            // Modal kapatıldığında haritadaki popup'ları temizle
+            // Clear map popups when modal is closed
             const existingPopups =
               document.querySelectorAll(".maplibregl-popup");
             existingPopups.forEach((popup) => popup.remove());
@@ -184,7 +175,7 @@ export default function Map() {
           currentUserId={user?.id || ""}
           loading={pinsLoading}
           onRefresh={async () => {
-            // Pin'in yorumlarını yeniden çek
+            // Refresh pin comments
             if (selectedPin) {
               const comments = await getPinComments(selectedPin.pinId);
               if (comments) {
@@ -195,7 +186,7 @@ export default function Map() {
         />
       )}
 
-      {/* Pin Marker'ları */}
+      {/* Pin Markers */}
       {mapPins.map((pin) => (
         <PinMarker
           key={pin.id}
@@ -205,7 +196,7 @@ export default function Map() {
         />
       ))}
 
-      {/* Refresh butonu */}
+      {/* Refresh button */}
       <RefreshButton onRefresh={refreshPins} isRefreshing={isRefreshing} />
     </div>
   );

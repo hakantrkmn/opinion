@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { RefreshCcw } from "lucide-react";
 
 interface RefreshButtonProps {
@@ -10,26 +11,17 @@ export const RefreshButton = ({
   isRefreshing,
 }: RefreshButtonProps) => {
   return (
-    <button
+    <Button
       onClick={onRefresh}
       disabled={isRefreshing}
-      className={`
-        fixed top-20 right-4 z-30
-        p-3 bg-amber-50 border border-amber-200 rounded-full shadow-lg
-        hover:bg-amber-100 hover:border-amber-300 transition-all duration-200
-        ${
-          isRefreshing
-            ? "opacity-50 cursor-not-allowed"
-            : "hover:shadow-xl hover:scale-105"
-        }
-      `}
-      title="Pin'leri yenile"
+      variant="outline"
+      size="icon"
+      className="fixed top-20 right-4 z-30 rounded-full shadow-lg"
+      title="Refresh pins"
     >
       <RefreshCcw
-        className={`w-5 h-5 text-gray-700 ${
-          isRefreshing ? "animate-spin" : ""
-        }`}
+        className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
       />
-    </button>
+    </Button>
   );
 };

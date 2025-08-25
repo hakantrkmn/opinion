@@ -1,7 +1,11 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Comment } from "@/types";
-import { RefreshCcw } from "lucide-react";
+import { Loader2, MapPin, MessageCircle, RefreshCcw, Send } from "lucide-react";
 import { useState } from "react";
 import CommentItem from "./CommentItem";
 
@@ -42,7 +46,7 @@ export default function PinDetailModal({
     try {
       await onRefresh();
     } catch (error) {
-      console.error("Refresh hatası:", error);
+      console.error("Refresh error:", error);
     } finally {
       setRefreshing(false);
     }
@@ -53,98 +57,74 @@ export default function PinDetailModal({
     if (!newComment.trim()) return;
 
     const commentText = newComment.trim();
-    setNewComment(""); // Input'u hemen temizle
+    setNewComment(""); // Clear input immediately
 
     try {
       const success = await onAddComment(commentText);
       if (success) {
-        // Başarılı ekleme sonrası input'a focus geri ver
+        // Focus back to input after successful addition
         setTimeout(() => {
           const input = document.querySelector(
-            'input[placeholder="Düşüncelerinizi paylaşın..."]'
+            'input[placeholder="Share your thoughts..."]'
           ) as HTMLInputElement;
           if (input) input.focus();
         }, 100);
       } else {
-        // Başarısız olursa input'u geri getir
+        // Restore input on failure
         setNewComment(commentText);
       }
     } catch (error) {
-      console.error("Yorum ekleme hatası:", error);
-      // Hata durumunda input'u geri getir
+      console.error("Comment addition error:", error);
+      // Restore input on error
       setNewComment(commentText);
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0  bg-opacity-5  flex items-center justify-center z-50 p-4">
-      <div className="bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-100 border-2 border-amber-200/50 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden font-serif">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-amber-100 to-yellow-100 border-b border-amber-200/50 p-6">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <span className="text-3xl">📜</span>
-              <div>
-                <h2 className="text-2xl font-bold text-amber-900 leading-tight">
-                  {pinName}
-                </h2>
-                <p className="text-amber-700 text-sm mt-1">
-                  {comments.length} düşünce
-                </p>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="w-[95vw] max-w-2xl h-[85vh] sm:h-[80vh] flex flex-col p-4 sm:p-6">
+        <DialogHeader className="flex-shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <MapPin className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-lg sm:text-xl truncate">{pinName}</DialogTitle>
+                <DialogDescription className="flex items-center gap-1 mt-1 text-xs sm:text-sm">
+                  <MessageCircle className="h-3 w-3 flex-shrink-0" />
+                  {comments.length} {comments.length === 1 ? 'comment' : 'comments'}
+                </DialogDescription>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {onRefresh && (
-                <button
-                  onClick={handleRefresh}
-                  disabled={refreshing}
-                  className="p-2 bg-amber-200/70 hover:bg-amber-300/70 text-amber-900 rounded-lg transition-all duration-200 hover:scale-105 disabled:opacity-50"
-                  title="Yorumları yenile"
-                >
-                  <RefreshCcw
-                    className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`}
-                  />
-                </button>
-              )}
-              <button
-                onClick={onClose}
-                className="p-2 bg-amber-200/70 hover:bg-amber-300/70 text-amber-900 rounded-lg transition-all duration-200 hover:scale-105"
+            {onRefresh && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="flex-shrink-0"
               >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
+                <RefreshCcw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+                <span className="hidden sm:inline ml-2">Refresh</span>
+              </Button>
+            )}
           </div>
-        </div>
+        </DialogHeader>
 
         {/* Comments */}
-        <div className="p-6 overflow-y-auto max-h-[50vh] scrollbar-thin scrollbar-thumb-amber-300 scrollbar-track-amber-100">
+        <ScrollArea className="flex-1 min-h-0 pr-2 sm:pr-4">
           {loading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600 mx-auto mb-4"></div>
-              <p className="text-amber-700">Düşünceler yükleniyor...</p>
+            <div className="flex flex-col items-center justify-center py-8 sm:py-12">
+              <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin mb-4" />
+              <p className="text-sm sm:text-base text-muted-foreground">Loading comments...</p>
             </div>
           ) : comments.length === 0 ? (
-            <div className="text-center text-amber-700 py-8 bg-amber-50/50 rounded-lg border border-amber-200/30">
-              <span className="text-4xl mb-4 block">📜</span>
-              <p className="font-medium">Henüz düşünce yok.</p>
-              <p className="text-sm mt-1">İlk düşünceyi siz paylaşın!</p>
+            <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center px-4">
+              <MessageCircle className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-4" />
+              <h3 className="text-sm sm:text-base font-medium mb-2">No comments yet</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground">Be the first to share your thoughts!</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {comments.map((comment) => (
                 <CommentItem
                   key={comment.id}
@@ -157,35 +137,25 @@ export default function PinDetailModal({
               ))}
             </div>
           )}
-        </div>
+        </ScrollArea>
 
         {/* Add Comment */}
-        <div className="p-6 border-t border-amber-200/50 bg-amber-50/30">
-          <form onSubmit={handleSubmit} className="flex space-x-3">
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Düşüncelerinizi paylaşın..."
-                className="w-full px-4 py-3 pr-12 border border-amber-200 rounded-lg bg-white/70 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 disabled:bg-amber-100/50 text-amber-900 placeholder-amber-600 transition-all duration-200 font-serif"
-                disabled={false}
-              />
-              <div className="absolute right-3 top-3 text-amber-500 opacity-60">
-                💭
-              </div>
-            </div>
-            <button
-              type="submit"
-              disabled={!newComment.trim()}
-              className="px-6 py-3 bg-gradient-to-r from-amber-600 to-yellow-600 text-white rounded-lg hover:from-amber-700 hover:to-yellow-700 transition-all duration-200 disabled:from-amber-400 disabled:to-yellow-400 disabled:cursor-not-allowed transform hover:scale-105 font-medium font-serif flex items-center space-x-2"
-            >
-              <span>📤</span>
-              <span>Paylaş</span>
-            </button>
+        <div className="border-t pt-3 sm:pt-4 flex-shrink-0">
+          <form onSubmit={handleSubmit} className="flex space-x-2">
+            <Input
+              type="text"
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Share your thoughts..."
+              className="flex-1 text-sm sm:text-base"
+            />
+            <Button type="submit" disabled={!newComment.trim()} size="sm" className="px-3">
+              <Send className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline ml-2">Send</span>
+            </Button>
           </form>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
