@@ -1,10 +1,11 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import type { Comment, EnhancedComment } from "@/types";
-import { Calendar, Edit2, Save, ThumbsDown, ThumbsUp, Trash2, User, X } from "lucide-react";
+import { Calendar, Edit2, Save, ThumbsDown, ThumbsUp, Trash2, TrendingDown, TrendingUp, User, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface CommentItemProps {
@@ -252,7 +253,7 @@ export default function CommentItem({
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-0 sm:items-center sm:justify-between">
-              {/* Vote buttons */}
+              {/* Vote buttons and net score */}
               <div className="flex items-center space-x-2">
                 <Button
                   variant="outline"
@@ -260,8 +261,8 @@ export default function CommentItem({
                   onClick={() => handleVote(1)}
                   disabled={isOptimistic || comment.id.startsWith("temp-")}
                   className={`h-7 sm:h-8 text-xs sm:text-sm transition-colors ${currentVote === 1
-                      ? "bg-green-100 border-green-500 text-green-700 hover:bg-green-200"
-                      : "hover:bg-green-50 hover:border-green-300"
+                    ? "bg-green-100 border-green-500 text-green-700 hover:bg-green-200"
+                    : "hover:bg-green-50 hover:border-green-300"
                     }`}
                 >
                   <ThumbsUp className="h-3 w-3 mr-1" />
@@ -273,13 +274,33 @@ export default function CommentItem({
                   onClick={() => handleVote(-1)}
                   disabled={isOptimistic || comment.id.startsWith("temp-")}
                   className={`h-7 sm:h-8 text-xs sm:text-sm transition-colors ${currentVote === -1
-                      ? "bg-red-100 border-red-500 text-red-700 hover:bg-red-200"
-                      : "hover:bg-red-50 hover:border-red-300"
+                    ? "bg-red-100 border-red-500 text-red-700 hover:bg-red-200"
+                    : "hover:bg-red-50 hover:border-red-300"
                     }`}
                 >
                   <ThumbsDown className="h-3 w-3 mr-1" />
                   {localDislikeCount > 0 ? localDislikeCount : 0}
                 </Button>
+
+                {/* Net Score Badge */}
+                {(localLikeCount > 0 || localDislikeCount > 0) && (
+                  <Badge
+                    variant="secondary"
+                    className={`h-7 text-xs flex items-center space-x-1 ${(localLikeCount - localDislikeCount) > 0
+                      ? "bg-green-50 text-green-700 border-green-200"
+                      : (localLikeCount - localDislikeCount) < 0
+                        ? "bg-red-50 text-red-700 border-red-200"
+                        : "bg-slate-50 text-slate-700 border-slate-200"
+                      }`}
+                  >
+                    {(localLikeCount - localDislikeCount) > 0 ? (
+                      <TrendingUp className="h-3 w-3" />
+                    ) : (localLikeCount - localDislikeCount) < 0 ? (
+                      <TrendingDown className="h-3 w-3" />
+                    ) : null}
+                    <span>{localLikeCount - localDislikeCount > 0 ? '+' : ''}{localLikeCount - localDislikeCount}</span>
+                  </Badge>
+                )}
               </div>
 
               {/* Edit/Delete buttons */}

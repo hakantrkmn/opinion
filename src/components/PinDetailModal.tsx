@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { commentSortManager, type SortCriteria } from "@/lib/comment-sort-manager";
 import type { Comment, EnhancedComment } from "@/types";
 import { Loader2, MapPin, MessageCircle, RefreshCcw, Send } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import CommentItem from "./CommentItem";
+import CommentSortDropdown from "./CommentSortDropdown";
 
 interface PinDetailModalProps {
   isOpen: boolean;
@@ -38,6 +40,12 @@ export default function PinDetailModal({
 }: PinDetailModalProps) {
   const [newComment, setNewComment] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [sortBy, setSortBy] = useState<SortCriteria>("newest");
+
+  // Sort comments based on selected criteria
+  const sortedComments = useMemo(() => {
+    return commentSortManager.sortComments(comments, sortBy);
+  }, [comments, sortBy]);
 
   const handleRefresh = async () => {
     if (refreshing || !onRefresh) return;
@@ -95,18 +103,25 @@ export default function PinDetailModal({
                 </DialogDescription>
               </div>
             </div>
-            {onRefresh && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="flex-shrink-0"
-              >
-                <RefreshCcw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-                <span className="hidden sm:inline ml-2">Refresh</span>
-              </Button>
-            )}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {comments.length > 1 && (
+                <CommentSortDropdown
+                  currentSort={sortBy}
+                  onSortChange={setSortBy}
+                />
+              )}
+              {onRefresh && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                >
+                  <RefreshCcw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+                  <span className="hidden sm:inline ml-2">Refresh</span>
+                </Button>
+              )}
+            </div>
           </div>
         </DialogHeader>
 
@@ -125,7 +140,7 @@ export default function PinDetailModal({
             </div>
           ) : (
             <div className="space-y-3 sm:space-y-4">
-              {comments.map((comment) => (
+              {sortedComments.map((comment) => (
                 <CommentItem
                   key={comment.id}
                   comment={comment}

@@ -42,8 +42,8 @@
   - Create cache debugging and monitoring tools
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 7.1, 7.2, 7.3, 7.4_
 
-- [ ] 4. Implement Comment Sorting and Enhanced Display
-- [ ] 4.1 Create Comment Sort Manager
+- [x] 4. Implement Comment Sorting and Enhanced Display
+- [x] 4.1 Create Comment Sort Manager
 
   - Build CommentSortManager with multiple sorting strategies
   - Implement sorting by newest, oldest, most liked, and net score
@@ -51,7 +51,7 @@
   - Create sort option UI with dropdown selection
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6_
 
-- [ ] 4.2 Update Comment Display Components
+- [x] 4.2 Update Comment Display Components
 
   - Enhance CommentItem to show accurate vote counts and net scores
   - Remove emoji usage and implement clean, minimal design
