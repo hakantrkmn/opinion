@@ -134,7 +134,7 @@ export const pinService = {
           `
           *,
           users!inner(display_name),
-          comment_votes!left(value)
+          comment_votes!left(value, user_id)
         `
         )
         .eq("pin_id", pinId)

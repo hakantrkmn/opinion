@@ -255,21 +255,27 @@ export default function CommentItem({
               {/* Vote buttons */}
               <div className="flex items-center space-x-2">
                 <Button
-                  variant={currentVote === 1 ? "default" : "outline"}
+                  variant="outline"
                   size="sm"
                   onClick={() => handleVote(1)}
                   disabled={isOptimistic || comment.id.startsWith("temp-")}
-                  className="h-7 sm:h-8 text-xs sm:text-sm"
+                  className={`h-7 sm:h-8 text-xs sm:text-sm transition-colors ${currentVote === 1
+                      ? "bg-green-100 border-green-500 text-green-700 hover:bg-green-200"
+                      : "hover:bg-green-50 hover:border-green-300"
+                    }`}
                 >
                   <ThumbsUp className="h-3 w-3 mr-1" />
                   {localLikeCount > 0 ? localLikeCount : 0}
                 </Button>
                 <Button
-                  variant={currentVote === -1 ? "destructive" : "outline"}
+                  variant="outline"
                   size="sm"
                   onClick={() => handleVote(-1)}
                   disabled={isOptimistic || comment.id.startsWith("temp-")}
-                  className="h-7 sm:h-8 text-xs sm:text-sm"
+                  className={`h-7 sm:h-8 text-xs sm:text-sm transition-colors ${currentVote === -1
+                      ? "bg-red-100 border-red-500 text-red-700 hover:bg-red-200"
+                      : "hover:bg-red-50 hover:border-red-300"
+                    }`}
                 >
                   <ThumbsDown className="h-3 w-3 mr-1" />
                   {localDislikeCount > 0 ? localDislikeCount : 0}
