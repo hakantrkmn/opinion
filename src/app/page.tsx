@@ -2,6 +2,7 @@
 
 import Header from "@/components/Header";
 import dynamic from "next/dynamic";
+import { useState } from "react";
 
 // Map bileşenini client-only olarak yükle
 const Map = dynamic(() => import("@/components/Map"), {
@@ -16,13 +17,25 @@ const Map = dynamic(() => import("@/components/Map"), {
   ),
 });
 
+// CacheDebugPanel'i client-only olarak yükle
+const CacheDebugPanel = dynamic(
+  () => import("@/components/CacheDebugPanel").then(mod => ({ default: mod.CacheDebugPanel })),
+  { ssr: false }
+);
+
 export default function Home() {
+  const [showCacheDebug, setShowCacheDebug] = useState(false);
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <main className="h-[calc(100vh-64px)]">
         <Map />
       </main>
+      <CacheDebugPanel
+        isVisible={showCacheDebug}
+        onToggle={() => setShowCacheDebug(!showCacheDebug)}
+      />
     </div>
   );
 }

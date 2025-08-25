@@ -4,7 +4,7 @@ import { IntegratedStateManager } from "./integrated-state-manager";
 import { OptimisticStateManager } from "./optimistic-state-manager";
 
 // Simple validation function for the integrated state manager
-export function validateIntegratedState(): boolean {
+export async function validateIntegratedState(): Promise<boolean> {
   console.log("🧪 Validating Integrated State Manager...");
 
   try {
@@ -68,8 +68,11 @@ export function validateIntegratedState(): boolean {
     console.log("✅ Test 1: Cache integration");
 
     // Load pins with cache (should be empty initially)
-    const cachedPins = integratedManager.loadPinsWithCache(mockBounds, 10);
-    if ((await cachedPins).length !== 0) {
+    const cachedPins = await integratedManager.loadPinsWithCache(
+      mockBounds,
+      10
+    );
+    if (cachedPins.length !== 0) {
       throw new Error("Initial cache should be empty");
     }
 

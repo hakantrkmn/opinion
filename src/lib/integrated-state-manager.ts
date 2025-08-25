@@ -96,7 +96,10 @@ export class IntegratedStateManager {
   }
 
   // Enhanced pin loading with cache integration
-  async loadPinsWithCache(bounds: MapBounds, zoom: number): Promise<Pin[]> {
+  async loadPinsWithCache(
+    bounds: MapBounds,
+    zoom: number
+  ): Promise<Pin[] | null> {
     this.debugLog("Loading pins with cache integration", { bounds, zoom });
 
     // Try to get from cache first
@@ -117,8 +120,8 @@ export class IntegratedStateManager {
     this.debugLog("Cache miss - will need to fetch from API");
     this.updateIntegrationStats("cacheMiss");
 
-    // Cache miss - caller should fetch from API and then call setPinsInCache
-    return [];
+    // Cache miss - return null to indicate cache miss
+    return null;
   }
 
   // Set pins in cache after API fetch
@@ -487,6 +490,15 @@ export class IntegratedStateManager {
 
     this.cacheManager.clear();
     this.optimisticManager.clearAllPendingOperations();
+    this.updateStats();
+  }
+
+  // Clear cache for specific area
+  clearCacheArea(bounds: MapBounds, zoom: number): void {
+    this.debugLog(
+      `Clearing cache area: ${JSON.stringify(bounds)}, zoom: ${zoom}`
+    );
+    this.cacheManager.clearArea(bounds, zoom);
     this.updateStats();
   }
 

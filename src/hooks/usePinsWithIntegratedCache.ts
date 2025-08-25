@@ -15,7 +15,8 @@ export interface UsePinsWithIntegratedCacheReturn {
   createPin: (data: CreatePinData) => Promise<boolean>;
   loadPins: (
     bounds: MapBounds,
-    zoom: number
+    zoom?: number,
+    forceRefresh?: boolean
   ) => Promise<
     { pins: Pin[]; error: string | null; fromCache: boolean } | undefined
   >;
@@ -102,51 +103,66 @@ export const usePinsWithIntegratedCache =
     );
 
     // Load pins with integrated cache
-    const loadPins = useCallback(async (bounds: MapBounds, zoom: number) => {
-      setLoading(true);
-      setError(null);
+    const loadPins = useCallback(
+      async (
+        bounds: MapBounds,
+        zoom: number = 10,
+        forceRefresh: boolean = false
+      ) => {
+        setLoading(true);
+        setError(null);
 
-      try {
-        // Try to get from cache first
-        const cachedPins = await integratedManager.current.loadPinsWithCache(
-          bounds,
-          zoom
-        );
+        try {
+          // If force refresh, skip cache
+          if (!forceRefresh) {
+            // Try to get from cache first
+            const cachedPins =
+              await integratedManager.current.loadPinsWithCache(bounds, zoom);
 
-        if (cachedPins.length > 0) {
-          console.log("Cache hit - loaded pins from cache:", cachedPins.length);
-          setPins(cachedPins);
+            if (cachedPins !== null) {
+              console.log(
+                "Cache hit - loaded pins from cache:",
+                cachedPins.length
+              );
+              setPins(cachedPins);
+              setDebugInfo(integratedManager.current.getDebugInfo());
+              return { pins: cachedPins, error: null, fromCache: true };
+            }
+          } else {
+            console.log("Force refresh - clearing cache and fetching from API");
+            // Clear cache for this area
+            integratedManager.current.clearCacheArea(bounds, zoom);
+          }
+
+          // Cache miss or force refresh - fetch from API
+          console.log("Cache miss - fetching pins from API");
+          const { pins: fetchedPins, error: pinsError } =
+            await pinService.getPins(bounds);
+
+          if (pinsError) {
+            setError(pinsError);
+            return;
+          }
+
+          const pinsToReturn = fetchedPins || [];
+
+          // Store in cache for future use
+          integratedManager.current.setPinsInCache(bounds, zoom, pinsToReturn);
+
+          console.log("Fetched and cached pins:", pinsToReturn.length);
+          setPins(pinsToReturn);
           setDebugInfo(integratedManager.current.getDebugInfo());
-          return { pins: cachedPins, error: null, fromCache: true };
+
+          return { pins: pinsToReturn, error: null, fromCache: false };
+        } catch (error) {
+          console.error("loadPins error:", error);
+          setError("Pin'ler yüklenirken hata oluştu");
+        } finally {
+          setLoading(false);
         }
-
-        // Cache miss - fetch from API
-        console.log("Cache miss - fetching pins from API");
-        const { pins: fetchedPins, error: pinsError } =
-          await pinService.getPins(bounds);
-
-        if (pinsError) {
-          setError(pinsError);
-          return;
-        }
-
-        const pinsToReturn = fetchedPins || [];
-
-        // Store in cache for future use
-        integratedManager.current.setPinsInCache(bounds, zoom, pinsToReturn);
-
-        console.log("Fetched and cached pins:", pinsToReturn.length);
-        setPins(pinsToReturn);
-        setDebugInfo(integratedManager.current.getDebugInfo());
-
-        return { pins: pinsToReturn, error: null, fromCache: false };
-      } catch (error) {
-        console.error("loadPins error:", error);
-        setError("Pin'ler yüklenirken hata oluştu");
-      } finally {
-        setLoading(false);
-      }
-    }, []);
+      },
+      []
+    );
 
     // Get pin comments with enhanced optimistic state
     const getPinComments = useCallback(

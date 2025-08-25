@@ -11,15 +11,28 @@ export class SimpleMapCache {
   private cache = new Map<string, CacheEntry>();
   private maxAge = 10 * 60 * 1000; // 10 dakika
 
-  private getCacheKey(bounds: MapBounds, zoom: number): string {
-    // Grid-based key - 0.5 derece grid'ler
-    const gridSize = 0.5;
-    const minLatGrid = Math.floor(bounds.minLat / gridSize);
-    const maxLatGrid = Math.floor(bounds.maxLat / gridSize);
-    const minLngGrid = Math.floor(bounds.minLng / gridSize);
-    const maxLngGrid = Math.floor(bounds.maxLng / gridSize);
+  protected getCacheKey(bounds: MapBounds, zoom: number): string {
+    // Daha büyük grid'ler kullan - zoom seviyesine göre dinamik
+    let gridSize: number;
 
-    return `${minLatGrid}_${maxLatGrid}_${minLngGrid}_${maxLngGrid}_${zoom}`;
+    if (zoom >= 15) {
+      gridSize = 0.01; // Çok yakın zoom - küçük grid
+    } else if (zoom >= 12) {
+      gridSize = 0.05; // Orta zoom - orta grid
+    } else if (zoom >= 10) {
+      gridSize = 0.1; // Uzak zoom - büyük grid
+    } else {
+      gridSize = 0.5; // Çok uzak zoom - çok büyük grid
+    }
+
+    // Bounds'un merkez noktasını al ve grid'e hizala
+    const centerLat = (bounds.minLat + bounds.maxLat) / 2;
+    const centerLng = (bounds.minLng + bounds.maxLng) / 2;
+
+    const latGrid = Math.floor(centerLat / gridSize);
+    const lngGrid = Math.floor(centerLng / gridSize);
+
+    return `${latGrid}_${lngGrid}_${zoom}`;
   }
 
   get(bounds: MapBounds, zoom: number): Pin[] | null {

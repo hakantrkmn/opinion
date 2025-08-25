@@ -10,13 +10,13 @@ import type {
   MapBounds,
   Pin,
 } from "@/types";
-import { SimpleMapCache } from "@/utils/mapCache";
+
 import { parseLocation } from "@/utils/mapUtils";
 import { mapStyles } from "@/utils/variables";
 import maplibregl from "maplibre-gl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LongPressEventType, useLongPress } from "use-long-press";
-import { usePinsWithOptimistic } from "./usePinsWithOptimistic";
+import { usePinsWithIntegratedCache } from "./usePinsWithIntegratedCache";
 
 export const useMap = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -58,7 +58,7 @@ export const useMap = () => {
   // mapPins state'ini ekleyelim
   const [mapPins, setMapPins] = useState<Pin[]>([]);
 
-  // Pin hook'unu kullan (optimistic version)
+  // Pin hook'unu kullan (integrated cache version)
   const {
     pins,
     loading: pinsLoading,
@@ -70,7 +70,7 @@ export const useMap = () => {
     deleteComment,
     voteComment,
     hasOptimisticUpdates,
-  } = usePinsWithOptimistic();
+  } = usePinsWithIntegratedCache();
 
   // Debug için pins state'ini izle
 
@@ -217,11 +217,9 @@ export const useMap = () => {
     }
   };
 
-  // Cache instance'ı
-  const mapCache = useRef(new SimpleMapCache());
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Cache'li pin yükleme
+  // Cache'li pin yükleme (artık usePinsWithIntegratedCache otomatik olarak cache'i yönetiyor)
   const loadPinsFromMapWithCache = useCallback(
     async (forceRefresh = false) => {
       if (!map.current) return;
@@ -236,41 +234,13 @@ export const useMap = () => {
         maxLng: bounds.getEast(),
       };
 
-      // Debug: Cache key'i logla
-      const cacheKey = `${mapBounds.minLat.toFixed(
-        1
-      )}_${mapBounds.maxLat.toFixed(1)}_${mapBounds.minLng.toFixed(
-        1
-      )}_${mapBounds.maxLng.toFixed(1)}_${zoom}`;
-      console.log("Cache key:", cacheKey);
-
-      // Force refresh ise cache'i temizle
-      if (forceRefresh) {
-        mapCache.current.clearArea(mapBounds, zoom);
-      }
-
-      // Önce cache'den kontrol et
-      const cachedPins = mapCache.current.get(mapBounds, zoom);
-      console.log(
-        "Cached pins found:",
-        cachedPins ? cachedPins.length : "none"
-      );
-
-      if (cachedPins && !forceRefresh) {
-        console.log("Using cached pins:", cachedPins.length);
-        setMapPins(cachedPins);
-        return;
-      }
-
-      // Cache'de yoksa veya force refresh ise DB'den çek
-      console.log("Fetching pins from DB...");
+      console.log("Loading pins for bounds:", mapBounds, "zoom:", zoom);
       setIsRefreshing(true);
 
       try {
-        const pinData = await loadPinsFromDB(mapBounds);
-        // Cache'e kaydet
-        mapCache.current.set(mapBounds, zoom, pinData?.pins || []);
-        console.log("Pins cached:", pinData?.pins?.length);
+        // usePinsWithIntegratedCache otomatik olarak cache'i yönetir
+        const pinData = await loadPinsFromDB(mapBounds, zoom, forceRefresh);
+        console.log("Pins loaded:", pinData?.pins?.length);
       } finally {
         setIsRefreshing(false);
       }

@@ -69,20 +69,12 @@ export class EnhancedCacheManager extends SimpleMapCache {
     this.setupPeriodicCleanup();
   }
 
-  private getCacheKey(bounds: MapBounds, zoom: number): string {
-    // Grid-based key - 0.5 degree grids
-    const gridSize = 0.5;
-    const minLatGrid = Math.floor(bounds.minLat / gridSize);
-    const maxLatGrid = Math.floor(bounds.maxLat / gridSize);
-    const minLngGrid = Math.floor(bounds.minLng / gridSize);
-    const maxLngGrid = Math.floor(bounds.maxLng / gridSize);
-
-    return `${minLatGrid}_${maxLatGrid}_${minLngGrid}_${maxLngGrid}_${zoom}`;
-  }
-
   // Enhanced get method with LRU tracking
   get(bounds: MapBounds, zoom: number): Pin[] | null {
     const key = this.getCacheKey(bounds, zoom);
+    this.debugLog(
+      `Cache GET attempt for key: ${key}, bounds: ${JSON.stringify(bounds)}`
+    );
     const entry = this.enhancedCache.get(key);
 
     if (!entry) {
@@ -112,6 +104,11 @@ export class EnhancedCacheManager extends SimpleMapCache {
   // Enhanced set method with LRU eviction
   set(bounds: MapBounds, zoom: number, pins: Pin[]): void {
     const key = this.getCacheKey(bounds, zoom);
+    this.debugLog(
+      `Cache SET for key: ${key}, pins: ${
+        pins.length
+      }, bounds: ${JSON.stringify(bounds)}`
+    );
     const now = Date.now();
 
     // Check if we need to evict entries
@@ -323,7 +320,7 @@ export class EnhancedCacheManager extends SimpleMapCache {
 
   // Persistence to localStorage
   persistToStorage(): void {
-    if (!this.config.enablePersistence) return;
+    if (!this.config.enablePersistence || typeof window === "undefined") return;
 
     try {
       const cacheData = {
@@ -347,7 +344,7 @@ export class EnhancedCacheManager extends SimpleMapCache {
 
   // Load from localStorage
   loadFromStorage(): void {
-    if (!this.config.enablePersistence) return;
+    if (!this.config.enablePersistence || typeof window === "undefined") return;
 
     try {
       const stored = localStorage.getItem(this.config.persistenceKey);
@@ -380,7 +377,9 @@ export class EnhancedCacheManager extends SimpleMapCache {
       );
     } catch (error) {
       console.error("Failed to load cache from localStorage:", error);
-      localStorage.removeItem(this.config.persistenceKey);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(this.config.persistenceKey);
+      }
     }
   }
 
@@ -404,7 +403,7 @@ export class EnhancedCacheManager extends SimpleMapCache {
     this.enhancedCache.clear();
     this.stats.totalEntries = 0;
 
-    if (this.config.enablePersistence) {
+    if (this.config.enablePersistence && typeof window !== "undefined") {
       localStorage.removeItem(this.config.persistenceKey);
     }
 
