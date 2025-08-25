@@ -1,14 +1,18 @@
+import { HybridCacheManager } from "@/lib/hybrid-cache-manager";
 import { pinService } from "@/lib/supabase/database";
 import type { Comment, CreatePinData, MapBounds, Pin } from "@/types";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
+
+// Singleton cache instance
+const cacheManager = new HybridCacheManager();
 
 export const usePins = () => {
   const [pins, setPins] = useState<Pin[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Pin oluştur
+  // Pin oluştur - Cache ile
   const createPin = useCallback(
     async (data: CreatePinData): Promise<boolean> => {
       setLoading(true);
@@ -23,6 +27,9 @@ export const usePins = () => {
         }
 
         if (pin) {
+          // Cache'e ekle
+          cacheManager.cachePin(pin);
+
           // Yeni pin'i listeye ekle
           setPins((prevPins) => [pin, ...prevPins]);
           return true;
@@ -39,12 +46,23 @@ export const usePins = () => {
     []
   );
 
-  // Pin'leri yükle (harita alanına göre)
-  const loadPins = useCallback(async (bounds: MapBounds) => {
+  // Pin'leri yükle (harita alanına göre) - Cache ile
+  const loadPins = useCallback(async (bounds: MapBounds, zoom: number = 12) => {
     setLoading(true);
     setError(null);
 
     try {
+      // Önce cache'den kontrol et
+      const cachedPins = cacheManager.getPinsForBounds(bounds, zoom);
+
+      if (cachedPins) {
+        console.log("🎯 Cache hit - returning cached pins:", cachedPins.length);
+        setPins(cachedPins);
+        setLoading(false);
+        return { pins: cachedPins, error: null };
+      }
+
+      console.log("💾 Cache miss - fetching from API");
       const { pins: fetchedPins, error: pinsError } = await pinService.getPins(
         bounds
       );
@@ -54,9 +72,14 @@ export const usePins = () => {
         return;
       }
 
-      console.log("Fetched pins:", fetchedPins?.length); // Debug için
-      setPins(fetchedPins || []); // Burada set ediliyor
-      return { pins: fetchedPins || [], error: null };
+      const pins = fetchedPins || [];
+      console.log("📡 Fetched pins from API:", pins.length);
+
+      // Cache'e kaydet
+      cacheManager.cachePinsFromBounds(bounds, zoom, pins);
+
+      setPins(pins);
+      return { pins, error: null };
     } catch (error) {
       console.error("loadPins error:", error);
       setError("Pin'ler yüklenirken hata oluştu");

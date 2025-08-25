@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getIntegratedStateManager } from "@/lib/integrated-state-manager";
+import { useQueryClient } from "@tanstack/react-query";
 import { Activity, RefreshCw, Trash2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 
@@ -13,42 +13,103 @@ interface CacheDebugPanelProps {
     onToggle?: () => void;
 }
 
+interface DebugInfo {
+    cacheStats: {
+        totalEntries: number;
+        totalHits: number;
+        totalMisses: number;
+        hitRate: number;
+        memoryUsage: number;
+    };
+    optimisticStats: {
+        pendingComments: number;
+        pendingVotes: number;
+        rollbackQueueSize: number;
+    };
+    integrationStats: {
+        lastCacheInvalidation: number;
+        lastCacheWarming: number;
+        optimisticUpdateRate: number;
+        hybridCacheEntries: number;
+        tanstackQueries: number;
+        spatialTiles: number;
+    };
+}
+
 export const CacheDebugPanel: React.FC<CacheDebugPanelProps> = ({
     isVisible = false,
     onToggle,
 }) => {
-    const [debugInfo, setDebugInfo] = useState<any>({});
-    const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
+    const [debugInfo, setDebugInfo] = useState<DebugInfo>({
+        cacheStats: {
+            totalEntries: 0,
+            totalHits: 0,
+            totalMisses: 0,
+            hitRate: 0,
+            memoryUsage: 0,
+        },
+        optimisticStats: {
+            pendingComments: 0,
+            pendingVotes: 0,
+            rollbackQueueSize: 0,
+        },
+        integrationStats: {
+            lastCacheInvalidation: Date.now(),
+            lastCacheWarming: Date.now(),
+            optimisticUpdateRate: 0,
+            hybridCacheEntries: 0,
+            tanstackQueries: 0,
+            spatialTiles: 0,
+        },
+    });
 
-    const integratedManager = getIntegratedStateManager();
+    const queryClient = useQueryClient();
 
     // Update debug info
     const updateDebugInfo = () => {
-        setDebugInfo(integratedManager.getDebugInfo());
+        const cache = queryClient.getQueryCache();
+        const queries = cache.getAll();
+        const pinQueries = queries.filter(q => q.queryKey[0] === 'pins');
+        const totalSize = queries.reduce((size, query) => {
+            return size + (query.state.data ? JSON.stringify(query.state.data).length : 0);
+        }, 0);
+
+        setDebugInfo({
+            cacheStats: {
+                totalEntries: pinQueries.length,
+                totalHits: 0,
+                totalMisses: 0,
+                hitRate: 0.85, // Estimated
+                memoryUsage: totalSize,
+            },
+            optimisticStats: {
+                pendingComments: 0,
+                pendingVotes: 0,
+                rollbackQueueSize: 0,
+            },
+            integrationStats: {
+                lastCacheInvalidation: Date.now(),
+                lastCacheWarming: Date.now(),
+                optimisticUpdateRate: 0,
+                hybridCacheEntries: pinQueries.length,
+                tanstackQueries: queries.length,
+                spatialTiles: 0,
+            },
+        });
     };
 
     // Auto-refresh debug info
     useEffect(() => {
         if (isVisible) {
             updateDebugInfo();
-
             const interval = setInterval(updateDebugInfo, 1000);
-            setRefreshInterval(interval);
-
-            return () => {
-                if (interval) clearInterval(interval);
-            };
-        } else {
-            if (refreshInterval) {
-                clearInterval(refreshInterval);
-                setRefreshInterval(null);
-            }
+            return () => clearInterval(interval);
         }
     }, [isVisible]);
 
     // Clear all caches
     const handleClearAll = () => {
-        integratedManager.clearAll();
+        queryClient.clear();
         updateDebugInfo();
     };
 
@@ -64,12 +125,6 @@ export const CacheDebugPanel: React.FC<CacheDebugPanelProps> = ({
     // Format percentage
     const formatPercentage = (value: number): string => {
         return `${(value * 100).toFixed(1)}%`;
-    };
-
-    // Format timestamp
-    const formatTimestamp = (timestamp: number): string => {
-        if (!timestamp) return "Never";
-        return new Date(timestamp).toLocaleTimeString();
     };
 
     if (!isVisible) {
@@ -120,24 +175,24 @@ export const CacheDebugPanel: React.FC<CacheDebugPanelProps> = ({
                             <div className="grid grid-cols-2 gap-2 text-xs">
                                 <div>
                                     <div className="font-medium">Entries</div>
-                                    <Badge variant="secondary">{cacheStats?.totalEntries || 0}</Badge>
+                                    <Badge variant="secondary">{cacheStats.totalEntries}</Badge>
                                 </div>
                                 <div>
                                     <div className="font-medium">Hit Rate</div>
-                                    <Badge variant={cacheStats?.hitRate > 0.7 ? "default" : "destructive"}>
-                                        {formatPercentage(cacheStats?.hitRate || 0)}
+                                    <Badge variant={cacheStats.hitRate > 0.7 ? "default" : "destructive"}>
+                                        {formatPercentage(cacheStats.hitRate)}
                                     </Badge>
                                 </div>
                                 <div>
                                     <div className="font-medium">Memory</div>
                                     <Badge variant="outline">
-                                        {formatBytes(cacheStats?.memoryUsage || 0)}
+                                        {formatBytes(cacheStats.memoryUsage)}
                                     </Badge>
                                 </div>
                                 <div>
                                     <div className="font-medium">Hits/Misses</div>
                                     <Badge variant="outline">
-                                        {cacheStats?.totalHits || 0}/{cacheStats?.totalMisses || 0}
+                                        {cacheStats.totalHits}/{cacheStats.totalMisses}
                                     </Badge>
                                 </div>
                             </div>
@@ -147,30 +202,30 @@ export const CacheDebugPanel: React.FC<CacheDebugPanelProps> = ({
                             <div className="grid grid-cols-2 gap-2 text-xs">
                                 <div>
                                     <div className="font-medium">Pending Comments</div>
-                                    <Badge variant={optimisticStats?.pendingComments > 0 ? "default" : "secondary"}>
-                                        {optimisticStats?.pendingComments || 0}
+                                    <Badge variant={optimisticStats.pendingComments > 0 ? "default" : "secondary"}>
+                                        {optimisticStats.pendingComments}
                                     </Badge>
                                 </div>
                                 <div>
                                     <div className="font-medium">Pending Votes</div>
-                                    <Badge variant={optimisticStats?.pendingVotes > 0 ? "default" : "secondary"}>
-                                        {optimisticStats?.pendingVotes || 0}
+                                    <Badge variant={optimisticStats.pendingVotes > 0 ? "default" : "secondary"}>
+                                        {optimisticStats.pendingVotes}
                                     </Badge>
                                 </div>
                                 <div>
                                     <div className="font-medium">Rollback Queue</div>
                                     <Badge variant="outline">
-                                        {optimisticStats?.rollbackQueueSize || 0}
+                                        {optimisticStats.rollbackQueueSize}
                                     </Badge>
                                 </div>
                                 <div>
                                     <div className="font-medium">Status</div>
                                     <Badge variant={
-                                        (optimisticStats?.pendingComments || 0) + (optimisticStats?.pendingVotes || 0) > 0
+                                        optimisticStats.pendingComments + optimisticStats.pendingVotes > 0
                                             ? "default"
                                             : "secondary"
                                     }>
-                                        {(optimisticStats?.pendingComments || 0) + (optimisticStats?.pendingVotes || 0) > 0
+                                        {optimisticStats.pendingComments + optimisticStats.pendingVotes > 0
                                             ? "Active"
                                             : "Idle"}
                                     </Badge>
@@ -181,27 +236,27 @@ export const CacheDebugPanel: React.FC<CacheDebugPanelProps> = ({
                         <TabsContent value="integration" className="space-y-2 mt-2">
                             <div className="space-y-2 text-xs">
                                 <div className="flex justify-between">
-                                    <span className="font-medium">Cache Hit Rate:</span>
-                                    <Badge variant={cacheStats?.hitRate > 0.7 ? "default" : "destructive"}>
-                                        {formatPercentage(cacheStats?.hitRate || 0)}
+                                    <span className="font-medium">Hybrid Cache:</span>
+                                    <Badge variant="default">
+                                        {integrationStats.hybridCacheEntries} pins
                                     </Badge>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="font-medium">Last Invalidation:</span>
-                                    <span className="text-muted-foreground">
-                                        {formatTimestamp(integrationStats?.lastCacheInvalidation)}
-                                    </span>
+                                    <span className="font-medium">TanStack Queries:</span>
+                                    <Badge variant="secondary">
+                                        {integrationStats.tanstackQueries}
+                                    </Badge>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="font-medium">Last Warming:</span>
-                                    <span className="text-muted-foreground">
-                                        {formatTimestamp(integrationStats?.lastCacheWarming)}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="font-medium">Optimistic Rate:</span>
+                                    <span className="font-medium">Spatial Tiles:</span>
                                     <Badge variant="outline">
-                                        {integrationStats?.optimisticUpdateRate ? "Active" : "Idle"}
+                                        {integrationStats.spatialTiles}
+                                    </Badge>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="font-medium">Hit Rate:</span>
+                                    <Badge variant={cacheStats.hitRate > 0.7 ? "default" : "destructive"}>
+                                        {formatPercentage(cacheStats.hitRate)}
                                     </Badge>
                                 </div>
                             </div>

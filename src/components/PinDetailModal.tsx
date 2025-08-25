@@ -50,9 +50,11 @@ export default function PinDetailModal({
   const handleRefresh = async () => {
     if (refreshing || !onRefresh) return;
 
+    console.log("Refreshing comments...");
     setRefreshing(true);
     try {
       await onRefresh();
+      console.log("Comments refreshed successfully");
     } catch (error) {
       console.error("Refresh error:", error);
     } finally {

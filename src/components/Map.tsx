@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { useMap } from "@/hooks/useMap";
-import { usePins } from "@/hooks/usePins";
 import { useEffect } from "react";
 import PinDetailModal from "./PinDetailModal";
 import PinMarker from "./PinMarker";
@@ -15,7 +14,7 @@ export default function Map() {
     currentStyle,
     locationPermission,
     userLocation,
-    mapStyles,
+
     getUserLocation,
     changeMapStyle,
     goToUserLocation,
@@ -40,9 +39,10 @@ export default function Map() {
     handlePinClick,
     refreshPins,
     isRefreshing,
+    getPinComments,
   } = useMap();
 
-  const { getPinComments } = usePins();
+
 
   //just work once on mount
   useEffect(() => {
@@ -177,9 +177,13 @@ export default function Map() {
           onRefresh={async () => {
             // Refresh pin comments
             if (selectedPin) {
-              const comments = await getPinComments(selectedPin.pinId);
-              if (comments) {
-                setSelectedPin((prev) => (prev ? { ...prev, comments } : null));
+              try {
+                const comments = await getPinComments(selectedPin.pinId);
+                if (comments) {
+                  setSelectedPin((prev) => (prev ? { ...prev, comments } : null));
+                }
+              } catch (error) {
+                console.error("Failed to refresh comments:", error);
               }
             }
           }}

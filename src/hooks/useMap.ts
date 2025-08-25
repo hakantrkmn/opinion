@@ -16,7 +16,7 @@ import { mapStyles } from "@/utils/variables";
 import maplibregl from "maplibre-gl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LongPressEventType, useLongPress } from "use-long-press";
-import { usePinsWithIntegratedCache } from "./usePinsWithIntegratedCache";
+import { usePinsWithHybridCache } from "./usePinsWithHybridCache";
 
 export const useMap = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -55,10 +55,9 @@ export const useMap = () => {
     }
   };
 
-  // mapPins state'ini ekleyelim
-  const [mapPins, setMapPins] = useState<Pin[]>([]);
+  // mapPins state'ini ekleyelim - pins hook'undan gelen verileri kullan
 
-  // Pin hook'unu kullan (integrated cache version)
+  // Pin hook'unu kullan (Hybrid Cache version)
   const {
     pins,
     loading: pinsLoading,
@@ -69,8 +68,8 @@ export const useMap = () => {
     editComment,
     deleteComment,
     voteComment,
-    hasOptimisticUpdates,
-  } = usePinsWithIntegratedCache();
+  } = usePinsWithHybridCache();
+  const mapPins = pins;
 
   // Debug için pins state'ini izle
 
@@ -219,31 +218,49 @@ export const useMap = () => {
 
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Cache'li pin yükleme (artık usePinsWithIntegratedCache otomatik olarak cache'i yönetiyor)
+  // Debounced loading to prevent too many requests
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cache'li pin yükleme (TanStack Query otomatik olarak cache'i yönetiyor)
   const loadPinsFromMapWithCache = useCallback(
-    async (forceRefresh = false) => {
+    (forceRefresh = false) => {
       if (!map.current) return;
 
-      const bounds = map.current.getBounds();
-      const zoom = Math.floor(map.current.getZoom());
-
-      const mapBounds: MapBounds = {
-        minLat: bounds.getSouth(),
-        maxLat: bounds.getNorth(),
-        minLng: bounds.getWest(),
-        maxLng: bounds.getEast(),
-      };
-
-      console.log("Loading pins for bounds:", mapBounds, "zoom:", zoom);
-      setIsRefreshing(true);
-
-      try {
-        // usePinsWithIntegratedCache otomatik olarak cache'i yönetir
-        const pinData = await loadPinsFromDB(mapBounds, zoom, forceRefresh);
-        console.log("Pins loaded:", pinData?.pins?.length);
-      } finally {
-        setIsRefreshing(false);
+      // Clear existing timeout
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
       }
+
+      // Debounce loading by 300ms unless force refresh
+      const delay = forceRefresh ? 0 : 300;
+
+      loadingTimeoutRef.current = setTimeout(() => {
+        if (!map.current) return;
+
+        const bounds = map.current.getBounds();
+        const zoom = Math.floor(map.current.getZoom());
+
+        // Expand bounds by 20% to preload nearby pins
+        const latDiff = bounds.getNorth() - bounds.getSouth();
+        const lngDiff = bounds.getEast() - bounds.getWest();
+        const expansion = 0.2; // 20% expansion
+
+        const mapBounds: MapBounds = {
+          minLat: bounds.getSouth() - latDiff * expansion,
+          maxLat: bounds.getNorth() + latDiff * expansion,
+          minLng: bounds.getWest() - lngDiff * expansion,
+          maxLng: bounds.getEast() + lngDiff * expansion,
+        };
+
+        console.log("Loading pins for bounds:", mapBounds, "zoom:", zoom);
+        setIsRefreshing(true);
+
+        // Hybrid cache ile pin'leri yükle
+        loadPinsFromDB(mapBounds, zoom, forceRefresh);
+
+        // Loading state will be managed by the query
+        setTimeout(() => setIsRefreshing(false), 1000);
+      }, delay);
     },
     [loadPinsFromDB]
   );
@@ -575,18 +592,19 @@ export const useMap = () => {
     }
   };
 
-  // Pin'ler değiştiğinde haritaya ekle
+  // Pin'ler artık PinMarker component'leri ile gösteriliyor
   useEffect(() => {
-    if (pins.length > 0 && map.current) {
-      console.log("Adding pins to map from useEffect:", pins);
-      clearMapPins();
-      addPinsToMap();
+    if (pins.length > 0) {
+      console.log("Pins loaded:", pins.length);
     }
-  }, [pins, addPinsToMap]);
+  }, [pins]);
 
   // Cleanup
   useEffect(() => {
     return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
       if (userMarker.current) {
         userMarker.current.remove();
       }
@@ -625,5 +643,6 @@ export const useMap = () => {
     handlePinClick,
     refreshPins,
     isRefreshing,
+    getPinComments,
   };
 };
