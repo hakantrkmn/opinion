@@ -1,6 +1,7 @@
 import { pinService } from "@/lib/supabase/database";
 import type { Comment, CreatePinData, MapBounds, Pin } from "@/types";
 import { useCallback, useState } from "react";
+import { toast } from "sonner";
 
 export const usePins = () => {
   const [pins, setPins] = useState<Pin[]>([]);
@@ -194,26 +195,74 @@ export const usePins = () => {
     []
   );
 
-  // Yorum silme
+  // Yorum silme with cleanup
   const deleteComment = useCallback(
     async (commentId: string): Promise<boolean> => {
       setLoading(true);
       setError(null);
 
       try {
-        const { success, error: deleteError } = await pinService.deleteComment(
-          commentId
-        );
+        const {
+          success,
+          pinDeleted,
+          error: deleteError,
+          pinId,
+        } = await pinService.deleteCommentWithCleanup(commentId);
 
         if (deleteError) {
           setError(deleteError);
+          toast.error("Failed to delete comment", {
+            description: deleteError,
+            duration: 4000,
+          });
           return false;
+        }
+
+        if (success) {
+          // If pin was deleted, remove it from the pins list
+          if (pinDeleted && pinId) {
+            setPins((prevPins) => prevPins.filter((pin) => pin.id !== pinId));
+            console.log(
+              "Pin automatically deleted after last comment removal:",
+              pinId
+            );
+
+            // Show success notification for pin deletion
+            toast.success("Pin deleted", {
+              description:
+                "The pin was automatically removed after deleting the last comment.",
+              duration: 4000,
+            });
+          } else if (pinId) {
+            // Just update the comment count for the pin
+            setPins((prevPins) =>
+              prevPins.map((pin) =>
+                pin.id === pinId
+                  ? {
+                      ...pin,
+                      comments_count: Math.max(
+                        0,
+                        (pin.comments_count || 1) - 1
+                      ),
+                    }
+                  : pin
+              )
+            );
+
+            // Show success notification for comment deletion
+            toast.success("Comment deleted successfully");
+          }
         }
 
         return success;
       } catch (error) {
         console.error("deleteComment error:", error);
-        setError("Yorum silinirken hata oluştu");
+        setError("Comment deletion failed");
+        toast.error("Comment deletion failed", {
+          description:
+            "An unexpected error occurred while deleting the comment.",
+          duration: 4000,
+        });
         return false;
       } finally {
         setLoading(false);

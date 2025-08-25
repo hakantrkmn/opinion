@@ -59,8 +59,8 @@
   - Implement real-time sorting without API calls
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6_
 
-- [ ] 5. Implement Auto Pin Cleanup System
-- [ ] 5.1 Create Pin Cleanup Service
+- [x] 5. Implement Auto Pin Cleanup System
+- [x] 5.1 Create Pin Cleanup Service
 
   - Build deleteCommentWithCleanup function in pin service
   - Implement logic to check remaining comments after deletion
@@ -68,7 +68,7 @@
   - Create cleanup validation and safety checks
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 5.2 Integrate Cleanup with UI Components
+- [x] 5.2 Integrate Cleanup with UI Components
 
   - Update CommentItem delete functionality to use cleanup service
   - Add UI feedback for pin deletion events
@@ -76,8 +76,8 @@
   - Handle edge cases and error scenarios
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 6. Implement Search Functionality
-- [ ] 6.1 Create Search Manager and API
+- [-] 6. Implement Search Functionality
+- [-] 6.1 Create Search Manager and API
 
   - Build SearchManager class with pin search capabilities
   - Implement backend search by pin name functionality

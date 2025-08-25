@@ -394,4 +394,124 @@ export const pinService = {
       return { success: false, error: "Pin silinirken hata oluştu" };
     }
   },
+
+  // Yorum silme ve otomatik pin temizleme (database trigger handles pin cleanup)
+  async deleteCommentWithCleanup(commentId: string): Promise<{
+    success: boolean;
+    pinDeleted: boolean;
+    error: string | null;
+    pinId?: string;
+  }> {
+    try {
+      const supabase = createClient();
+
+      // Kullanıcı bilgisini al
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !user) {
+        return {
+          success: false,
+          pinDeleted: false,
+          error: "User not found",
+        };
+      }
+
+      // Önce yorumun bilgilerini al (pin_id ve user_id kontrolü için)
+      const { data: comment, error: commentError } = await supabase
+        .from("comments")
+        .select("pin_id, user_id")
+        .eq("id", commentId)
+        .single();
+
+      if (commentError || !comment) {
+        return {
+          success: false,
+          pinDeleted: false,
+          error: "Comment not found",
+        };
+      }
+
+      // Kullanıcının kendi yorumu mu kontrol et
+      if (comment.user_id !== user.id) {
+        return {
+          success: false,
+          pinDeleted: false,
+          error: "You can only delete your own comments",
+        };
+      }
+
+      const pinId = comment.pin_id;
+
+      // Yorumu silmeden önce bu pin'de kaç yorum olduğunu kontrol et
+      const { data: commentsBefore, error: countBeforeError } = await supabase
+        .from("comments")
+        .select("id", { count: "exact" })
+        .eq("pin_id", pinId);
+
+      if (countBeforeError) {
+        console.error(
+          "Error counting comments before deletion:",
+          countBeforeError
+        );
+      }
+
+      const commentCountBefore = commentsBefore?.length || 0;
+
+      // Yorumu sil - database trigger otomatik olarak pin'i silecek eğer son yorumsa
+      const { error: deleteError } = await supabase
+        .from("comments")
+        .delete()
+        .eq("id", commentId)
+        .eq("user_id", user.id); // Ekstra güvenlik kontrolü
+
+      if (deleteError) {
+        return {
+          success: false,
+          pinDeleted: false,
+          error: deleteError.message,
+        };
+      }
+
+      // Eğer bu son yorumdu, pin otomatik olarak silinmiş olmalı
+      const wasLastComment = commentCountBefore === 1;
+
+      if (wasLastComment) {
+        // Pin'in gerçekten silinip silinmediğini kontrol et
+        const { data: pinExists, error: pinCheckError } = await supabase
+          .from("pins")
+          .select("id")
+          .eq("id", pinId)
+          .maybeSingle();
+
+        if (pinCheckError) {
+          console.error("Error checking if pin exists:", pinCheckError);
+        }
+
+        const pinWasDeleted = !pinExists;
+
+        return {
+          success: true,
+          pinDeleted: pinWasDeleted,
+          error: null,
+          pinId,
+        };
+      }
+
+      return {
+        success: true,
+        pinDeleted: false,
+        error: null,
+        pinId,
+      };
+    } catch (error) {
+      console.error("deleteCommentWithCleanup error:", error);
+      return {
+        success: false,
+        pinDeleted: false,
+        error: "An error occurred while deleting comment",
+      };
+    }
+  },
 };

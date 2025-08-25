@@ -253,6 +253,36 @@ export class IntegratedStateManager {
     });
   }
 
+  // Delete comment with cleanup and cache integration
+  async deleteCommentWithCleanup(
+    commentId: string,
+    pinId: string
+  ): Promise<{ success: boolean; pinDeleted: boolean }> {
+    this.debugLog("Deleting comment with cleanup", { commentId, pinId });
+
+    // First, decrement comment count optimistically
+    this.scheduleInvalidation(() => {
+      this.cacheManager.updateCommentCountInCache(pinId, -1);
+      this.debugLog("Decremented comment count in cache", { pinId, delta: -1 });
+    });
+
+    // The actual deletion will be handled by the caller using pinService.deleteCommentWithCleanup
+    // This method just handles the cache updates
+
+    return { success: true, pinDeleted: false };
+  }
+
+  // Handle pin deletion from cleanup service
+  handlePinDeletionFromCleanup(pinId: string): void {
+    this.debugLog("Handling pin deletion from cleanup service", { pinId });
+
+    // Remove pin from cache immediately
+    this.scheduleInvalidation(() => {
+      this.cacheManager.removePinFromCache(pinId);
+      this.debugLog("Removed pin from cache after cleanup", { pinId });
+    });
+  }
+
   // Update pin with cache update
   updatePinWithCache(pinId: string, updates: Partial<Pin>): void {
     this.debugLog("Updating pin with cache", { pinId, updates });

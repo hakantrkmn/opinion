@@ -3,6 +3,7 @@ import { getIntegratedStateManager } from "@/lib/integrated-state-manager";
 import { pinService } from "@/lib/supabase/database";
 import type { CreatePinData, EnhancedComment, MapBounds, Pin } from "@/types";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 export interface UsePinsWithIntegratedCacheReturn {
   // State
@@ -425,25 +426,85 @@ export const usePinsWithIntegratedCache =
       []
     );
 
-    // Delete comment (no optimistic updates for now)
+    // Delete comment with cleanup and cache integration
     const deleteComment = useCallback(
       async (commentId: string): Promise<boolean> => {
         setLoading(true);
         setError(null);
 
         try {
-          const { success, error: deleteError } =
-            await pinService.deleteComment(commentId);
+          const {
+            success,
+            pinDeleted,
+            error: deleteError,
+            pinId,
+          } = await pinService.deleteCommentWithCleanup(commentId);
 
           if (deleteError) {
             setError(deleteError);
+            toast.error("Failed to delete comment", {
+              description: deleteError,
+              duration: 4000,
+            });
             return false;
+          }
+
+          if (success) {
+            // Handle pin deletion if it occurred
+            if (pinDeleted && pinId) {
+              // Remove pin from local state
+              setPins((prevPins) => prevPins.filter((pin) => pin.id !== pinId));
+
+              // Update cache to remove the deleted pin
+              integratedManager.current.handlePinDeletionFromCleanup(pinId);
+
+              console.log(
+                "Pin automatically deleted after last comment removal:",
+                pinId
+              );
+
+              // Show success notification for pin deletion
+              toast.success("Pin deleted", {
+                description:
+                  "The pin was automatically removed after deleting the last comment.",
+                duration: 4000,
+              });
+            } else if (pinId) {
+              // Just update the comment count for the pin
+              setPins((prevPins) =>
+                prevPins.map((pin) =>
+                  pin.id === pinId
+                    ? {
+                        ...pin,
+                        comments_count: Math.max(
+                          0,
+                          (pin.comments_count || 1) - 1
+                        ),
+                      }
+                    : pin
+                )
+              );
+
+              // Update cache with decremented comment count
+              integratedManager.current.deleteCommentWithCleanup(
+                commentId,
+                pinId
+              );
+
+              // Show success notification for comment deletion
+              toast.success("Comment deleted successfully");
+            }
           }
 
           return success;
         } catch (error) {
           console.error("deleteComment error:", error);
-          setError("Yorum silinirken hata oluştu");
+          setError("Comment deletion failed");
+          toast.error("Comment deletion failed", {
+            description:
+              "An unexpected error occurred while deleting the comment.",
+            duration: 4000,
+          });
           return false;
         } finally {
           setLoading(false);

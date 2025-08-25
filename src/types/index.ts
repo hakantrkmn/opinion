@@ -127,6 +127,13 @@ export interface ApiResponse<T> {
   error: string | null;
 }
 
+export interface CommentDeleteResult {
+  success: boolean;
+  pinDeleted: boolean;
+  error: string | null;
+  pinId?: string;
+}
+
 // Hook Return Types
 export interface UseMapReturn {
   mapContainer: React.RefObject<HTMLDivElement>;
