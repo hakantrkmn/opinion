@@ -220,7 +220,14 @@ export const userService = {
 
   // Get user statistics with performance comparison
   async getUserStatsWithPerformanceInfo(userId: string): Promise<{
-    stats: any;
+    stats: {
+      totalPins: number;
+      totalComments: number;
+      totalLikes: number;
+      totalDislikes: number;
+      totalVotesGiven?: number;
+      lastActivityAt?: string;
+    } | null;
     performanceInfo: {
       queryTime: number;
       method: string;

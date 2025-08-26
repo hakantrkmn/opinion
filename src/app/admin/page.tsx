@@ -1,6 +1,6 @@
-import AdminDashboard from '@/components/AdminDashboard';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import DynamicAdminDashboard from '@/components/DynamicAdminDashboard';
 
 // Admin email - sadece bu email admin sayfasına erişebilir
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
@@ -22,7 +22,7 @@ export default async function AdminPage() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <AdminDashboard />
+            <DynamicAdminDashboard />
         </div>
     );
 }

@@ -1,7 +1,6 @@
-import Header from "@/components/Header";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { ProfileClient } from "./ProfileClient";
+import DynamicProfilePage from "@/components/DynamicProfilePage";
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -16,12 +15,5 @@ export default async function ProfilePage() {
     redirect("/auth");
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <main>
-        <ProfileClient user={user} />
-      </main>
-    </div>
-  );
+  return <DynamicProfilePage user={user} />;
 }
