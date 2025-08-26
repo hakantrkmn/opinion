@@ -12,9 +12,10 @@ export const pinService = {
 
       // Kullanıcı bilgisini al
       const {
-        data: { user },
+        data: { session },
         error: userError,
-      } = await supabase.auth.getUser();
+      } = await supabase.auth.getSession();
+      const user = session?.user;
       if (userError || !user) {
         return { pin: null, error: "Kullanıcı bulunamadı" };
       }
@@ -131,9 +132,10 @@ export const pinService = {
 
       // Kullanıcı bilgisini al
       const {
-        data: { user },
+        data: { session },
         error: userError,
-      } = await supabase.auth.getUser();
+      } = await supabase.auth.getSession();
+      const user = session?.user;
 
       if (userError || !user) {
         console.error("User not authenticated:", userError);
@@ -214,9 +216,10 @@ export const pinService = {
 
       // Kullanıcı bilgisini al
       const {
-        data: { user },
+        data: { session },
         error: userError,
-      } = await supabase.auth.getUser();
+      } = await supabase.auth.getSession();
+      const user = session?.user;
       if (userError || !user) {
         return { comment: null, error: "Kullanıcı bulunamadı" };
       }
@@ -255,9 +258,10 @@ export const pinService = {
       const supabase = createClient();
 
       const {
-        data: { user },
+        data: { session },
         error: userError,
-      } = await supabase.auth.getUser();
+      } = await supabase.auth.getSession();
+      const user = session?.user;
       if (userError || !user) {
         return { success: false, error: "Kullanıcı bulunamadı" };
       }
@@ -286,9 +290,10 @@ export const pinService = {
       const supabase = createClient();
 
       const {
-        data: { user },
+        data: { session },
         error: userError,
-      } = await supabase.auth.getUser();
+      } = await supabase.auth.getSession();
+      const user = session?.user;
       if (userError || !user) {
         return { success: false, error: "Kullanıcı bulunamadı" };
       }
@@ -318,9 +323,10 @@ export const pinService = {
       const supabase = createClient();
 
       const {
-        data: { user },
+        data: { session },
         error: userError,
-      } = await supabase.auth.getUser();
+      } = await supabase.auth.getSession();
+      const user = session?.user;
       if (userError || !user) {
         return { success: false, error: "Kullanıcı bulunamadı" };
       }
@@ -387,9 +393,10 @@ export const pinService = {
 
       // Kullanıcı bilgisini al
       const {
-        data: { user },
+        data: { session },
         error: userError,
-      } = await supabase.auth.getUser();
+      } = await supabase.auth.getSession();
+      const user = session?.user;
       if (userError || !user) {
         return { success: false, error: "Kullanıcı bulunamadı" };
       }
@@ -433,9 +440,10 @@ export const pinService = {
 
       // Kullanıcı bilgisini al
       const {
-        data: { user },
+        data: { session },
         error: userError,
-      } = await supabase.auth.getUser();
+      } = await supabase.auth.getSession();
+      const user = session?.user;
       if (userError || !user) {
         return {
           success: false,
