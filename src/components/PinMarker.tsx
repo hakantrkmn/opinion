@@ -120,6 +120,12 @@ export function generatePinPopupHTML(pin: Pin): string {
     year: "numeric",
   });
 
+  // Truncate pin name if too long
+  const MAX_PIN_NAME_LENGTH = 25;
+  const displayName = pin.name.length > MAX_PIN_NAME_LENGTH
+    ? pin.name.slice(0, MAX_PIN_NAME_LENGTH) + "..."
+    : pin.name;
+
   // Activity level badge based on comment count
   const getActivityBadge = (count?: number) => {
     if (!count || count === 0)
@@ -144,10 +150,10 @@ export function generatePinPopupHTML(pin: Pin): string {
 
       <div class="mb-3 pr-8">
         <div class="flex items-center justify-between mb-2">
-          <h3 class="text-xl font-bold text-gray-800 leading-tight">
-            ${pin.name}
+          <h3 class="text-xl font-bold text-gray-800 leading-tight truncate flex-1 mr-2" title="${pin.name}">
+            ${displayName}
           </h3>
-          <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${activityBadge.color} z-10">
+          <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${activityBadge.color} z-10 flex-shrink-0">
             ${activityBadge.text}
           </span>
         </div>

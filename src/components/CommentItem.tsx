@@ -25,6 +25,10 @@ export default function CommentItem({
 }: CommentItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(comment.text);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Character limit for comment text
+  const CHARACTER_LIMIT = 200;
 
   // Check if this is an enhanced comment with optimistic data
   const isEnhancedComment = 'isOptimistic' in comment;
@@ -96,6 +100,12 @@ export default function CommentItem({
   // Use local state, fallback to comment props
   const currentVote =
     localVote !== undefined ? localVote : comment.user_vote || 0;
+
+  // Check if comment text exceeds character limit
+  const isLongComment = comment.text.length > CHARACTER_LIMIT;
+  const displayText = isLongComment && !isExpanded
+    ? comment.text.slice(0, CHARACTER_LIMIT) + "..."
+    : comment.text;
 
   const handleEdit = async () => {
     if (!editText.trim()) return;
@@ -247,9 +257,19 @@ export default function CommentItem({
           </div>
         ) : (
           <>
-            <p className="text-xs sm:text-sm leading-relaxed mb-3 p-2 sm:p-3 bg-muted/50 rounded-lg">
-              {comment.text}
-            </p>
+            <div className="mb-3 p-2 sm:p-3 bg-muted/50 rounded-lg">
+              <p className="text-xs sm:text-sm leading-relaxed">
+                {displayText}
+              </p>
+              {isLongComment && (
+                <button
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  className="text-xs text-blue-600 hover:text-blue-800 mt-2 font-medium transition-colors"
+                >
+                  {isExpanded ? "Show less" : "Show more"}
+                </button>
+              )}
+            </div>
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-0 sm:items-center sm:justify-between">
