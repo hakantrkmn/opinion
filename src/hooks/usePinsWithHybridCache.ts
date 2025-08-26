@@ -3,11 +3,10 @@ import { HybridCacheManager } from "@/lib/hybrid-cache-manager";
 import { pinService } from "@/lib/supabase/database";
 import type { CreatePinData, EnhancedComment, MapBounds, Pin } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { toast } from "sonner";
 
-// Singleton cache instance
-const hybridCache = new HybridCacheManager();
+// We'll create the cache instance inside the hook to access queryClient
 
 // Query keys
 export const pinQueryKeys = {
@@ -86,6 +85,12 @@ export interface UsePinsWithHybridCacheReturn {
 export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+
+  // Create hybrid cache instance with queryClient (memoized to prevent recreation)
+  const hybridCache = useMemo(
+    () => new HybridCacheManager(queryClient),
+    [queryClient]
+  );
 
   // Get pins from main cache
   const { data: allPins = [] } = useQuery({

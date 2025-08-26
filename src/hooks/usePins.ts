@@ -1,16 +1,21 @@
 import { HybridCacheManager } from "@/lib/hybrid-cache-manager";
 import { pinService } from "@/lib/supabase/database";
 import type { Comment, CreatePinData, MapBounds, Pin } from "@/types";
-import { useCallback, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-// Singleton cache instance
-const cacheManager = new HybridCacheManager();
-
 export const usePins = () => {
+  const queryClient = useQueryClient();
   const [pins, setPins] = useState<Pin[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Create cache manager instance with queryClient (memoized to prevent recreation)
+  const cacheManager = useMemo(
+    () => new HybridCacheManager(queryClient),
+    [queryClient]
+  );
 
   // Pin oluştur - Cache ile
   const createPin = useCallback(

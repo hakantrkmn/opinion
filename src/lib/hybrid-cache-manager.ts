@@ -1,21 +1,25 @@
 import { MapBounds, Pin } from "@/types";
-
-interface CachedPin {
-  pin: Pin;
-  timestamp: number;
-  hitCount: number;
-  lastAccessed: number;
-}
+import { QueryClient } from "@tanstack/react-query";
 
 interface SpatialIndex {
   [key: string]: Set<string>; // tile -> pin IDs
 }
 
+interface CacheStats {
+  totalPins: number;
+  totalTiles: number;
+  totalHits: number;
+  memoryUsage: number;
+}
+
 export class HybridCacheManager {
-  private pinCache = new Map<string, CachedPin>(); // pin ID -> pin data
+  private queryClient: QueryClient;
   private spatialIndex: SpatialIndex = {}; // tile -> pin IDs
-  private maxAge = 10 * 60 * 1000; // 10 minutes
-  private maxPins = 1000; // Maximum cached pins
+  private hitCount = 0; // Track cache hits for stats
+
+  constructor(queryClient: QueryClient) {
+    this.queryClient = queryClient;
+  }
 
   // Convert coordinates to tile key
   private getTileKey(lat: number, lng: number, zoom: number): string {
@@ -28,39 +32,41 @@ export class HybridCacheManager {
   // Get tiles that intersect with bounds
   private getTilesForBounds(bounds: MapBounds, zoom: number): string[] {
     const tiles = new Set<string>();
+    const scale = Math.pow(2, Math.max(0, zoom - 8));
 
-    // Sample points across the bounds
-    const latStep = (bounds.maxLat - bounds.minLat) / 4;
-    const lngStep = (bounds.maxLng - bounds.minLng) / 4;
+    // Calculate tile boundaries
+    const minTileX = Math.floor(bounds.minLng * scale);
+    const maxTileX = Math.floor(bounds.maxLng * scale);
+    const minTileY = Math.floor(bounds.minLat * scale);
+    const maxTileY = Math.floor(bounds.maxLat * scale);
 
-    for (let lat = bounds.minLat; lat <= bounds.maxLat; lat += latStep) {
-      for (let lng = bounds.minLng; lng <= bounds.maxLng; lng += lngStep) {
-        tiles.add(this.getTileKey(lat, lng, zoom));
+    // Generate all tiles that intersect with the bounds
+    for (let tileX = minTileX; tileX <= maxTileX; tileX++) {
+      for (let tileY = minTileY; tileY <= maxTileY; tileY++) {
+        tiles.add(`${zoom}_${tileX}_${tileY}`);
       }
     }
 
     return Array.from(tiles);
   }
 
-  // Cache a pin
+  // Cache a pin using TanStack Query
   cachePin(pin: Pin): void {
-    const now = Date.now();
+    // Store individual pin in TanStack Query cache
+    this.queryClient.setQueryData(["pin", pin.id], pin);
 
-    // Add to pin cache
-    this.pinCache.set(pin.id, {
-      pin,
-      timestamp: now,
-      hitCount: 0,
-      lastAccessed: now,
-    });
-
-    // Add to spatial index
+    // Add to spatial index for geographic queries
     const [lng, lat] = pin.location.coordinates;
     const tiles = [
       this.getTileKey(lat, lng, 10),
       this.getTileKey(lat, lng, 12),
       this.getTileKey(lat, lng, 15),
     ];
+
+    console.log(
+      `💾 Caching pin ${pin.id} at [${lat}, ${lng}] in tiles:`,
+      tiles
+    );
 
     tiles.forEach((tile) => {
       if (!this.spatialIndex[tile]) {
@@ -69,51 +75,74 @@ export class HybridCacheManager {
       this.spatialIndex[tile].add(pin.id);
     });
 
-    // Evict if too many pins
-    if (this.pinCache.size > this.maxPins) {
-      this.evictLRU();
-    }
+    console.log(
+      "📊 Spatial index now has",
+      Object.keys(this.spatialIndex).length,
+      "tiles"
+    );
   }
 
-  // Get pins for bounds
+  // Get pins for bounds using TanStack Query cache
   getPinsForBounds(bounds: MapBounds, zoom: number): Pin[] | null {
-    const tiles = this.getTilesForBounds(bounds, zoom);
+    // Use the same zoom levels that we cache pins at
+    const cacheZoomLevels = [10, 12, 15];
+    const allTiles = new Set<string>();
+
+    // Get tiles for all cache zoom levels
+    cacheZoomLevels.forEach((cacheZoom) => {
+      const tiles = this.getTilesForBounds(bounds, cacheZoom);
+      tiles.forEach((tile) => allTiles.add(tile));
+    });
+
+    const tiles = Array.from(allTiles);
     const pinIds = new Set<string>();
+
+    console.log(
+      "🔍 Cache lookup - tiles:",
+      tiles.length,
+      "spatial index keys:",
+      Object.keys(this.spatialIndex).length
+    );
 
     // Collect all pin IDs from relevant tiles
     tiles.forEach((tile) => {
       const tilePins = this.spatialIndex[tile];
       if (tilePins) {
+        console.log(`📍 Tile ${tile} has ${tilePins.size} pins`);
         tilePins.forEach((pinId) => pinIds.add(pinId));
       }
     });
 
+    console.log("🎯 Found pin IDs in spatial index:", pinIds.size);
+
     if (pinIds.size === 0) {
+      console.log("❌ Cache miss - no pins in spatial index");
       return null; // Cache miss
     }
 
-    // Get pins from cache
+    // Get pins from TanStack Query cache
     const pins: Pin[] = [];
-    const now = Date.now();
 
     pinIds.forEach((pinId) => {
-      const cached = this.pinCache.get(pinId);
-      if (cached && now - cached.timestamp < this.maxAge) {
+      const cachedPin = this.queryClient.getQueryData<Pin>(["pin", pinId]);
+      if (cachedPin) {
         // Check if pin is actually in bounds
-        const [lng, lat] = cached.pin.location.coordinates;
+        const [lng, lat] = cachedPin.location.coordinates;
         if (
           lat >= bounds.minLat &&
           lat <= bounds.maxLat &&
           lng >= bounds.minLng &&
           lng <= bounds.maxLng
         ) {
-          pins.push(cached.pin);
-          cached.hitCount++;
-          cached.lastAccessed = now;
+          pins.push(cachedPin);
+          this.hitCount++;
         }
+      } else {
+        console.log("⚠️ Pin not found in TanStack Query cache:", pinId);
       }
     });
 
+    console.log("✅ Cache hit - returning pins:", pins.length);
     return pins.length > 0 ? pins : null;
   }
 
@@ -122,40 +151,37 @@ export class HybridCacheManager {
     pins.forEach((pin) => this.cachePin(pin));
   }
 
-  // Update pin in cache
+  // Update pin in TanStack Query cache
   updatePinInCache(pinId: string, updates: Partial<Pin>): void {
-    const cached = this.pinCache.get(pinId);
-    if (cached) {
-      cached.pin = { ...cached.pin, ...updates };
-      cached.lastAccessed = Date.now();
+    const cachedPin = this.queryClient.getQueryData<Pin>(["pin", pinId]);
+    if (cachedPin) {
+      const updatedPin = { ...cachedPin, ...updates };
+      this.queryClient.setQueryData(["pin", pinId], updatedPin);
     }
   }
 
   // Remove pin from cache
   removePinFromCache(pinId: string): void {
-    this.removePin(pinId);
+    this.deletePin(pinId);
   }
 
   // Update comment count for a pin
   updateCommentCountInCache(pinId: string, delta: number): void {
-    const cached = this.pinCache.get(pinId);
-    if (cached) {
-      const currentCount = cached.pin.comments_count || 0;
-      cached.pin = {
-        ...cached.pin,
+    const cachedPin = this.queryClient.getQueryData<Pin>(["pin", pinId]);
+    if (cachedPin) {
+      const currentCount = cachedPin.comments_count || 0;
+      const updatedPin = {
+        ...cachedPin,
         comments_count: Math.max(0, currentCount + delta),
         updated_at: new Date().toISOString(),
       };
-      cached.lastAccessed = Date.now();
+      this.queryClient.setQueryData(["pin", pinId], updatedPin);
     }
   }
 
   // Invalidate cache entries that contain a specific pin
   invalidateRelatedAreas(pinId: string): void {
-    const cached = this.pinCache.get(pinId);
-    if (cached) {
-      this.removePin(pinId);
-    }
+    this.deletePin(pinId);
   }
 
   // Get cached pins (for compatibility)
@@ -170,7 +196,17 @@ export class HybridCacheManager {
 
   // Clear cache for specific area
   clearArea(bounds: MapBounds, zoom: number): void {
-    const tiles = this.getTilesForBounds(bounds, zoom);
+    // Use the same zoom levels that we cache pins at
+    const cacheZoomLevels = [10, 12, 15];
+    const allTiles = new Set<string>();
+
+    // Get tiles for all cache zoom levels
+    cacheZoomLevels.forEach((cacheZoom) => {
+      const tiles = this.getTilesForBounds(bounds, cacheZoom);
+      tiles.forEach((tile) => allTiles.add(tile));
+    });
+
+    const tiles = Array.from(allTiles);
     const pinsToRemove = new Set<string>();
 
     // Collect pins from relevant tiles
@@ -183,49 +219,31 @@ export class HybridCacheManager {
 
     // Remove pins that are actually in the bounds
     pinsToRemove.forEach((pinId) => {
-      const cached = this.pinCache.get(pinId);
-      if (cached) {
-        const [lng, lat] = cached.pin.location.coordinates;
+      const cachedPin = this.queryClient.getQueryData<Pin>(["pin", pinId]);
+      if (cachedPin) {
+        const [lng, lat] = cachedPin.location.coordinates;
         if (
           lat >= bounds.minLat &&
           lat <= bounds.maxLat &&
           lng >= bounds.minLng &&
           lng <= bounds.maxLng
         ) {
-          this.removePin(pinId);
+          this.deletePin(pinId);
         }
       }
     });
   }
 
-  // LRU eviction
-  private evictLRU(): void {
-    let oldestPin: string | null = null;
-    let oldestTime = Date.now();
-
-    for (const [pinId, cached] of this.pinCache.entries()) {
-      const score = cached.lastAccessed - cached.hitCount * 60000; // Favor frequently accessed
-      if (score < oldestTime) {
-        oldestTime = score;
-        oldestPin = pinId;
-      }
-    }
-
-    if (oldestPin) {
-      this.removePin(oldestPin);
-    }
-  }
-
-  // Remove pin from cache and spatial index
+  // Remove pin from TanStack Query cache and spatial index
   private removePin(pinId: string): void {
-    const cached = this.pinCache.get(pinId);
-    if (!cached) return;
+    const cachedPin = this.queryClient.getQueryData<Pin>(["pin", pinId]);
+    if (!cachedPin) return;
 
-    // Remove from pin cache
-    this.pinCache.delete(pinId);
+    // Remove from TanStack Query cache
+    this.queryClient.removeQueries({ queryKey: ["pin", pinId] });
 
     // Remove from spatial index
-    const [lng, lat] = cached.pin.location.coordinates;
+    const [lng, lat] = cachedPin.location.coordinates;
     const tiles = [
       this.getTileKey(lat, lng, 10),
       this.getTileKey(lat, lng, 12),
@@ -244,11 +262,7 @@ export class HybridCacheManager {
 
   // Update pin in cache
   updatePin(pinId: string, updates: Partial<Pin>): void {
-    const cached = this.pinCache.get(pinId);
-    if (cached) {
-      cached.pin = { ...cached.pin, ...updates };
-      cached.lastAccessed = Date.now();
-    }
+    this.updatePinInCache(pinId, updates);
   }
 
   // Delete pin from cache
@@ -258,8 +272,10 @@ export class HybridCacheManager {
 
   // Clear all cache
   clear(): void {
-    this.pinCache.clear();
+    // Clear all pin queries from TanStack Query
+    this.queryClient.removeQueries({ queryKey: ["pin"] });
     this.spatialIndex = {};
+    this.hitCount = 0;
   }
 
   // Alias for clear
@@ -268,17 +284,21 @@ export class HybridCacheManager {
   }
 
   // Get cache stats
-  getStats() {
-    const totalHits = Array.from(this.pinCache.values()).reduce(
-      (sum, cached) => sum + cached.hitCount,
-      0
-    );
+  getStats(): CacheStats {
+    // Get all pin queries from TanStack Query
+    const queries = this.queryClient.getQueryCache().getAll();
+    const pinQueries = queries.filter((q) => q.queryKey[0] === "pin");
 
     return {
-      totalPins: this.pinCache.size,
+      totalPins: pinQueries.length,
       totalTiles: Object.keys(this.spatialIndex).length,
-      totalHits,
-      memoryUsage: this.pinCache.size * 1000, // Rough estimate
+      totalHits: this.hitCount,
+      memoryUsage: pinQueries.reduce((size, query) => {
+        return (
+          size +
+          (query.state.data ? JSON.stringify(query.state.data).length : 0)
+        );
+      }, 0),
     };
   }
 }
