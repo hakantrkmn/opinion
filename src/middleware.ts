@@ -7,6 +7,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Sitemap ve robots.txt için middleware bypass
+  if (request.nextUrl.pathname === "/sitemap.xml" || 
+      request.nextUrl.pathname === "/robots.txt") {
+    return NextResponse.next();
+  }
+
   let response = NextResponse.next({
     request,
   });
