@@ -170,6 +170,15 @@ export const useMap = () => {
         setUserLocation([longitude, latitude]);
         setLocationPermission("granted");
 
+        // iOS'ta başarılı konum alımını localStorage'a kaydet
+        if (isIOS()) {
+          try {
+            localStorage.setItem("ios-location-permission", "granted");
+          } catch (error) {
+            console.log("Failed to save iOS permission state:", error);
+          }
+        }
+
         if (map.current) {
           map.current.flyTo({
             center: [longitude, latitude],
@@ -194,14 +203,21 @@ export const useMap = () => {
           timestamp: new Date().toISOString(),
         });
 
-        // iOS'ta permission denied durumunda prompt state'e geri dön
+        // iOS'ta permission denied durumunda localStorage'ı güncelle ve denied state'e geç
         if (isIOS() && result.error.code === result.error.PERMISSION_DENIED) {
-          console.log("iOS permission denied, returning to prompt state");
-          setLocationPermission("prompt");
+          console.log("iOS permission denied");
+
+          try {
+            localStorage.setItem("ios-location-permission", "denied");
+          } catch (error) {
+            console.log("Failed to save iOS permission state:", error);
+          }
+
+          setLocationPermission("denied");
 
           toast.error("Location Permission Denied", {
             description:
-              "Safari blocked location access. Try again and tap 'Allow' when prompted.",
+              "Safari blocked location access. Enable location in Settings to use this feature.",
             duration: 5000,
           });
           return;

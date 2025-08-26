@@ -81,7 +81,17 @@ export default function Map() {
             </p>
             <div className="space-y-3">
               <Button
-                onClick={getUserLocation}
+                onClick={() => {
+                  // iOS'ta localStorage'ı temizle ve konum iste
+                  if (typeof window !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                    try {
+                      localStorage.removeItem('ios-location-permission');
+                    } catch (error) {
+                      console.log("Failed to clear iOS permission state:", error);
+                    }
+                  }
+                  getUserLocation();
+                }}
                 className="w-full bg-blue-600 hover:bg-blue-700"
                 size="lg"
               >
@@ -128,7 +138,20 @@ export default function Map() {
             </p>
             <div className="space-y-3">
               <div className="space-y-2">
-                <Button onClick={getUserLocation} className="w-full">
+                <Button
+                  onClick={() => {
+                    // iOS'ta localStorage'ı temizle ve tekrar dene
+                    if (typeof window !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                      try {
+                        localStorage.removeItem('ios-location-permission');
+                      } catch (error) {
+                        console.log("Failed to clear iOS permission state:", error);
+                      }
+                    }
+                    getUserLocation();
+                  }}
+                  className="w-full"
+                >
                   Try Again
                 </Button>
               </div>

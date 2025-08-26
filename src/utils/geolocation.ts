@@ -159,20 +159,45 @@ export const checkIOSPermissionState = async (): Promise<
     return "unknown";
   }
 
+  // iOS'ta localStorage'dan önceki izin durumunu kontrol et
   try {
-    // iOS'ta permissions API varsa kullan ama güvenme
-    if ("permissions" in navigator) {
-      const result = await navigator.permissions.query({ name: "geolocation" });
-      // iOS'ta permissions API güvenilmez, her zaman "prompt" döner
-      console.log("iOS Permissions API result:", result.state);
-    }
+    const savedPermission = localStorage.getItem("ios-location-permission");
+    if (savedPermission === "granted") {
+      // Önceden izin verilmişse, hızlı bir test yap
+      return new Promise((resolve) => {
+        const testOptions: PositionOptions = {
+          enableHighAccuracy: false,
+          timeout: 3000,
+          maximumAge: 60000, // 1 dakika cache
+        };
 
-    // iOS'ta her zaman prompt olarak varsay
-    return "prompt";
+        navigator.geolocation.getCurrentPosition(
+          () => {
+            // Başarılı, izin hala geçerli
+            resolve("granted");
+          },
+          (error) => {
+            if (error.code === error.PERMISSION_DENIED) {
+              // İzin geri alınmış
+              localStorage.removeItem("ios-location-permission");
+              resolve("denied");
+            } else {
+              // Diğer hatalar, izin hala var ama konum alınamıyor
+              resolve("granted");
+            }
+          },
+          testOptions
+        );
+      });
+    } else if (savedPermission === "denied") {
+      return "denied";
+    }
   } catch (error) {
-    console.log("iOS permission check failed:", error);
-    return "prompt";
+    console.log("localStorage check failed:", error);
   }
+
+  // İlk kez veya bilinmeyen durum
+  return "prompt";
 };
 
 // iOS'a özel geolocation fonksiyonu
