@@ -79,9 +79,10 @@ export default function LocationDebug({ isVisible, onClose }: LocationDebugProps
                         <span>Permission Status:</span>
                         <span className={
                             debugInfo.permissionState === 'granted' ? "text-green-600" :
-                                debugInfo.permissionState === 'denied' ? "text-red-600" : "text-yellow-600"
+                                debugInfo.permissionState === 'denied' ? "text-red-600" :
+                                    debugInfo.permissionState === 'prompt' ? "text-blue-600" : "text-yellow-600"
                         }>
-                            {debugInfo.permissionState || "Unknown"}
+                            {debugInfo.permissionState === 'prompt' ? 'Prompt (iOS)' : (debugInfo.permissionState || "Unknown")}
                         </span>
                     </div>
 

@@ -76,8 +76,8 @@ export default function Map() {
               Enable Location Access
             </h2>
             <p className="text-gray-600 mb-6 text-sm">
-              On iOS, location permission requires your explicit consent.
-              Tap the button below to allow location access.
+              On iOS Safari, location permission requires user interaction.
+              Tap the button below and then tap &quot;Allow&quot; when Safari asks for permission.
             </p>
             <div className="space-y-3">
               <Button

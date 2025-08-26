@@ -14,6 +14,7 @@ import type {
 import { generateUserMarkerHTML } from "@/components/UserMarker";
 import {
   checkGeolocationSupport,
+  checkIOSPermissionState,
   getDetailedErrorMessage,
   getGeolocationWithFallback,
   getMobileInstructions,
@@ -114,26 +115,20 @@ export const useMap = () => {
   // Check initial permission state for iOS
   const checkInitialPermission = async () => {
     if (isIOS()) {
-      try {
-        // On iOS, check if permissions API is available
-        if ("permissions" in navigator) {
-          const result = await navigator.permissions.query({
-            name: "geolocation",
-          });
-          if (result.state === "prompt") {
-            setLocationPermission("prompt");
-            return;
-          }
-        } else {
-          // If permissions API not available on iOS, assume prompt state
-          setLocationPermission("prompt");
-          return;
-        }
-      } catch (error) {
-        console.log("Permission check failed on iOS:", error);
+      const permissionState = await checkIOSPermissionState();
+      console.log("iOS permission state:", permissionState);
+
+      if (permissionState === "granted") {
+        // Permission already granted, get location
+        getUserLocation();
+      } else if (permissionState === "denied") {
+        // Permission denied, show denied state
+        setLocationPermission("denied");
+      } else {
+        // Permission prompt or unknown, show prompt state
         setLocationPermission("prompt");
-        return;
       }
+      return;
     }
 
     // For non-iOS devices, try to get location immediately
@@ -194,6 +189,19 @@ export const useMap = () => {
           message: result.error.message,
           timestamp: new Date().toISOString(),
         });
+
+        // iOS'ta permission denied durumunda prompt state'e geri dön
+        if (isIOS() && result.error.code === result.error.PERMISSION_DENIED) {
+          console.log("iOS permission denied, returning to prompt state");
+          setLocationPermission("prompt");
+
+          toast.error("Location permission denied", {
+            description:
+              "Please tap 'Allow Location Access' and then 'Allow' when Safari asks",
+          });
+          return;
+        }
+
         setLocationPermission("denied");
 
         const errorMessage = getDetailedErrorMessage(result.error);
@@ -229,10 +237,19 @@ export const useMap = () => {
       }
     } catch (error) {
       console.error("Unexpected geolocation error:", error);
-      setLocationPermission("denied");
-      toast.error("Unexpected error", {
-        description: "An error occurred while getting location",
-      });
+
+      // iOS'ta unexpected error durumunda da prompt state'e dön
+      if (isIOS()) {
+        setLocationPermission("prompt");
+        toast.error("Location request failed", {
+          description: "Please try again by tapping 'Allow Location Access'",
+        });
+      } else {
+        setLocationPermission("denied");
+        toast.error("Unexpected error", {
+          description: "An error occurred while getting location",
+        });
+      }
     }
   };
 

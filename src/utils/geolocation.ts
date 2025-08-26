@@ -149,3 +149,25 @@ export const getMobileInstructions = (): string[] => {
     ];
   }
 };
+
+export const checkIOSPermissionState = async (): Promise<
+  "prompt" | "granted" | "denied" | "unknown"
+> => {
+  if (!isIOS()) {
+    return "unknown";
+  }
+
+  try {
+    // iOS'ta permissions API varsa kullan
+    if ("permissions" in navigator) {
+      const result = await navigator.permissions.query({ name: "geolocation" });
+      return result.state as "prompt" | "granted" | "denied";
+    }
+
+    // Permissions API yoksa prompt olarak varsay
+    return "prompt";
+  } catch (error) {
+    console.log("iOS permission check failed:", error);
+    return "prompt";
+  }
+};
