@@ -19,8 +19,52 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "oPINion - Location Based Feedback",
-  description: "Share your opinions by placing pins on the map",
+  title: {
+    default: "oPINion - Share Your Thoughts on the Map",
+    template: "%s | oPINion",
+  },
+  description: "Interactive map platform where you can share opinions and discover what others think about different locations around the world.",
+  keywords: ["opinion", "map", "location", "thoughts", "community", "interactive", "share", "feedback"],
+  authors: [{ name: "oPINion Team" }],
+  creator: "oPINion Team",
+  publisher: "oPINion",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://opinion-map.vercel.app'),
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "/",
+    siteName: "oPINion",
+    title: "oPINion - Share Your Thoughts on the Map",
+    description: "Interactive map platform where you can share opinions and discover what others think about different locations.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "oPINion - Share Your Thoughts on the Map",
+    description: "Interactive map platform where you can share opinions and discover what others think about different locations.",
+    creator: "@opinion_map",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  verification: {
+    google: "your-google-verification-code", // Google Search Console'dan alacaksınız
+  },
 };
 
 export default function RootLayout({

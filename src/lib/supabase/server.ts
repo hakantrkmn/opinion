@@ -27,3 +27,15 @@ export async function createClient() {
     }
   );
 }
+export async function getServerSession() {
+  const supabase = createClient();
+
+  try {
+    const {
+      data: { session },
+    } = await (await supabase).auth.getSession();
+    return session;
+  } catch {
+    return null;
+  }
+}
