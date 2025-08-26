@@ -109,6 +109,24 @@ export const getDetailedErrorMessage = (
   }
 };
 
+export const isIOS = (): boolean => {
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+};
+
+export const isAndroid = (): boolean => {
+  return /Android/i.test(navigator.userAgent);
+};
+
+export const isMobileDevice = (): boolean => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  );
+};
+
+export const getIOSLocationPrompt = (): string => {
+  return "On iOS, location permission requires user interaction. Tap 'Allow Location' to enable location services.";
+};
+
 export const getMobileInstructions = (): string[] => {
   const userAgent = navigator.userAgent;
 

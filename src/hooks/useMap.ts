@@ -18,6 +18,7 @@ import {
   getGeolocationWithFallback,
   getMobileInstructions,
   isHTTPS,
+  isIOS,
 } from "@/utils/geolocation";
 import { parseLocation } from "@/utils/mapUtils";
 import { mapStyles } from "@/utils/variables";
@@ -32,7 +33,7 @@ export const useMap = () => {
   const map = useRef<maplibregl.Map | null>(null);
   const [currentStyle, setCurrentStyle] = useState("voyager");
   const [locationPermission, setLocationPermission] = useState<
-    "granted" | "denied" | "loading" | null
+    "granted" | "denied" | "loading" | "prompt" | null
   >(null);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(
     null
@@ -109,6 +110,35 @@ export const useMap = () => {
     cancelOnMovement: true,
     detect: LongPressEventType.Pointer,
   });
+
+  // Check initial permission state for iOS
+  const checkInitialPermission = async () => {
+    if (isIOS()) {
+      try {
+        // On iOS, check if permissions API is available
+        if ("permissions" in navigator) {
+          const result = await navigator.permissions.query({
+            name: "geolocation",
+          });
+          if (result.state === "prompt") {
+            setLocationPermission("prompt");
+            return;
+          }
+        } else {
+          // If permissions API not available on iOS, assume prompt state
+          setLocationPermission("prompt");
+          return;
+        }
+      } catch (error) {
+        console.log("Permission check failed on iOS:", error);
+        setLocationPermission("prompt");
+        return;
+      }
+    }
+
+    // For non-iOS devices, try to get location immediately
+    getUserLocation();
+  };
 
   // Get user location with improved mobile support
   const getUserLocation = async () => {
@@ -701,7 +731,7 @@ export const useMap = () => {
         if (map.current) {
           setCurrentZoom(map.current.getZoom());
         }
-        getUserLocation();
+        checkInitialPermission();
         // Harita yüklendiğinde pin'leri yükle
         loadPinsFromMapWithCache();
       });

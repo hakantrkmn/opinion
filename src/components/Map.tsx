@@ -56,6 +56,62 @@ export default function Map() {
   // Type guard for location permission
   const isLoading = locationPermission === "loading";
   const isDenied = locationPermission === "denied";
+  const isPrompt = locationPermission === "prompt";
+
+  // Show iOS prompt overlay when permission is in prompt state
+  if (isPrompt) {
+    return (
+      <div className="relative w-full h-full">
+        {/* Map container (blurred background) */}
+        <div
+          ref={mapContainer}
+          className="w-full h-full min-h-[600px] blur-sm opacity-50"
+        />
+
+        {/* iOS Permission prompt overlay */}
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-blue-50/80 backdrop-blur-sm p-4">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md text-center border-2 border-blue-200">
+            <div className="text-blue-500 text-5xl mb-4">📍</div>
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">
+              Enable Location Access
+            </h2>
+            <p className="text-gray-600 mb-6 text-sm">
+              On iOS, location permission requires your explicit consent.
+              Tap the button below to allow location access.
+            </p>
+            <div className="space-y-3">
+              <Button
+                onClick={getUserLocation}
+                className="w-full bg-blue-600 hover:bg-blue-700"
+                size="lg"
+              >
+                📍 Allow Location Access
+              </Button>
+              <Button
+                onClick={() => setShowLocationDebug(true)}
+                variant="outline"
+                className="w-full text-xs"
+              >
+                🔧 Debug Info
+              </Button>
+              <div className="text-xs text-gray-500 space-y-1 mt-4">
+                <p className="font-medium text-blue-600">📱 iOS Instructions:</p>
+                <p>• Tap &quot;Allow Location Access&quot; above</p>
+                <p>• When Safari asks, tap &quot;Allow&quot;</p>
+                <p>• If no prompt appears, check Settings → Safari → Location</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Location Debug Modal */}
+        <LocationDebug
+          isVisible={showLocationDebug}
+          onClose={() => setShowLocationDebug(false)}
+        />
+      </div>
+    );
+  }
 
   // Show overlay when location permission is denied
   if (isDenied) {
