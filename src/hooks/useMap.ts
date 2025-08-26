@@ -17,6 +17,7 @@ import {
   checkIOSPermissionState,
   getDetailedErrorMessage,
   getGeolocationWithFallback,
+  getIOSGeolocation,
   getMobileInstructions,
   isHTTPS,
   isIOS,
@@ -158,7 +159,10 @@ export const useMap = () => {
     }
 
     try {
-      const result = await getGeolocationWithFallback();
+      // iOS için özel geolocation fonksiyonu kullan
+      const result = isIOS()
+        ? await getIOSGeolocation()
+        : await getGeolocationWithFallback();
 
       if (result.success && result.position) {
         const { latitude, longitude, accuracy } = result.position.coords;
@@ -195,9 +199,22 @@ export const useMap = () => {
           console.log("iOS permission denied, returning to prompt state");
           setLocationPermission("prompt");
 
-          toast.error("Location permission denied", {
+          toast.error("Location Permission Denied", {
             description:
-              "Please tap 'Allow Location Access' and then 'Allow' when Safari asks",
+              "Safari blocked location access. Try again and tap 'Allow' when prompted.",
+            duration: 5000,
+          });
+          return;
+        }
+
+        // iOS'ta timeout durumunda da prompt state'e dön
+        if (isIOS() && result.error.code === result.error.TIMEOUT) {
+          console.log("iOS timeout, returning to prompt state");
+          setLocationPermission("prompt");
+
+          toast.error("Location Request Timed Out", {
+            description: "Location request took too long. Please try again.",
+            duration: 5000,
           });
           return;
         }

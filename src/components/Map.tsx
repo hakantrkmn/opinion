@@ -76,8 +76,11 @@ export default function Map() {
               Enable Location Access
             </h2>
             <p className="text-gray-600 mb-6 text-sm">
-              On iOS Safari, location permission requires user interaction.
-              Tap the button below and then tap &quot;Allow&quot; when Safari asks for permission.
+              iOS Safari requires explicit permission for location access.
+              <br />
+              <strong>Step 1:</strong> Tap the blue button below
+              <br />
+              <strong>Step 2:</strong> When Safari shows a popup, tap &quot;Allow&quot;
             </p>
             <div className="space-y-3">
               <Button
@@ -95,10 +98,11 @@ export default function Map() {
                 🔧 Debug Info
               </Button>
               <div className="text-xs text-gray-500 space-y-1 mt-4">
-                <p className="font-medium text-blue-600">📱 iOS Instructions:</p>
-                <p>• Tap &quot;Allow Location Access&quot; above</p>
-                <p>• When Safari asks, tap &quot;Allow&quot;</p>
-                <p>• If no prompt appears, check Settings → Safari → Location</p>
+                <p className="font-medium text-blue-600">📱 iOS Troubleshooting:</p>
+                <p>• Make sure you&apos;re not in Private Browsing mode</p>
+                <p>• If no popup appears, refresh the page and try again</p>
+                <p>• Check Settings → Safari → Location Services → Allow</p>
+                <p>• Try closing and reopening Safari</p>
               </div>
             </div>
           </div>
