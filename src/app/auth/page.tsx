@@ -1,27 +1,38 @@
+"use client";
 import AuthForm from "@/components/AuthForm";
-import { getServerSession } from "@/lib/supabase/server";
-import { Metadata } from "next";
-import { redirect } from "next/navigation";
+import { useSession } from "@/hooks/useSession";
+import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
-// Auth sayfası SEO ayarları
-export const metadata: Metadata = {
-  title: "Sign In",
-  description: "Sign in to your oPINion account",
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
+export default function AuthPage() {
+  const { user, isLoading } = useSession();
+  const router = useRouter();
 
-// Server Component - %20-30 hızlanma
-export default async function AuthPage() {
-  // Server-side session kontrolü - çok hızlı
-  const session = await getServerSession();
+  // User zaten giriş yapmışsa ana sayfaya yönlendir
+  useEffect(() => {
+    if (user && !isLoading) {
+      router.push("/");
+    }
+  }, [user, isLoading, router]);
 
-  // Zaten giriş yapmışsa ana sayfaya yönlendir
-  if (session) {
-    redirect('/');
+  // Loading durumunda spinner göster
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Loading...</span>
+        </div>
+      </div>
+    );
   }
 
+  // User varsa null döndür (useEffect yönlendirecek)
+  if (user) {
+    return null;
+  }
+
+  // User yoksa auth formunu göster
   return <AuthForm />;
 }

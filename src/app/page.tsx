@@ -1,32 +1,30 @@
+"use client";
 import ClientMapWrapper from "@/components/ClientMapWrapper";
 import Header from "@/components/Header";
-import { Metadata } from "next";
+import { useSession } from "@/hooks/useSession";
+import { Loader2 } from "lucide-react";
 
-// SEO için metadata
-export const metadata: Metadata = {
-  title: "oPINion - Share Your Thoughts on the Map",
-  description: "Interactive map platform where you can share opinions and discover what others think about different locations around the world.",
-  keywords: ["opinion", "map", "location", "thoughts", "community", "interactive", "share"],
-  authors: [{ name: "oPINion Team" }],
-  openGraph: {
-    title: "oPINion - Share Your Thoughts on the Map",
-    description: "Interactive map platform where you can share opinions and discover what others think about different locations.",
-    type: "website",
-    locale: "en_US",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "oPINion - Share Your Thoughts on the Map",
-    description: "Interactive map platform where you can share opinions and discover what others think about different locations.",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-};
-
-// Server component - SEO için mükemmel
 export default function Home() {
+  const { user, isLoading } = useSession();
+
+  // Loading durumunda spinner göster
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // User yoksa auth sayfasına yönlendir (useSession hook'u zaten yapıyor)
+  if (!user) {
+    return null; // useSession hook auth'a yönlendirecek
+  }
+
+  // User varsa ana sayfayı göster
   return (
     <div className="min-h-screen bg-background">
       <Header />

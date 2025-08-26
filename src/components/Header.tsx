@@ -2,12 +2,12 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/contexts/AuthContext";
+import { useSession } from "@/hooks/useSession";
 import { LogOut, Search, Shield, User } from "lucide-react";
 import Link from "next/link";
 
 export default function Header() {
-  const { user } = useAuth();
+  const { user, signOut, isSigningOut } = useSession();
 
   return (
     <header className="bg-background border-b border-border shadow-sm relative z-20">
@@ -46,14 +46,24 @@ export default function Header() {
                   </span>
                 </div>
                 {user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL && (
-                  <Button variant="ghost" size="sm" asChild className="hidden sm:flex">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    asChild
+                    className="hidden sm:flex"
+                  >
                     <Link href="/admin">
                       <Shield className="h-4 w-4 sm:mr-2" />
                       <span className="hidden sm:inline">Admin</span>
                     </Link>
                   </Button>
                 )}
-                <Button variant="ghost" size="sm" asChild className="hidden sm:flex">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  asChild
+                  className="hidden sm:flex"
+                >
                   <Link href="/profile">
                     <User className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">Profile</span>
@@ -64,12 +74,18 @@ export default function Header() {
                     <User className="h-4 w-4" />
                   </Link>
                 </Button>
-                <form action="/auth/signout" method="post">
-                  <Button type="submit" variant="outline" size="sm" className="text-xs sm:text-sm">
-                    <LogOut className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Sign Out</span>
-                  </Button>
-                </form>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => signOut()}
+                  disabled={isSigningOut}
+                  className="text-xs sm:text-sm"
+                >
+                  <LogOut className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">
+                    {isSigningOut ? "Signing Out..." : "Sign Out"}
+                  </span>
+                </Button>
               </>
             ) : (
               <Button asChild size="sm">
