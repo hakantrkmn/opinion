@@ -2,15 +2,13 @@
 
 import { Button } from "@/components/ui/button";
 import { useMap } from "@/hooks/useMap";
-import { useEffect, useState } from "react";
-import LocationDebug from "./LocationDebug";
+import { useEffect } from "react";
 import PinDetailModal from "./PinDetailModal";
 import PinMarker from "./PinMarker";
 import PinModal from "./PinModal";
 import { RefreshButton } from "./RefreshButton";
 
 export default function Map() {
-  const [showLocationDebug, setShowLocationDebug] = useState(false);
 
   const {
     mapContainer,
@@ -46,8 +44,6 @@ export default function Map() {
     currentZoom,
   } = useMap();
 
-
-
   //just work once on mount
   useEffect(() => {
     initializeMap();
@@ -80,7 +76,8 @@ export default function Map() {
               <br />
               <strong>Step 1:</strong> Tap the blue button below
               <br />
-              <strong>Step 2:</strong> When Safari shows a popup, tap &quot;Allow&quot;
+              <strong>Step 2:</strong> When Safari shows a popup, tap
+              &quot;Allow&quot;
             </p>
             <div className="space-y-3">
               <Button
@@ -90,15 +87,10 @@ export default function Map() {
               >
                 📍 Allow Location Access
               </Button>
-              <Button
-                onClick={() => setShowLocationDebug(true)}
-                variant="outline"
-                className="w-full text-xs"
-              >
-                🔧 Debug Info
-              </Button>
               <div className="text-xs text-gray-500 space-y-1 mt-4">
-                <p className="font-medium text-blue-600">📱 iOS Troubleshooting:</p>
+                <p className="font-medium text-blue-600">
+                  📱 iOS Troubleshooting:
+                </p>
                 <p>• Make sure you&apos;re not in Private Browsing mode</p>
                 <p>• If no popup appears, refresh the page and try again</p>
                 <p>• Check Settings → Safari → Location Services → Allow</p>
@@ -108,11 +100,7 @@ export default function Map() {
           </div>
         </div>
 
-        {/* Location Debug Modal */}
-        <LocationDebug
-          isVisible={showLocationDebug}
-          onClose={() => setShowLocationDebug(false)}
-        />
+
       </div>
     );
   }
@@ -135,20 +123,13 @@ export default function Map() {
               Location Access Required
             </h2>
             <p className="text-gray-600 mb-6 text-sm">
-              We need location permission to use the map.
-              Please enable location access in your browser settings.
+              We need location permission to use the map. Please enable location
+              access in your browser settings.
             </p>
             <div className="space-y-3">
               <div className="space-y-2">
                 <Button onClick={getUserLocation} className="w-full">
                   Try Again
-                </Button>
-                <Button
-                  onClick={() => setShowLocationDebug(true)}
-                  variant="outline"
-                  className="w-full text-xs"
-                >
-                  🔧 Debug Info
                 </Button>
               </div>
               <div className="text-xs text-gray-500 space-y-1">
@@ -160,10 +141,14 @@ export default function Map() {
                 <div className="mt-3 p-3 bg-blue-50 rounded text-blue-700 text-left">
                   <p className="font-medium mb-2">📱 On mobile devices:</p>
                   <div className="space-y-1 text-xs">
-                    <p><strong>iPhone/iPad:</strong></p>
+                    <p>
+                      <strong>iPhone/iPad:</strong>
+                    </p>
                     <p>• Settings → Privacy → Location Services → On</p>
                     <p>• Settings → Safari → Location → Allow</p>
-                    <p className="mt-2"><strong>Android:</strong></p>
+                    <p className="mt-2">
+                      <strong>Android:</strong>
+                    </p>
                     <p>• Settings → Location → On</p>
                     <p>• Chrome → Site Settings → Location → Allow</p>
                   </div>
@@ -173,11 +158,7 @@ export default function Map() {
           </div>
         </div>
 
-        {/* Location Debug Modal - render inside the denied state */}
-        <LocationDebug
-          isVisible={showLocationDebug}
-          onClose={() => setShowLocationDebug(false)}
-        />
+
       </div>
     );
   }
@@ -197,7 +178,9 @@ export default function Map() {
           <div className="bg-white p-8 rounded-lg shadow-lg text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
             <p className="text-gray-600">Getting your location...</p>
-            <p className="text-xs text-gray-500 mt-2">This may take a few seconds</p>
+            <p className="text-xs text-gray-500 mt-2">
+              This may take a few seconds
+            </p>
           </div>
         </div>
       </div>
@@ -217,9 +200,7 @@ export default function Map() {
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white px-4 py-2 rounded-lg shadow-lg">
           <div className="flex items-center space-x-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-            <span className="text-sm text-gray-600">
-              Loading pins...
-            </span>
+            <span className="text-sm text-gray-600">Loading pins...</span>
           </div>
         </div>
       )}
@@ -315,7 +296,9 @@ export default function Map() {
                     return;
                   }
 
-                  setSelectedPin((prev) => (prev ? { ...prev, comments } : null));
+                  setSelectedPin((prev) =>
+                    prev ? { ...prev, comments } : null
+                  );
                 }
                 // Note: We don't refresh all pins here, only comments
               } catch (error) {
@@ -344,11 +327,7 @@ export default function Map() {
         minZoomLevel={12} // Minimum zoom level 12
       />
 
-      {/* Location Debug Modal */}
-      <LocationDebug
-        isVisible={showLocationDebug}
-        onClose={() => setShowLocationDebug(false)}
-      />
+
     </div>
   );
 }
