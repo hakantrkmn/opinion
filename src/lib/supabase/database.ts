@@ -128,6 +128,105 @@ export const pinService = {
     }
   },
 
+  // Birden fazla pin için yorumları toplu olarak getir
+  async getBatchComments(
+    pinIds: string[],
+    user?: User
+  ): Promise<{
+    comments: { [pinId: string]: Comment[] };
+    error: string | null;
+  }> {
+    try {
+      const supabase = createClient();
+
+      // User parametre olarak gelmemişse Supabase'den al
+      if (!user) {
+        const {
+          data: { session },
+          error: userError,
+        } = await supabase.auth.getSession();
+        user = session?.user;
+      }
+
+      if (!user) {
+        console.error("User not authenticated");
+        return { comments: {}, error: "Kullanıcı bulunamadı" };
+      }
+
+      if (pinIds.length === 0) {
+        return { comments: {}, error: null };
+      }
+
+      // Validate that pinIds is an array
+      if (!Array.isArray(pinIds)) {
+        console.error("pinIds must be an array");
+        return { comments: {}, error: "Geçersiz pin ID listesi" };
+      }
+
+      console.log("Fetching batch comments for pins:", pinIds);
+
+      // Tek query ile tüm pin'lerin comment'larını ve vote'larını çek
+      const { data: comments, error } = await supabase
+        .from("comments")
+        .select(
+          `
+          *,
+          users!inner(display_name),
+          comment_votes!left(value, user_id)
+        `
+        )
+        .in("pin_id", pinIds)
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        console.error("getBatchComments error:", error);
+        return { comments: {}, error: error.message };
+      }
+
+      console.log("Fetched batch comments:", comments?.length || 0);
+
+      // Comment'ları pin ID'ye göre grupla
+      const commentsByPin: { [pinId: string]: Comment[] } = {};
+
+      // İlk olarak tüm pin'ler için boş array'ler oluştur
+      pinIds.forEach((pinId) => {
+        commentsByPin[pinId] = [];
+      });
+
+      // Comment'ları işle ve grupla
+      (comments || []).forEach((comment) => {
+        // comment_votes array'ini al (her vote bir object)
+        const votes = comment.comment_votes || [];
+
+        // Toplam vote sayısını hesapla (sum of all vote values)
+        const voteCount = votes.reduce(
+          (sum: number, vote: any) => sum + (vote.value || 0),
+          0
+        );
+
+        // Kullanıcının oyunu bul
+        const userVote =
+          votes.find((vote: any) => vote.user_id === user?.id)?.value || 0;
+
+        const processedComment = {
+          ...comment,
+          vote_count: voteCount,
+          user_vote: userVote,
+        };
+
+        // Pin ID'ye göre grupla
+        if (commentsByPin[comment.pin_id]) {
+          commentsByPin[comment.pin_id].push(processedComment);
+        }
+      });
+
+      return { comments: commentsByPin, error: null };
+    } catch (error) {
+      console.error("getBatchComments error:", error);
+      return { comments: {}, error: "Yorumlar yüklenirken hata oluştu" };
+    }
+  },
+
   // Pin'in yorumlarını getir
   async getPinComments(
     pinId: string,

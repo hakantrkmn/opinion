@@ -60,6 +60,10 @@ export interface UsePinsWithHybridCacheReturn {
     pinId: string,
     forceRefresh?: boolean
   ) => Promise<EnhancedComment[] | null>;
+  getBatchComments: (
+    pinIds: string[],
+    forceRefresh?: boolean
+  ) => Promise<{ [pinId: string]: EnhancedComment[] } | null>;
   addComment: (pinId: string, text: string) => Promise<boolean>;
   editComment: (commentId: string, newText: string) => Promise<boolean>;
   deleteComment: (commentId: string) => Promise<boolean>;
@@ -132,22 +136,24 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
 
             return fetchedPins;
           },
-          staleTime: forceRefresh ? 0 : 5 * 60 * 1000, // 5 minutes unless force refresh
+          staleTime: forceRefresh ? 0 : 10 * 60 * 1000, // 10 minutes unless force refresh (increased from 5)
         });
 
         // Update the main pins cache with fetched data
         queryClient.setQueryData(
           pinQueryKeys.all,
           (oldData: Pin[] | undefined) => {
-            if (!oldData) return fetchedPins;
+            // Ensure oldData is always an array
+            const existingPins = Array.isArray(oldData) ? oldData : [];
+            if (existingPins.length === 0) return fetchedPins;
 
             // Merge with existing pins, avoiding duplicates
-            const existingIds = new Set(oldData.map((pin) => pin.id));
+            const existingIds = new Set(existingPins.map((pin) => pin.id));
             const newPins = fetchedPins.filter(
               (pin) => !existingIds.has(pin.id)
             );
 
-            return [...oldData, ...newPins];
+            return [...existingPins, ...newPins];
           }
         );
 
@@ -185,8 +191,9 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
         queryClient.setQueriesData(
           { queryKey: pinQueryKeys.all },
           (oldData: Pin[] | undefined) => {
-            if (!oldData) return [pinWithCorrectCount];
-            return [pinWithCorrectCount, ...oldData];
+            // Ensure oldData is always an array
+            const existingPins = Array.isArray(oldData) ? oldData : [];
+            return [pinWithCorrectCount, ...existingPins];
           }
         );
 
@@ -227,8 +234,9 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
       queryClient.setQueriesData(
         { queryKey: pinQueryKeys.all },
         (oldData: Pin[] | undefined) => {
-          if (!oldData) return [];
-          return oldData.filter((pin) => pin.id !== pinId);
+          // Ensure oldData is always an array
+          const existingPins = Array.isArray(oldData) ? oldData : [];
+          return existingPins.filter((pin) => pin.id !== pinId);
         }
       );
 
@@ -266,8 +274,9 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
               queryClient.setQueriesData(
                 { queryKey: pinQueryKeys.all },
                 (oldData: Pin[] | undefined) => {
-                  if (!oldData) return [];
-                  return oldData.filter((pin) => pin.id !== pinId);
+                  // Ensure oldData is always an array
+                  const existingPins = Array.isArray(oldData) ? oldData : [];
+                  return existingPins.filter((pin) => pin.id !== pinId);
                 }
               );
 
@@ -291,7 +300,7 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
             if (error) throw new Error(error);
             return comments || [];
           },
-          staleTime: forceRefresh ? 0 : 2 * 60 * 1000, // Force fresh data if requested
+          staleTime: forceRefresh ? 0 : 10 * 60 * 1000, // 10 minutes cache (increased from 2)
         });
 
         // Convert to enhanced comments
@@ -314,6 +323,72 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
       }
     },
     [queryClient, user?.id, hybridCache]
+  );
+
+  // Get batch comments for multiple pins
+  const getBatchComments = useCallback(
+    async (
+      pinIds: string[],
+      forceRefresh = false
+    ): Promise<{ [pinId: string]: EnhancedComment[] } | null> => {
+      try {
+        if (pinIds.length === 0) {
+          return {};
+        }
+
+        // Create a batch key for caching
+        const batchKey = `batch_${pinIds.sort().join("_")}`;
+
+        const data = await queryClient.fetchQuery({
+          queryKey: [...pinQueryKeys.all, "batch_comments", batchKey],
+          queryFn: async () => {
+            console.log("🔄 Fetching batch comments for pins:", pinIds);
+
+            // User bilgisini parametre olarak geç
+            const { comments, error } = await pinService.getBatchComments(
+              pinIds,
+              user || undefined
+            );
+
+            if (error) throw new Error(error);
+            return comments || {};
+          },
+          staleTime: forceRefresh ? 0 : 10 * 60 * 1000, // 10 minutes cache (increased from 2)
+        });
+
+        // Convert to enhanced comments
+        const enhancedComments: { [pinId: string]: EnhancedComment[] } = {};
+
+        Object.keys(data).forEach((pinId) => {
+          enhancedComments[pinId] = (data[pinId] || []).map((comment) => ({
+            ...comment,
+            netScore:
+              (comment.comment_votes?.filter((v) => v.value === 1).length ||
+                0) -
+              (comment.comment_votes?.filter((v) => v.value === -1).length ||
+                0),
+            likeCount:
+              comment.comment_votes?.filter((v) => v.value === 1).length || 0,
+            dislikeCount:
+              comment.comment_votes?.filter((v) => v.value === -1).length || 0,
+            user_vote:
+              comment.comment_votes?.find((v) => v.user_id === user?.id)
+                ?.value || 0,
+          }));
+        });
+
+        console.log(
+          "✅ Batch comments loaded for",
+          Object.keys(enhancedComments).length,
+          "pins"
+        );
+        return enhancedComments;
+      } catch (error) {
+        console.error("Failed to get batch comments:", error);
+        return null;
+      }
+    },
+    [queryClient, user?.id]
   );
 
   // Add comment mutation
@@ -342,8 +417,9 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
         queryClient.setQueriesData(
           { queryKey: pinQueryKeys.all },
           (oldData: Pin[] | undefined) => {
-            if (!oldData) return [];
-            return oldData.map((pin) =>
+            // Ensure oldData is always an array
+            const existingPins = Array.isArray(oldData) ? oldData : [];
+            return existingPins.map((pin) =>
               pin.id === pinId
                 ? { ...pin, comments_count: (pin.comments_count || 0) + 1 }
                 : pin
@@ -417,8 +493,9 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
           queryClient.setQueriesData(
             { queryKey: pinQueryKeys.all },
             (oldData: Pin[] | undefined) => {
-              if (!oldData) return [];
-              return oldData.filter((pin) => pin.id !== pinId);
+              // Ensure oldData is always an array
+              const existingPins = Array.isArray(oldData) ? oldData : [];
+              return existingPins.filter((pin) => pin.id !== pinId);
             }
           );
           toast.success("Pin deleted after removing last comment");
@@ -430,8 +507,9 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
           queryClient.setQueriesData(
             { queryKey: pinQueryKeys.all },
             (oldData: Pin[] | undefined) => {
-              if (!oldData) return [];
-              return oldData.map((pin) =>
+              // Ensure oldData is always an array
+              const existingPins = Array.isArray(oldData) ? oldData : [];
+              return existingPins.map((pin) =>
                 pin.id === pinId
                   ? {
                       ...pin,
@@ -550,6 +628,7 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
 
     // Comments
     getPinComments,
+    getBatchComments,
     addComment: async (pinId: string, text: string) => {
       try {
         await addCommentMutation.mutateAsync({ pinId, text });

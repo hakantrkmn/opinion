@@ -9,7 +9,6 @@ import PinModal from "./PinModal";
 import { RefreshButton } from "./RefreshButton";
 
 export default function Map() {
-
   const {
     mapContainer,
     currentStyle,
@@ -41,7 +40,12 @@ export default function Map() {
     refreshPins,
     isRefreshing,
     getPinComments,
+    getBatchComments,
     currentZoom,
+    // New batch comment features
+    batchComments,
+    commentsLoading,
+    loadVisiblePinsComments,
   } = useMap();
 
   //just work once on mount
@@ -83,11 +87,17 @@ export default function Map() {
               <Button
                 onClick={() => {
                   // iOS'ta localStorage'ı temizle ve konum iste
-                  if (typeof window !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                  if (
+                    typeof window !== "undefined" &&
+                    /iPhone|iPad|iPod/i.test(navigator.userAgent)
+                  ) {
                     try {
-                      localStorage.removeItem('ios-location-permission');
+                      localStorage.removeItem("ios-location-permission");
                     } catch (error) {
-                      console.log("Failed to clear iOS permission state:", error);
+                      console.log(
+                        "Failed to clear iOS permission state:",
+                        error
+                      );
                     }
                   }
                   getUserLocation();
@@ -109,8 +119,6 @@ export default function Map() {
             </div>
           </div>
         </div>
-
-
       </div>
     );
   }
@@ -141,11 +149,17 @@ export default function Map() {
                 <Button
                   onClick={() => {
                     // iOS'ta localStorage'ı temizle ve tekrar dene
-                    if (typeof window !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                    if (
+                      typeof window !== "undefined" &&
+                      /iPhone|iPad|iPod/i.test(navigator.userAgent)
+                    ) {
                       try {
-                        localStorage.removeItem('ios-location-permission');
+                        localStorage.removeItem("ios-location-permission");
                       } catch (error) {
-                        console.log("Failed to clear iOS permission state:", error);
+                        console.log(
+                          "Failed to clear iOS permission state:",
+                          error
+                        );
                       }
                     }
                     getUserLocation();
@@ -180,8 +194,6 @@ export default function Map() {
             </div>
           </div>
         </div>
-
-
       </div>
     );
   }
@@ -218,12 +230,18 @@ export default function Map() {
         {...longPressBind()}
       />
 
-      {/* Loading Indicator */}
-      {pinsLoading && (
+      {/* Loading Indicators */}
+      {(pinsLoading || commentsLoading) && (
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white px-4 py-2 rounded-lg shadow-lg">
           <div className="flex items-center space-x-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-            <span className="text-sm text-gray-600">Loading pins...</span>
+            <span className="text-sm text-gray-600">
+              {pinsLoading && commentsLoading
+                ? "Loading pins & comments..."
+                : pinsLoading
+                ? "Loading pins..."
+                : "Loading comments..."}
+            </span>
           </div>
         </div>
       )}
@@ -349,8 +367,6 @@ export default function Map() {
         currentZoom={currentZoom}
         minZoomLevel={12} // Minimum zoom level 12
       />
-
-
     </div>
   );
 }

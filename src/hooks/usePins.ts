@@ -114,6 +114,33 @@ export const usePins = () => {
     []
   );
 
+  // Birden fazla pin için yorumları toplu olarak getir
+  const getBatchComments = useCallback(
+    async (
+      pinIds: string[]
+    ): Promise<{ [pinId: string]: Comment[] } | null> => {
+      try {
+        if (pinIds.length === 0) {
+          return {};
+        }
+
+        const { comments, error: commentsError } =
+          await pinService.getBatchComments(pinIds);
+
+        if (commentsError) {
+          setError(commentsError);
+          return null;
+        }
+
+        return comments;
+      } catch (err) {
+        setError("Yorumlar yüklenirken beklenmeyen hata oluştu");
+        return null;
+      }
+    },
+    []
+  );
+
   // Pin'e yorum ekle - artık loading yapmıyor
   const addComment = useCallback(
     async (pinId: string, text: string): Promise<boolean> => {
@@ -332,6 +359,7 @@ export const usePins = () => {
     createPin,
     loadPins,
     getPinComments,
+    getBatchComments,
     addComment,
     deletePin,
     updatePin,

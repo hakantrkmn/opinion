@@ -53,6 +53,11 @@ export const useMap = () => {
   const [user, setUser] = useState<{ id: string; email: string } | null>(null);
   // State for zoom level
   const [currentZoom, setCurrentZoom] = useState<number>(10);
+  // State for batch loaded comments
+  const [batchComments, setBatchComments] = useState<{
+    [pinId: string]: any[];
+  }>({});
+  const [commentsLoading, setCommentsLoading] = useState(false);
 
   const getUser = async () => {
     const supabase = createClient();
@@ -77,6 +82,7 @@ export const useMap = () => {
     loading: pinsLoading,
     createPin: createPinInDB,
     getPinComments,
+    getBatchComments,
     addComment,
     loadPins: loadPinsFromDB,
     editComment,
@@ -286,11 +292,97 @@ export const useMap = () => {
     }
   };
 
-  // Get user information
   // Get user information with useEffect
   useEffect(() => {
     getUser();
   }, []);
+
+  // Load comments for all visible pins using batch loading
+  const loadVisiblePinsComments = useCallback(
+    async (pinList?: Pin[]) => {
+      const pinsToLoad = pinList || mapPins;
+
+      if (pinsToLoad.length === 0) {
+        setBatchComments({});
+        return;
+      }
+
+      // Check if getBatchComments is available
+      if (!getBatchComments) {
+        console.warn("getBatchComments not available, skipping batch loading");
+        return;
+      }
+
+      setCommentsLoading(true);
+
+      try {
+        console.log(
+          "🔄 Loading comments for",
+          pinsToLoad.length,
+          "visible pins using batch loading"
+        );
+
+        const pinIds = pinsToLoad.map((pin) => pin.id);
+        const comments = await getBatchComments(pinIds);
+
+        if (comments) {
+          setBatchComments(comments);
+          console.log(
+            "✅ Batch comments loaded successfully for",
+            Object.keys(comments).length,
+            "pins"
+          );
+        }
+      } catch (error) {
+        console.error("❌ Failed to load batch comments:", error);
+      } finally {
+        setCommentsLoading(false);
+      }
+    },
+    [mapPins, getBatchComments]
+  );
+
+  // Auto-load comments when pins change
+  useEffect(() => {
+    if (mapPins.length > 0 && !commentsLoading) {
+      // Debounce the comment loading to avoid too frequent calls
+      const timeoutId = setTimeout(async () => {
+        console.log(
+          "🎆 Auto-loading batch comments for",
+          mapPins.length,
+          "visible pins"
+        );
+        const startTime = performance.now();
+
+        try {
+          await loadVisiblePinsComments();
+          const endTime = performance.now();
+          const duration = endTime - startTime;
+          console.log(
+            "✅ Batch comment loading completed in",
+            duration.toFixed(2),
+            "ms"
+          );
+
+          // Log performance improvement estimate
+          const individualEstimate = mapPins.length * 50; // Assume 50ms per individual request
+          const improvement = (
+            ((individualEstimate - duration) / individualEstimate) *
+            100
+          ).toFixed(1);
+          console.log(
+            "📊 Performance improvement: ~" +
+              improvement +
+              "% faster than individual loading"
+          );
+        } catch (error) {
+          console.error("❌ Error in batch comment loading:", error);
+        }
+      }, 500);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [mapPins, loadVisiblePinsComments, getBatchComments, commentsLoading]);
 
   // Add user marker
   const addUserMarker = (lng: number, lat: number) => {
@@ -535,10 +627,51 @@ export const useMap = () => {
     [showPinPopup]
   );
 
-  // Pin'e tıklama handler'ı
-  const handlePinClick = (pin: Pin) => {
-    showPinPopup(pin);
-  };
+  // Pin'e tıklama handler'ı (batch comments kullanarak)
+  const handlePinClick = useCallback(
+    async (pin: Pin) => {
+      try {
+        console.log("Pin clicked:", pin.name);
+
+        // First try to get comments from batch-loaded cache
+        let commentsToShow = batchComments[pin.id] || [];
+
+        // If no batch comments available, load individually
+        if (commentsToShow.length === 0 && getPinComments) {
+          console.log(
+            "No batch comments available, loading individually for pin:",
+            pin.id
+          );
+          const individualComments = await getPinComments(pin.id);
+          commentsToShow = individualComments || [];
+        } else if (commentsToShow.length > 0) {
+          console.log(
+            "Using batch-loaded comments for pin:",
+            pin.id,
+            commentsToShow.length,
+            "comments"
+          );
+        }
+
+        setSelectedPin({
+          pinId: pin.id,
+          pinName: pin.name,
+          comments: commentsToShow,
+        });
+        setShowPinDetailModal(true);
+      } catch (error) {
+        console.error("Error in handlePinClick:", error);
+        // Still open the modal even if comment loading fails
+        setSelectedPin({
+          pinId: pin.id,
+          pinName: pin.name,
+          comments: [],
+        });
+        setShowPinDetailModal(true);
+      }
+    },
+    [getPinComments, batchComments]
+  );
 
   // Pin'leri haritaya ekle
   const addPinsToMap = useCallback(() => {
@@ -853,6 +986,11 @@ export const useMap = () => {
     refreshPins,
     isRefreshing,
     getPinComments,
+    getBatchComments,
     currentZoom,
+    // New batch comment loading features
+    batchComments,
+    commentsLoading,
+    loadVisiblePinsComments,
   };
 };

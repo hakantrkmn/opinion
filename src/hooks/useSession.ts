@@ -41,8 +41,8 @@ export function useSession() {
 
       return session;
     },
-    staleTime: 5 * 60 * 1000, // 5 dakika cache
-    gcTime: 10 * 60 * 1000, // 10 dakika garbage collection
+    staleTime: 15 * 60 * 1000, // 15 minutes cache (increased from 5)
+    gcTime: 30 * 60 * 1000, // 30 minutes garbage collection (increased from 10)
     retry: 1,
   });
 
