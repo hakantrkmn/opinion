@@ -50,8 +50,12 @@ export default function Map() {
     initializeMap();
   }, []);
 
+  // Type guard for location permission
+  const isLoading = locationPermission === "loading";
+  const isDenied = locationPermission === "denied";
+
   // Konum izni reddedildiğinde gösterilecek overlay
-  if (locationPermission === "denied") {
+  if (isDenied) {
     return (
       <div className="w-full h-full min-h-[600px] flex items-center justify-center bg-gray-100">
         <div className="bg-white p-8 rounded-lg shadow-lg max-w-md text-center">
@@ -80,7 +84,7 @@ export default function Map() {
   }
 
   // Konum yükleniyor
-  if (locationPermission === "loading") {
+  if (isLoading) {
     return (
       <div className="w-full h-full min-h-[600px] flex items-center justify-center bg-gray-100">
         <div className="bg-white p-8 rounded-lg shadow-lg text-center">
@@ -150,9 +154,9 @@ export default function Map() {
         size="icon"
         className="fixed bottom-4 right-4 z-50 shadow-lg"
         title={userLocation ? "Go to My Location" : "Get Location"}
-        disabled={locationPermission === "loading"}
+        disabled={isLoading}
       >
-        {locationPermission === "loading" ? (
+        {isLoading ? (
           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
         ) : userLocation ? (
           "📍"

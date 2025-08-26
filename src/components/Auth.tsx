@@ -2,7 +2,13 @@
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
@@ -27,18 +33,18 @@ export default function Auth() {
     try {
       const { error } = isLogin
         ? await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
+            email,
+            password,
+          })
         : await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              display_name: displayName,
+            email,
+            password,
+            options: {
+              data: {
+                display_name: displayName,
+              },
             },
-          },
-        });
+          });
       console.log(error);
       if (error) {
         setError(error.message);
@@ -48,7 +54,7 @@ export default function Auth() {
 
         router.push("/"); // Full page refresh
       }
-    } catch (err) {
+    } catch {
       setError("An error occurred");
     }
   };
@@ -60,7 +66,9 @@ export default function Auth() {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             oPINion
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Share your thoughts on the map</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Share your thoughts on the map
+          </p>
         </div>
         <CardHeader className="space-y-1 text-center pt-2">
           <CardTitle className="text-xl sm:text-2xl font-bold">
@@ -69,8 +77,7 @@ export default function Auth() {
           <CardDescription className="text-sm sm:text-base px-2">
             {isLogin
               ? "Enter your credentials to access your account"
-              : "Create a new account to start sharing your opinions"
-            }
+              : "Create a new account to start sharing your opinions"}
           </CardDescription>
         </CardHeader>
         <CardContent className="px-4 sm:px-6">
@@ -119,7 +126,11 @@ export default function Auth() {
               </Alert>
             )}
 
-            <Button type="submit" disabled={loading} className="w-full text-sm sm:text-base">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full text-sm sm:text-base"
+            >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {loading ? "Loading..." : isLogin ? "Sign In" : "Create Account"}
             </Button>

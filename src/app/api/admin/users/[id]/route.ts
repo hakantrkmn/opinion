@@ -7,7 +7,7 @@ async function checkAdminAuth(request: Request) {
   try {
     const userEmail = request.headers.get("x-user-email");
     return userEmail === ADMIN_EMAIL;
-  } catch (error) {
+  } catch {
     return false;
   }
 }
