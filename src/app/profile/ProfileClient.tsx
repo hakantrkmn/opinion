@@ -2,6 +2,7 @@
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -10,11 +11,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar } from "@/components/ui/Avatar";
+import { EditProfile } from "@/components/EditProfile";
 import { userService } from "@/lib/supabase/userService";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import type { Comment, Pin } from "@/types";
 import type { User } from "@supabase/supabase-js";
 import {
   Calendar,
+  Edit3,
   Loader2,
   MapPin,
   MessageCircle,
@@ -31,6 +36,7 @@ interface ProfileClientProps {
 }
 
 export function ProfileClient({ user }: ProfileClientProps) {
+  const { profile, updateProfile } = useUserProfile();
   const [activeTab, setActiveTab] = useState<TabType>("stats");
   const [stats, setStats] = useState<{
     totalPins: number;
@@ -49,6 +55,7 @@ export function ProfileClient({ user }: ProfileClientProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showEditProfile, setShowEditProfile] = useState(false);
 
   // Load statistics with performance tracking
   useEffect(() => {
@@ -111,20 +118,49 @@ export function ProfileClient({ user }: ProfileClientProps) {
     }
   };
 
+  // Handle profile updates
+  const handleProfileUpdate = (updates: { display_name?: string; avatar_url?: string | null }) => {
+    updateProfile(updates);
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <Card className="overflow-hidden">
         {/* Header */}
         <CardHeader className="bg-muted/50">
           <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-4 text-center sm:text-left">
-            <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
-              <UserIcon className="h-8 w-8 text-primary-foreground" />
-            </div>
+            {/* Avatar */}
+            <Avatar
+              src={profile?.avatar_url}
+              alt={profile?.display_name || user.email || "User"}
+              size="xl"
+              fallbackText={profile?.display_name || user.email}
+            />
+            
+            {/* Profile Info */}
             <div className="min-w-0 flex-1">
-              <CardTitle className="text-xl sm:text-2xl">Profile</CardTitle>
-              <CardDescription className="text-sm sm:text-base break-all">
-                {user.email}
-              </CardDescription>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <CardTitle className="text-xl sm:text-2xl">
+                    {profile?.display_name || "Anonymous User"}
+                  </CardTitle>
+                  <CardDescription className="text-sm sm:text-base break-all">
+                    {user.email}
+                  </CardDescription>
+                </div>
+                
+                {/* Edit Button */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowEditProfile(true)}
+                  className="flex items-center gap-2 self-center sm:self-start"
+                >
+                  <Edit3 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Edit Profile</span>
+                  <span className="sm:hidden">Edit</span>
+                </Button>
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -417,6 +453,14 @@ export function ProfileClient({ user }: ProfileClientProps) {
           </Tabs>
         </CardContent>
       </Card>
+      
+      {/* Edit Profile Modal */}
+      <EditProfile
+        user={user}
+        isOpen={showEditProfile}
+        onClose={() => setShowEditProfile(false)}
+        onProfileUpdate={handleProfileUpdate}
+      />
     </div>
   );
 }

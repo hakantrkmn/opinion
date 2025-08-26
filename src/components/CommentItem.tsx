@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Avatar } from "@/components/ui/Avatar";
 import type { Comment, EnhancedComment } from "@/types";
 import { Calendar, Edit2, Save, ThumbsDown, ThumbsUp, Trash2, TrendingDown, TrendingUp, User, X } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -233,11 +234,14 @@ export default function CommentItem({
       <CardContent className="p-3 sm:p-4">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-0 mb-3">
           <div className="flex items-center space-x-2 min-w-0">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-muted rounded-full flex items-center justify-center flex-shrink-0">
-              <User className="h-3 w-3 sm:h-4 sm:w-4" />
-            </div>
+            <Avatar
+              src={comment.users?.avatar_url || comment.profiles?.avatar_url}
+              alt={comment.users?.display_name || comment.profiles?.display_name || "Anonymous"}
+              size="sm"
+              fallbackText={comment.users?.display_name || comment.profiles?.display_name || "Anonymous"}
+            />
             <span className="font-medium text-xs sm:text-sm truncate">
-              {comment.users?.display_name || "Anonymous"}
+              {comment.users?.display_name || comment.profiles?.display_name || "Anonymous"}
             </span>
           </div>
           <div className="flex items-center space-x-1 text-xs text-muted-foreground flex-shrink-0">

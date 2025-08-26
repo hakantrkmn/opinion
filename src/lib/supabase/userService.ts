@@ -13,6 +13,195 @@ class SupabaseClientManager {
   }
 }
 export const userService = {
+  // Avatar upload and management functions
+  async uploadAvatar(userId: string, file: File): Promise<{
+    avatarUrl: string | null;
+    error: string | null;
+  }> {
+    try {
+      const supabase = SupabaseClientManager.getInstance();
+      
+      console.log("🖼️ Starting avatar upload for user:", userId);
+      const startTime = performance.now();
+
+      // Validate file
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+      if (!validTypes.includes(file.type)) {
+        return { avatarUrl: null, error: "Please upload a valid image file (JPG, PNG, WebP, or GIF)" };
+      }
+
+      // Validate file size (5MB limit)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        return { avatarUrl: null, error: "File size must be less than 5MB" };
+      }
+
+      // Create unique filename with timestamp to prevent caching issues
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${userId}/avatar-${Date.now()}.${fileExt}`;
+
+      // Upload to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true // This will replace existing file
+        });
+
+      if (uploadError) {
+        console.error("❌ Avatar upload error:", uploadError);
+        return { avatarUrl: null, error: "Failed to upload avatar. Please try again." };
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(uploadData.path);
+
+      const avatarUrl = urlData.publicUrl;
+
+      // Update user's avatar_url in database
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ avatar_url: avatarUrl })
+        .eq('id', userId);
+
+      if (updateError) {
+        console.error("❌ Failed to update user avatar URL:", updateError);
+        // Clean up uploaded file
+        await supabase.storage.from('avatars').remove([uploadData.path]);
+        return { avatarUrl: null, error: "Failed to save avatar. Please try again." };
+      }
+
+      const endTime = performance.now();
+      console.log(
+        "✅ Avatar uploaded successfully in",
+        (endTime - startTime).toFixed(2),
+        "ms"
+      );
+
+      return { avatarUrl, error: null };
+    } catch (error) {
+      console.error("❌ uploadAvatar error:", error);
+      return { avatarUrl: null, error: "Avatar upload failed. Please try again." };
+    }
+  },
+
+  // Delete user avatar
+  async deleteAvatar(userId: string): Promise<{
+    success: boolean;
+    error: string | null;
+  }> {
+    try {
+      const supabase = SupabaseClientManager.getInstance();
+
+      // Get current avatar URL
+      const { data: userData, error: fetchError } = await supabase
+        .from('users')
+        .select('avatar_url')
+        .eq('id', userId)
+        .single();
+
+      if (fetchError || !userData?.avatar_url) {
+        return { success: true, error: null }; // No avatar to delete
+      }
+
+      // Extract file path from URL
+      const avatarPath = userData.avatar_url.split('/avatars/')[1];
+      if (avatarPath) {
+        // Delete from storage
+        const { error: deleteError } = await supabase.storage
+          .from('avatars')
+          .remove([avatarPath]);
+
+        if (deleteError) {
+          console.error("❌ Failed to delete avatar from storage:", deleteError);
+        }
+      }
+
+      // Update user record
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ avatar_url: null })
+        .eq('id', userId);
+
+      if (updateError) {
+        console.error("❌ Failed to update user avatar URL:", updateError);
+        return { success: false, error: "Failed to remove avatar" };
+      }
+
+      return { success: true, error: null };
+    } catch (error) {
+      console.error("❌ deleteAvatar error:", error);
+      return { success: false, error: "Failed to delete avatar" };
+    }
+  },
+
+  // Update user display name
+  async updateDisplayName(userId: string, displayName: string): Promise<{
+    success: boolean;
+    error: string | null;
+  }> {
+    try {
+      const supabase = SupabaseClientManager.getInstance();
+
+      // Validate display name
+      if (!displayName.trim()) {
+        return { success: false, error: "Display name cannot be empty" };
+      }
+
+      if (displayName.length > 50) {
+        return { success: false, error: "Display name must be less than 50 characters" };
+      }
+
+      const { error } = await supabase
+        .from('users')
+        .update({ display_name: displayName.trim() })
+        .eq('id', userId);
+
+      if (error) {
+        console.error("❌ Failed to update display name:", error);
+        return { success: false, error: "Failed to update display name" };
+      }
+
+      return { success: true, error: null };
+    } catch (error) {
+      console.error("❌ updateDisplayName error:", error);
+      return { success: false, error: "Failed to update display name" };
+    }
+  },
+
+  // Get user profile with avatar
+  async getUserProfile(userId: string): Promise<{
+    profile: {
+      id: string;
+      email: string;
+      display_name?: string;
+      avatar_url?: string;
+      created_at: string;
+    } | null;
+    error: string | null;
+  }> {
+    try {
+      const supabase = SupabaseClientManager.getInstance();
+
+      const { data: profile, error } = await supabase
+        .from('users')
+        .select('id, email, display_name, avatar_url, created_at')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error("❌ Failed to fetch user profile:", error);
+        return { profile: null, error: "Failed to load profile" };
+      }
+
+      return { profile, error: null };
+    } catch (error) {
+      console.error("❌ getUserProfile error:", error);
+      return { profile: null, error: "Failed to load profile" };
+    }
+  },
   // Kullanıcının istatistiklerini getir (denormalized from user_stats table)
   async getUserStats(userId: string): Promise<{
     stats: {
@@ -272,7 +461,8 @@ export const userService = {
         .select(
           `
           *,
-          comments!inner(count)
+          comments!inner(count),
+          users!inner(display_name, avatar_url)
         `
         )
         .eq("user_id", userId)
@@ -303,7 +493,8 @@ export const userService = {
           `
           *,
           pins!inner(name, location),
-          comment_votes(value)
+          comment_votes(value),
+          users!inner(display_name, avatar_url)
         `
         )
         .eq("user_id", userId)

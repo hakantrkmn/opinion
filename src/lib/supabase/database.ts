@@ -38,7 +38,7 @@ export const pinService = {
         .select(
           `
           *,
-          users!inner(display_name)
+          users!inner(display_name, avatar_url)
         `
         )
         .single();
@@ -77,7 +77,10 @@ export const pinService = {
         ...pin,
         comment_count: 1, // İlk yorum eklendi
         comments_count: 1, // Alternatif field name
-        user: { display_name: pin.users?.display_name || "Anonim" }, // User bilgisini ekle
+        user: { 
+          display_name: pin.users?.display_name || "Anonim",
+          avatar_url: pin.users?.avatar_url || null
+        }, // User bilgisini ekle
       };
 
       return { pin: pinWithCommentCount, error: null };
@@ -171,7 +174,7 @@ export const pinService = {
         .select(
           `
           *,
-          users!inner(display_name),
+          users!inner(display_name, avatar_url),
           comment_votes!left(value, user_id)
         `
         )

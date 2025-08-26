@@ -17,7 +17,14 @@ export interface Pin {
   location: GeoJSONPoint; // ✅ Doğru tip
   created_at: string;
   updated_at: string;
-  user?: { display_name: string };
+  user?: { 
+    display_name: string;
+    avatar_url?: string;
+  };
+  profiles?: {
+    display_name: string;
+    avatar_url?: string;
+  };
   comments_count?: number;
 }
 
@@ -31,6 +38,11 @@ export interface Comment {
   users?: {
     // user yerine users
     display_name: string;
+    avatar_url?: string;
+  };
+  profiles?: {
+    display_name: string;
+    avatar_url?: string;
   };
   // Yeni alanlar
   is_editing?: boolean;
@@ -79,6 +91,7 @@ export interface User {
   id: string;
   email: string;
   display_name: string;
+  avatar_url?: string;
   created_at: string;
 }
 

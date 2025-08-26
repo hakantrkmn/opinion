@@ -2,12 +2,23 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Avatar } from "@/components/ui/Avatar";
 import { useSession } from "@/hooks/useSession";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import { LogOut, Search, Shield, User } from "lucide-react";
 import Link from "next/link";
 
 export default function Header() {
   const { user, signOut, isSigningOut } = useSession();
+  const { profile, isLoading } = useUserProfile();
+
+  // Debug logging
+  console.log("Header Debug:", {
+    user: user?.id,
+    profile,
+    isLoading,
+    avatarUrl: profile?.avatar_url
+  });
 
   return (
     <header className="bg-background border-b border-border shadow-sm relative z-20">
@@ -36,13 +47,14 @@ export default function Header() {
             {user ? (
               <>
                 <div className="hidden lg:flex items-center space-x-2 bg-muted rounded-full px-3 py-1.5">
-                  <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
-                    <span className="text-xs font-semibold text-primary-foreground">
-                      {user.email?.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
+                  <Avatar
+                    src={profile?.avatar_url}
+                    alt={profile?.display_name || user.email || "User"}
+                    size="sm"
+                    fallbackText={profile?.display_name || user.email}
+                  />
                   <span className="text-sm text-foreground font-medium truncate max-w-32">
-                    {user.email}
+                    {profile?.display_name || user.email}
                   </span>
                 </div>
                 {user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL && (
