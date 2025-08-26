@@ -60,49 +60,64 @@ export default function Map() {
   // Show overlay when location permission is denied
   if (isDenied) {
     return (
-      <div className="w-full h-full min-h-[600px] flex items-center justify-center bg-gray-100 p-4">
-        <div className="bg-white p-6 rounded-lg shadow-lg max-w-md text-center">
-          <div className="text-red-500 text-5xl mb-4">📍</div>
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            Location Access Required
-          </h2>
-          <p className="text-gray-600 mb-6 text-sm">
-            We need location permission to use the map.
-            Please enable location access in your browser settings.
-          </p>
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <Button onClick={getUserLocation} className="w-full">
-                Try Again
-              </Button>
-              <Button
-                onClick={() => setShowLocationDebug(true)}
-                variant="outline"
-                className="w-full text-xs"
-              >
-                🔧 Debug Info
-              </Button>
-            </div>
-            <div className="text-xs text-gray-500 space-y-1">
-              <p className="font-medium">If the problem persists:</p>
-              <p>• Make sure you&apos;re in an open area for GPS signal</p>
-              <p>• Check that location services are enabled on your device</p>
-              <p>• Refresh your browser</p>
-              <p>• If using Safari, try Chrome or Firefox</p>
-              <div className="mt-3 p-3 bg-blue-50 rounded text-blue-700 text-left">
-                <p className="font-medium mb-2">📱 On mobile devices:</p>
-                <div className="space-y-1 text-xs">
-                  <p><strong>iPhone/iPad:</strong></p>
-                  <p>• Settings → Privacy → Location Services → On</p>
-                  <p>• Settings → Safari → Location → Allow</p>
-                  <p className="mt-2"><strong>Android:</strong></p>
-                  <p>• Settings → Location → On</p>
-                  <p>• Chrome → Site Settings → Location → Allow</p>
+      <div className="relative w-full h-full">
+        {/* Map container (blurred background) */}
+        <div
+          ref={mapContainer}
+          className="w-full h-full min-h-[600px] blur-sm opacity-50"
+        />
+
+        {/* Permission denied overlay */}
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-gray-100/80 backdrop-blur-sm p-4">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md text-center">
+            <div className="text-red-500 text-5xl mb-4">📍</div>
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">
+              Location Access Required
+            </h2>
+            <p className="text-gray-600 mb-6 text-sm">
+              We need location permission to use the map.
+              Please enable location access in your browser settings.
+            </p>
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Button onClick={getUserLocation} className="w-full">
+                  Try Again
+                </Button>
+                <Button
+                  onClick={() => setShowLocationDebug(true)}
+                  variant="outline"
+                  className="w-full text-xs"
+                >
+                  🔧 Debug Info
+                </Button>
+              </div>
+              <div className="text-xs text-gray-500 space-y-1">
+                <p className="font-medium">If the problem persists:</p>
+                <p>• Make sure you&apos;re in an open area for GPS signal</p>
+                <p>• Check that location services are enabled on your device</p>
+                <p>• Refresh your browser</p>
+                <p>• If using Safari, try Chrome or Firefox</p>
+                <div className="mt-3 p-3 bg-blue-50 rounded text-blue-700 text-left">
+                  <p className="font-medium mb-2">📱 On mobile devices:</p>
+                  <div className="space-y-1 text-xs">
+                    <p><strong>iPhone/iPad:</strong></p>
+                    <p>• Settings → Privacy → Location Services → On</p>
+                    <p>• Settings → Safari → Location → Allow</p>
+                    <p className="mt-2"><strong>Android:</strong></p>
+                    <p>• Settings → Location → On</p>
+                    <p>• Chrome → Site Settings → Location → Allow</p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Location Debug Modal - render inside the denied state */}
+        <LocationDebug
+          isVisible={showLocationDebug}
+          onClose={() => setShowLocationDebug(false)}
+        />
       </div>
     );
   }
@@ -110,11 +125,20 @@ export default function Map() {
   // Loading location
   if (isLoading) {
     return (
-      <div className="w-full h-full min-h-[600px] flex items-center justify-center bg-gray-100">
-        <div className="bg-white p-8 rounded-lg shadow-lg text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Getting your location...</p>
-          <p className="text-xs text-gray-500 mt-2">This may take a few seconds</p>
+      <div className="relative w-full h-full">
+        {/* Map container (blurred background) */}
+        <div
+          ref={mapContainer}
+          className="w-full h-full min-h-[600px] blur-sm opacity-30"
+        />
+
+        {/* Loading overlay */}
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-gray-100/60 backdrop-blur-sm">
+          <div className="bg-white p-8 rounded-lg shadow-lg text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Getting your location...</p>
+            <p className="text-xs text-gray-500 mt-2">This may take a few seconds</p>
+          </div>
         </div>
       </div>
     );
