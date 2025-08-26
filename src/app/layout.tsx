@@ -23,8 +23,18 @@ export const metadata: Metadata = {
     default: "oPINion - Share Your Thoughts on the Map",
     template: "%s | oPINion",
   },
-  description: "Interactive map platform where you can share opinions and discover what others think about different locations around the world.",
-  keywords: ["opinion", "map", "location", "thoughts", "community", "interactive", "share", "feedback"],
+  description:
+    "Interactive map platform where you can share opinions and discover what others think about different locations around the world.",
+  keywords: [
+    "opinion",
+    "map",
+    "location",
+    "thoughts",
+    "community",
+    "interactive",
+    "share",
+    "feedback",
+  ],
   authors: [{ name: "oPINion Team" }],
   creator: "oPINion Team",
   publisher: "oPINion",
@@ -33,7 +43,9 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://opinion-map.vercel.app'),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL || "https://opinion-map.vercel.app"
+  ),
   alternates: {
     canonical: "/",
   },
@@ -43,12 +55,14 @@ export const metadata: Metadata = {
     url: "/",
     siteName: "oPINion",
     title: "oPINion - Share Your Thoughts on the Map",
-    description: "Interactive map platform where you can share opinions and discover what others think about different locations.",
+    description:
+      "Interactive map platform where you can share opinions and discover what others think about different locations.",
   },
   twitter: {
     card: "summary_large_image",
     title: "oPINion - Share Your Thoughts on the Map",
-    description: "Interactive map platform where you can share opinions and discover what others think about different locations.",
+    description:
+      "Interactive map platform where you can share opinions and discover what others think about different locations.",
     creator: "@opinion_map",
   },
   robots: {
@@ -63,7 +77,7 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: "your-google-verification-code", // Google Search Console'dan alacaksınız
+    google: "googleb77d2e6c4cda70af.html",
   },
 };
 
