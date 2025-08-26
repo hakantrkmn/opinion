@@ -1,4 +1,4 @@
-import { useAuth } from "@/contexts/AuthContext";
+import { useSession } from "@/hooks/useSession";
 import { HybridCacheManager } from "@/lib/hybrid-cache-manager";
 import { pinService } from "@/lib/supabase/database";
 import type { CreatePinData, EnhancedComment, MapBounds, Pin } from "@/types";
@@ -83,7 +83,7 @@ export interface UsePinsWithHybridCacheReturn {
 }
 
 export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
-  const { user } = useAuth();
+  const { user } = useSession();
   const queryClient = useQueryClient();
 
   // Create hybrid cache instance with queryClient (memoized to prevent recreation)
@@ -162,7 +162,11 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
   // Create pin mutation
   const createPinMutation = useMutation({
     mutationFn: async (data: CreatePinData) => {
-      const { pin, error } = await pinService.createPin(data);
+      // User bilgisini parametre olarak geç
+      const { pin, error } = await pinService.createPin(
+        data,
+        user || undefined
+      );
       if (error) throw new Error(error);
       return pin;
     },
@@ -207,7 +211,11 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
   // Delete pin mutation
   const deletePinMutation = useMutation({
     mutationFn: async (pinId: string) => {
-      const { success, error } = await pinService.deletePin(pinId);
+      // User bilgisini parametre olarak geç
+      const { success, error } = await pinService.deletePin(
+        pinId,
+        user || undefined
+      );
       if (error) throw new Error(error);
       return success;
     },
@@ -243,7 +251,11 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
         const data = await queryClient.fetchQuery({
           queryKey: pinQueryKeys.comments(pinId),
           queryFn: async () => {
-            const { comments, error } = await pinService.getPinComments(pinId);
+            // User bilgisini parametre olarak geç
+            const { comments, error } = await pinService.getPinComments(
+              pinId,
+              user || undefined
+            );
 
             // Handle auto-deleted pin case
             if (error === "PIN_AUTO_DELETED") {
@@ -307,7 +319,12 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
   // Add comment mutation
   const addCommentMutation = useMutation({
     mutationFn: async ({ pinId, text }: { pinId: string; text: string }) => {
-      const { comment, error } = await pinService.addComment(pinId, text);
+      // User bilgisini parametre olarak geç
+      const { comment, error } = await pinService.addComment(
+        pinId,
+        text,
+        user || undefined
+      );
       if (error) throw new Error(error);
       return { comment, pinId };
     },
@@ -356,9 +373,11 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
       commentId: string;
       newText: string;
     }) => {
+      // User bilgisini parametre olarak geç
       const { success, error } = await pinService.updateComment(
         commentId,
-        newText
+        newText,
+        user || undefined
       );
       if (error) throw new Error(error);
       return success;
@@ -380,7 +399,11 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
   // Delete comment mutation
   const deleteCommentMutation = useMutation({
     mutationFn: async (commentId: string) => {
-      const result = await pinService.deleteCommentWithCleanup(commentId);
+      // User bilgisini parametre olarak geç
+      const result = await pinService.deleteCommentWithCleanup(
+        commentId,
+        user || undefined
+      );
       if (result.error) throw new Error(result.error);
       return result;
     },
@@ -446,7 +469,12 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
       commentId: string;
       value: number;
     }) => {
-      const { success, error } = await pinService.voteComment(commentId, value);
+      // User bilgisini parametre olarak geç
+      const { success, error } = await pinService.voteComment(
+        commentId,
+        value,
+        user || undefined
+      );
       if (error) throw new Error(error);
       return success;
     },

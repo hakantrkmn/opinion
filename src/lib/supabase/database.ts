@@ -1,22 +1,27 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Comment, CreatePinData, MapBounds, Pin } from "@/types";
+import { User } from "@supabase/supabase-js";
 import { createClient } from "./client";
 
 export const pinService = {
   // Pin oluştur (pin + ilk yorumu birlikte)
   async createPin(
-    data: CreatePinData
+    data: CreatePinData,
+    user?: User
   ): Promise<{ pin: Pin | null; error: string | null }> {
     try {
       const supabase = createClient();
 
-      // Kullanıcı bilgisini al
-      const {
-        data: { session },
-        error: userError,
-      } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (userError || !user) {
+      // User parametre olarak gelmemişse Supabase'den al
+      if (!user) {
+        const {
+          data: { session },
+          error: userError,
+        } = await supabase.auth.getSession();
+        user = session?.user;
+      }
+
+      if (!user) {
         return { pin: null, error: "Kullanıcı bulunamadı" };
       }
 
@@ -125,20 +130,23 @@ export const pinService = {
 
   // Pin'in yorumlarını getir
   async getPinComments(
-    pinId: string
+    pinId: string,
+    user?: User
   ): Promise<{ comments: Comment[] | null; error: string | null }> {
     try {
       const supabase = createClient();
 
-      // Kullanıcı bilgisini al
-      const {
-        data: { session },
-        error: userError,
-      } = await supabase.auth.getSession();
-      const user = session?.user;
+      // User parametre olarak gelmemişse Supabase'den al
+      if (!user) {
+        const {
+          data: { session },
+          error: userError,
+        } = await supabase.auth.getSession();
+        user = session?.user;
+      }
 
-      if (userError || !user) {
-        console.error("User not authenticated:", userError);
+      if (!user) {
+        console.error("User not authenticated");
         return { comments: null, error: "Kullanıcı bulunamadı" };
       }
 
@@ -188,7 +196,7 @@ export const pinService = {
 
         // Kullanıcının oyunu bul
         const userVote =
-          votes.find((vote: any) => vote.user_id === user.id)?.value || 0;
+          votes.find((vote: any) => vote.user_id === user?.id)?.value || 0;
 
         return {
           ...comment,
@@ -209,18 +217,22 @@ export const pinService = {
   // Pin'e yeni yorum ekle
   async addComment(
     pinId: string,
-    text: string
+    text: string,
+    user?: User
   ): Promise<{ comment: Comment | null; error: string | null }> {
     try {
       const supabase = createClient();
 
-      // Kullanıcı bilgisini al
-      const {
-        data: { session },
-        error: userError,
-      } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (userError || !user) {
+      // User parametre olarak gelmemişse Supabase'den al
+      if (!user) {
+        const {
+          data: { session },
+          error: userError,
+        } = await supabase.auth.getSession();
+        user = session?.user;
+      }
+
+      if (!user) {
         return { comment: null, error: "Kullanıcı bulunamadı" };
       }
 
@@ -252,17 +264,22 @@ export const pinService = {
   // Yorum düzenleme
   async updateComment(
     commentId: string,
-    newText: string
+    newText: string,
+    user?: User
   ): Promise<{ success: boolean; error: string | null }> {
     try {
       const supabase = createClient();
 
-      const {
-        data: { session },
-        error: userError,
-      } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (userError || !user) {
+      // User parametre olarak gelmemişse Supabase'den al
+      if (!user) {
+        const {
+          data: { session },
+          error: userError,
+        } = await supabase.auth.getSession();
+        user = session?.user;
+      }
+
+      if (!user) {
         return { success: false, error: "Kullanıcı bulunamadı" };
       }
 
@@ -284,17 +301,22 @@ export const pinService = {
 
   // Yorum silme
   async deleteComment(
-    commentId: string
+    commentId: string,
+    user?: User
   ): Promise<{ success: boolean; error: string | null }> {
     try {
       const supabase = createClient();
 
-      const {
-        data: { session },
-        error: userError,
-      } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (userError || !user) {
+      // User parametre olarak gelmemişse Supabase'den al
+      if (!user) {
+        const {
+          data: { session },
+          error: userError,
+        } = await supabase.auth.getSession();
+        user = session?.user;
+      }
+
+      if (!user) {
         return { success: false, error: "Kullanıcı bulunamadı" };
       }
 
@@ -317,17 +339,22 @@ export const pinService = {
   // Yorum oylama
   async voteComment(
     commentId: string,
-    value: number
+    value: number,
+    user?: User
   ): Promise<{ success: boolean; error: string | null }> {
     try {
       const supabase = createClient();
 
-      const {
-        data: { session },
-        error: userError,
-      } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (userError || !user) {
+      // User parametre olarak gelmemişse Supabase'den al
+      if (!user) {
+        const {
+          data: { session },
+          error: userError,
+        } = await supabase.auth.getSession();
+        user = session?.user;
+      }
+
+      if (!user) {
         return { success: false, error: "Kullanıcı bulunamadı" };
       }
 
@@ -386,18 +413,22 @@ export const pinService = {
 
   // Pin'i sil (sadece pin sahibi silebilir)
   async deletePin(
-    pinId: string
+    pinId: string,
+    user?: User
   ): Promise<{ success: boolean; error: string | null }> {
     try {
       const supabase = createClient();
 
-      // Kullanıcı bilgisini al
-      const {
-        data: { session },
-        error: userError,
-      } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (userError || !user) {
+      // User parametre olarak gelmemişse Supabase'den al
+      if (!user) {
+        const {
+          data: { session },
+          error: userError,
+        } = await supabase.auth.getSession();
+        user = session?.user;
+      }
+
+      if (!user) {
         return { success: false, error: "Kullanıcı bulunamadı" };
       }
 
@@ -429,7 +460,10 @@ export const pinService = {
   },
 
   // Yorum silme ve otomatik pin temizleme (database trigger handles pin cleanup)
-  async deleteCommentWithCleanup(commentId: string): Promise<{
+  async deleteCommentWithCleanup(
+    commentId: string,
+    user?: User
+  ): Promise<{
     success: boolean;
     pinDeleted: boolean;
     error: string | null;
@@ -438,13 +472,16 @@ export const pinService = {
     try {
       const supabase = createClient();
 
-      // Kullanıcı bilgisini al
-      const {
-        data: { session },
-        error: userError,
-      } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (userError || !user) {
+      // User parametre olarak gelmemişse Supabase'den al
+      if (!user) {
+        const {
+          data: { session },
+          error: userError,
+        } = await supabase.auth.getSession();
+        user = session?.user;
+      }
+
+      if (!user) {
         return {
           success: false,
           pinDeleted: false,
