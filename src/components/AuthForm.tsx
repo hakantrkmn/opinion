@@ -30,8 +30,10 @@ export default function AuthForm() {
     try {
       await signIn({ email, password });
       // useSession hook başarılı girişte otomatik yönlendirecek
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      setError(
+        error instanceof Error ? error.message : "An unknown error occurred"
+      );
     }
   };
 
