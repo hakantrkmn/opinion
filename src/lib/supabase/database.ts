@@ -29,7 +29,12 @@ export const pinService = {
           name: data.pinName,
           location: `POINT(${data.lng} ${data.lat})`, // PostGIS formatı
         })
-        .select("*")
+        .select(
+          `
+          *,
+          users!inner(display_name)
+        `
+        )
         .single();
 
       if (pinError) {
@@ -61,11 +66,12 @@ export const pinService = {
         commentId: comment.id,
       });
 
-      // Pin'i comment count ile birlikte döndür
+      // Pin'i comment count ve user bilgisi ile birlikte döndür
       const pinWithCommentCount = {
         ...pin,
         comment_count: 1, // İlk yorum eklendi
         comments_count: 1, // Alternatif field name
+        user: { display_name: pin.users?.display_name || "Anonim" }, // User bilgisini ekle
       };
 
       return { pin: pinWithCommentCount, error: null };
@@ -154,26 +160,17 @@ export const pinService = {
 
       console.log("Fetched comments with votes:", comments);
 
-      // Eğer yorum yoksa pin'i sil
+      // Eğer yorum yoksa boş array döndür (trigger otomatik olarak pin'i silecek)
       if (!comments || comments.length === 0) {
-        console.log("No comments found for pin:", pinId, "- deleting pin");
-
-        // Pin'i sil
-        const { error: deletePinError } = await supabase
-          .from("pins")
-          .delete()
-          .eq("id", pinId);
-
-        if (deletePinError) {
-          console.error("Error deleting empty pin:", deletePinError);
-        } else {
-          console.log("Empty pin deleted successfully:", pinId);
-          // Toast mesajı için özel bir error döndür
-          return {
-            comments: [],
-            error: "PIN_AUTO_DELETED", // Özel error kodu
-          };
-        }
+        console.log(
+          "No comments found for pin:",
+          pinId,
+          "- pin will be auto-deleted by trigger"
+        );
+        return {
+          comments: [],
+          error: "PIN_AUTO_DELETED", // Özel error kodu
+        };
       }
 
       // Comment'ları vote bilgileriyle birlikte işle

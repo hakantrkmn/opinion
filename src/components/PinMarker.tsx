@@ -3,7 +3,7 @@
 import type { Pin } from "@/types";
 import { parseLocation } from "@/utils/mapUtils";
 import maplibregl from "maplibre-gl";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // Pin Element Component - Sadece HTML oluşturur
 interface PinElementProps {
@@ -69,6 +69,25 @@ interface PinMarkerProps {
 
 export default function PinMarker({ pin, map, onPinClick }: PinMarkerProps) {
   const markerRef = useRef<maplibregl.Marker | null>(null);
+  const [zoomLevel, setZoomLevel] = useState<number>(0);
+
+  useEffect(() => {
+    if (!map) return;
+
+    // İlk zoom seviyesini al
+    setZoomLevel(map.getZoom());
+
+    // Zoom değişikliklerini dinle
+    const handleZoom = () => {
+      setZoomLevel(map.getZoom());
+    };
+
+    map.on('zoom', handleZoom);
+
+    return () => {
+      map.off('zoom', handleZoom);
+    };
+  }, [map]);
 
   useEffect(() => {
     if (!map) return;
@@ -79,8 +98,8 @@ export default function PinMarker({ pin, map, onPinClick }: PinMarkerProps) {
     // Pin element'i için container oluştur
     const pinContainer = document.createElement("div");
 
-    // generatePinElementHTML fonksiyonunu kullan
-    pinContainer.innerHTML = generatePinElementHTML(pin);
+    // generatePinElementHTML fonksiyonunu zoom seviyesi ile kullan
+    pinContainer.innerHTML = generatePinElementHTML(pin, zoomLevel);
 
     // Click handler'ı ekle
     const pinElement = pinContainer.firstElementChild as HTMLElement;
@@ -91,7 +110,12 @@ export default function PinMarker({ pin, map, onPinClick }: PinMarkerProps) {
       });
     }
 
-    // Marker oluştur
+    // Mevcut marker'ı temizle
+    if (markerRef.current) {
+      markerRef.current.remove();
+    }
+
+    // Yeni marker oluştur
     markerRef.current = new maplibregl.Marker({
       element: pinElement,
       anchor: "bottom",
@@ -105,7 +129,7 @@ export default function PinMarker({ pin, map, onPinClick }: PinMarkerProps) {
         markerRef.current.remove();
       }
     };
-  }, [map, pin, onPinClick]);
+  }, [map, pin, onPinClick, zoomLevel]);
 
   return null; // Bu komponent görsel element döndürmez
 }
@@ -185,7 +209,7 @@ export function generatePinPopupHTML(pin: Pin): string {
 }
 
 // HTML String Generator - useMap.ts için
-export function generatePinElementHTML(pin: Pin): string {
+export function generatePinElementHTML(pin: Pin, zoomLevel?: number): string {
   // Pin'in yorum sayısına göre renk belirle
   const getPinColor = (commentCount?: number) => {
     if (!commentCount || commentCount === 0)
@@ -197,8 +221,22 @@ export function generatePinElementHTML(pin: Pin): string {
 
   const pinColor = getPinColor(pin.comments_count);
 
+  // Zoom seviyesi 14 ve üzerinde pin adını göster
+  const showPinName = zoomLevel && zoomLevel >= 14;
+
+  // Pin adını kısalt (max 20 karakter)
+  const MAX_NAME_LENGTH = 20;
+  const truncatedName = pin.name.length > MAX_NAME_LENGTH
+    ? pin.name.slice(0, MAX_NAME_LENGTH) + "..."
+    : pin.name;
+
   return `
-    <div class="relative">
+    <div class="relative flex flex-col items-center">
+      ${showPinName ? `
+        <div class="mb-1 px-2 py-1 bg-white rounded-md shadow-md border border-gray-200 text-xs font-medium text-gray-700 whitespace-nowrap max-w-32 truncate">
+          ${truncatedName}
+        </div>
+      ` : ""}
       <div class="w-6 h-6 ${pinColor} rounded-full border-2 border-white shadow-lg flex items-center justify-center cursor-pointer transition-colors">
         <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
           <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />

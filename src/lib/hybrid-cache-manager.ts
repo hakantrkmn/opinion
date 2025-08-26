@@ -63,23 +63,12 @@ export class HybridCacheManager {
       this.getTileKey(lat, lng, 15),
     ];
 
-    console.log(
-      `💾 Caching pin ${pin.id} at [${lat}, ${lng}] in tiles:`,
-      tiles
-    );
-
     tiles.forEach((tile) => {
       if (!this.spatialIndex[tile]) {
         this.spatialIndex[tile] = new Set();
       }
       this.spatialIndex[tile].add(pin.id);
     });
-
-    console.log(
-      "📊 Spatial index now has",
-      Object.keys(this.spatialIndex).length,
-      "tiles"
-    );
   }
 
   // Get pins for bounds using TanStack Query cache
@@ -97,26 +86,15 @@ export class HybridCacheManager {
     const tiles = Array.from(allTiles);
     const pinIds = new Set<string>();
 
-    console.log(
-      "🔍 Cache lookup - tiles:",
-      tiles.length,
-      "spatial index keys:",
-      Object.keys(this.spatialIndex).length
-    );
-
     // Collect all pin IDs from relevant tiles
     tiles.forEach((tile) => {
       const tilePins = this.spatialIndex[tile];
       if (tilePins) {
-        console.log(`📍 Tile ${tile} has ${tilePins.size} pins`);
         tilePins.forEach((pinId) => pinIds.add(pinId));
       }
     });
 
-    console.log("🎯 Found pin IDs in spatial index:", pinIds.size);
-
     if (pinIds.size === 0) {
-      console.log("❌ Cache miss - no pins in spatial index");
       return null; // Cache miss
     }
 
@@ -142,7 +120,6 @@ export class HybridCacheManager {
       }
     });
 
-    console.log("✅ Cache hit - returning pins:", pins.length);
     return pins.length > 0 ? pins : null;
   }
 
