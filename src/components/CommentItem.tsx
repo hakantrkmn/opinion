@@ -1,5 +1,16 @@
 "use client";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { Comment, EnhancedComment } from "@/types";
 import { Calendar, Edit2, Save, ThumbsDown, ThumbsUp, Trash2, TrendingDown, TrendingUp, User, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 interface CommentItemProps {
   comment: Comment | EnhancedComment;
@@ -108,25 +120,36 @@ export default function CommentItem({
     : comment.text;
 
   const handleEdit = async () => {
-    if (!editText.trim()) return;
+    if (!editText.trim()) {
+      toast.error("Comment cannot be empty");
+      return;
+    }
 
     try {
       const success = await onEdit(comment.id, editText.trim());
       if (success) {
         setIsEditing(false);
+        toast.success("Comment updated successfully");
+      } else {
+        toast.error("Failed to update comment");
       }
     } catch (error) {
       console.error("Edit error:", error);
+      toast.error("Failed to update comment");
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this comment?")) return;
-
+  const handleDeleteConfirm = async () => {
     try {
-      await onDelete(comment.id);
+      const success = await onDelete(comment.id);
+      if (success) {
+        toast.success("Comment deleted successfully");
+      } else {
+        toast.error("Failed to delete comment");
+      }
     } catch (error) {
       console.error("Delete error:", error);
+      toast.error("Failed to delete comment");
     }
   };
 
@@ -189,6 +212,7 @@ export default function CommentItem({
         } else if (currentVote === -1) {
           setLocalDislikeCount(Math.max(0, localDislikeCount - 1));
         }
+        toast.error("Failed to save your vote");
       }
     } catch (error) {
       console.error("Voting error:", error);
@@ -200,6 +224,7 @@ export default function CommentItem({
       } else if (currentVote === -1) {
         setLocalDislikeCount(Math.max(0, localDislikeCount - 1));
       }
+      toast.error("Failed to save your vote");
     }
   };
 
@@ -335,15 +360,35 @@ export default function CommentItem({
                     <Edit2 className="h-3 w-3 mr-1" />
                     <span className="hidden sm:inline">Edit</span>
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleDelete}
-                    className="h-7 sm:h-8 text-xs sm:text-sm text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-3 w-3 mr-1" />
-                    <span className="hidden sm:inline">Delete</span>
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 sm:h-8 text-xs sm:text-sm text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        <span className="hidden sm:inline">Delete</span>
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Comment</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete this comment? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleDeleteConfirm}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               )}
 

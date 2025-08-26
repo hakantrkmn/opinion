@@ -239,6 +239,38 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
           queryKey: pinQueryKeys.comments(pinId),
           queryFn: async () => {
             const { comments, error } = await pinService.getPinComments(pinId);
+
+            // Handle auto-deleted pin case
+            if (error === "PIN_AUTO_DELETED") {
+              // Remove pin from hybrid cache
+              hybridCache.deletePin(pinId);
+
+              // Remove pin from TanStack Query cache
+              queryClient.setQueriesData(
+                { queryKey: pinQueryKeys.all },
+                (oldData: Pin[] | undefined) => {
+                  if (!oldData) return [];
+                  return oldData.filter((pin) => pin.id !== pinId);
+                }
+              );
+
+              // Clear all bounds queries to force fresh data
+              queryClient.invalidateQueries({
+                queryKey: ["pins", "bounds"],
+              });
+
+              // Also clear hybrid cache completely to ensure no stale data
+              hybridCache.clearAll();
+
+              // Show toast notification
+              toast.info("Pin automatically deleted", {
+                description: "Pins without comments are automatically removed",
+                duration: 4000,
+              });
+
+              return [];
+            }
+
             if (error) throw new Error(error);
             return comments || [];
           },
@@ -264,7 +296,7 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
         return null;
       }
     },
-    [queryClient, user?.id]
+    [queryClient, user?.id, hybridCache]
   );
 
   // Add comment mutation

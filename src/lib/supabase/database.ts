@@ -154,6 +154,28 @@ export const pinService = {
 
       console.log("Fetched comments with votes:", comments);
 
+      // Eğer yorum yoksa pin'i sil
+      if (!comments || comments.length === 0) {
+        console.log("No comments found for pin:", pinId, "- deleting pin");
+
+        // Pin'i sil
+        const { error: deletePinError } = await supabase
+          .from("pins")
+          .delete()
+          .eq("id", pinId);
+
+        if (deletePinError) {
+          console.error("Error deleting empty pin:", deletePinError);
+        } else {
+          console.log("Empty pin deleted successfully:", pinId);
+          // Toast mesajı için özel bir error döndür
+          return {
+            comments: [],
+            error: "PIN_AUTO_DELETED", // Özel error kodu
+          };
+        }
+      }
+
       // Comment'ları vote bilgileriyle birlikte işle
       const commentsWithVotes = (comments || []).map((comment) => {
         // comment_votes array'ini al (her vote bir object)

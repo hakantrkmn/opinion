@@ -40,6 +40,7 @@ export default function Map() {
     refreshPins,
     isRefreshing,
     getPinComments,
+    currentZoom,
   } = useMap();
 
 
@@ -54,17 +55,25 @@ export default function Map() {
     return (
       <div className="w-full h-full min-h-[600px] flex items-center justify-center bg-gray-100">
         <div className="bg-white p-8 rounded-lg shadow-lg max-w-md text-center">
-          <div className="text-red-500 text-6xl mb-4"></div>
+          <div className="text-red-500 text-6xl mb-4">📍</div>
           <h2 className="text-xl font-semibold text-gray-800 mb-4">
-            Location Permission Required
+            Location Access Required
           </h2>
           <p className="text-gray-600 mb-6">
-            To use this application, you need to grant location permission.
+            We need location permission to use the map.
             Please enable location access in your browser settings.
           </p>
-          <Button onClick={getUserLocation}>
-            Try Again
-          </Button>
+          <div className="space-y-3">
+            <Button onClick={getUserLocation} className="w-full">
+              Try Again
+            </Button>
+            <div className="text-xs text-gray-500">
+              <p>If the problem persists:</p>
+              <p>• Go to an open area for GPS signal</p>
+              <p>• Check that location services are enabled</p>
+              <p>• Refresh your browser</p>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -135,17 +144,22 @@ export default function Map() {
       </div>
 
       {/* Location Button */}
-      {userLocation && (
-        <Button
-          onClick={goToUserLocation}
-          variant="outline"
-          size="icon"
-          className="fixed bottom-4 right-4 z-50 shadow-lg"
-          title="Go to My Location"
-        >
-          📍
-        </Button>
-      )}
+      <Button
+        onClick={userLocation ? goToUserLocation : getUserLocation}
+        variant="outline"
+        size="icon"
+        className="fixed bottom-4 right-4 z-50 shadow-lg"
+        title={userLocation ? "Go to My Location" : "Get Location"}
+        disabled={locationPermission === "loading"}
+      >
+        {locationPermission === "loading" ? (
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+        ) : userLocation ? (
+          "📍"
+        ) : (
+          "🎯"
+        )}
+      </Button>
 
       {/* Pin Creation Modal */}
       <PinModal
@@ -180,6 +194,14 @@ export default function Map() {
               try {
                 const comments = await getPinComments(selectedPin.pinId, true); // Force fresh data
                 if (comments) {
+                  // Check if pin was auto-deleted
+                  if (comments.length === 0) {
+                    // Pin was auto-deleted, close modal
+                    setShowPinDetailModal(false);
+                    setSelectedPin(null);
+                    return;
+                  }
+
                   setSelectedPin((prev) => (prev ? { ...prev, comments } : null));
                 }
                 // Note: We don't refresh all pins here, only comments
@@ -202,7 +224,12 @@ export default function Map() {
       ))}
 
       {/* Refresh button */}
-      <RefreshButton onRefresh={refreshPins} isRefreshing={isRefreshing} />
+      <RefreshButton
+        onRefresh={refreshPins}
+        isRefreshing={isRefreshing}
+        currentZoom={currentZoom}
+        minZoomLevel={12} // Minimum zoom level 12
+      />
     </div>
   );
 }

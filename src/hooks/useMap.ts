@@ -16,6 +16,7 @@ import { parseLocation } from "@/utils/mapUtils";
 import { mapStyles } from "@/utils/variables";
 import maplibregl from "maplibre-gl";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { LongPressEventType, useLongPress } from "use-long-press";
 import { usePinsWithHybridCache } from "./usePinsWithHybridCache";
 
@@ -38,8 +39,10 @@ export const useMap = () => {
     pinName: string;
     comments: (Comment | EnhancedComment)[];
   } | null>(null);
-  // State'e user ekleyelim
+  // Add user to state
   const [user, setUser] = useState<{ id: string; email: string } | null>(null);
+  // State for zoom level
+  const [currentZoom, setCurrentZoom] = useState<number>(10);
 
   const getUser = async () => {
     const supabase = createClient();
@@ -56,9 +59,9 @@ export const useMap = () => {
     }
   };
 
-  // mapPins state'ini ekleyelim - pins hook'undan gelen verileri kullan
+  // Add mapPins state - use data from pins hook
 
-  // Pin hook'unu kullan (Hybrid Cache version)
+  // Use pin hook (Hybrid Cache version)
   const {
     pins,
     loading: pinsLoading,
@@ -72,9 +75,9 @@ export const useMap = () => {
   } = usePinsWithHybridCache();
   const mapPins = pins;
 
-  // Debug için pins state'ini izle
+  // Watch pins state for debugging
 
-  // Uzun basma callback'i
+  // Long press callback
   const onLongPress = (e: React.SyntheticEvent) => {
     if (!map.current) return;
     const nativeEvent = e.nativeEvent as PointerEvent;
@@ -84,71 +87,119 @@ export const useMap = () => {
 
     const lngLat = map.current.unproject([x, y]);
 
-    console.log("Long press coordinates:", lngLat); // Debug için
+    console.log("Long press coordinates:", lngLat); // For debugging
 
     setTempPin([lngLat.lng, lngLat.lat]);
     setShowPinModal(true);
   };
 
-  // Uzun basma hook'u
+  // Long press hook
   const longPressBind = useLongPress(onLongPress, {
     onCancel: () => {
-      // İptal edildiğinde yapılacak işlem
+      // Action to take when cancelled
     },
     threshold: 500,
     cancelOnMovement: true,
     detect: LongPressEventType.Pointer,
   });
 
-  // Kullanıcı konumunu alma
+  // Get user location
   const getUserLocation = () => {
     setLocationPermission("loading");
 
     if (!navigator.geolocation) {
       setLocationPermission("denied");
+      toast.error("Location services not supported", {
+        description: "Your browser doesn't support location services",
+      });
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude, accuracy } = position.coords;
-        console.log("Konum doğruluğu:", accuracy, "metre");
+        console.log("Location accuracy:", accuracy, "meters");
         setUserLocation([longitude, latitude]);
         setLocationPermission("granted");
 
         if (map.current) {
           map.current.flyTo({
-            center: [longitude, latitude], // Konumunuza odakla
+            center: [longitude, latitude], // Focus on your location
             zoom: 16,
             duration: 2000,
           });
           addUserMarker(longitude, latitude);
 
-          // Konum alındıktan sonra pin'leri yükle
+          // Load pins after location is obtained
           setTimeout(() => {
             loadPinsFromMapWithCache();
           }, 1000);
         }
+
+        toast.success("Location obtained successfully", {
+          description: `Accuracy: ${Math.round(accuracy)} meters`,
+        });
       },
       (error) => {
-        console.error("Konum alınamadı:", error);
+        console.error("Location could not be obtained:", {
+          code: error.code,
+          message: error.message,
+          timestamp: new Date().toISOString(),
+        });
         setLocationPermission("denied");
+
+        // User-friendly error messages based on error code
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            toast.error("Location permission denied", {
+              description:
+                "Please enable location access in your browser settings",
+            });
+            break;
+          case error.POSITION_UNAVAILABLE:
+            toast.error("Location information unavailable", {
+              description:
+                "GPS signal is weak or location services are disabled. Try going to an open area",
+            });
+            // Fallback to Istanbul as default location
+            if (map.current) {
+              map.current.flyTo({
+                center: [29.0322, 41.0082], // Istanbul coordinates
+                zoom: 10,
+                duration: 2000,
+              });
+              // Load pins
+              setTimeout(() => {
+                loadPinsFromMapWithCache();
+              }, 1000);
+            }
+            break;
+          case error.TIMEOUT:
+            toast.error("Location request timeout", {
+              description: "Could not get location, please try again",
+            });
+            break;
+          default:
+            toast.error("Location error", {
+              description: `Error code: ${error.code} - ${error.message}`,
+            });
+        }
       },
       {
-        enableHighAccuracy: true,
-        timeout: 20000,
-        maximumAge: 0,
+        enableHighAccuracy: false, // false for faster results
+        timeout: 15000, // 15 second timeout
+        maximumAge: 300000, // 5 minute cache
       }
     );
   };
 
-  // Kullanıcı bilgisini al
-  // useEffect ile kullanıcı bilgisini al
+  // Get user information
+  // Get user information with useEffect
   useEffect(() => {
     getUser();
   }, []);
 
-  // Kullanıcı marker'ını ekleme
+  // Add user marker
   const addUserMarker = (lng: number, lat: number) => {
     if (!map.current) return;
 
@@ -168,15 +219,15 @@ export const useMap = () => {
       .addTo(map.current);
   };
 
-  // Pin oluşturma (DB ile entegre)
+  // Create pin (integrated with DB)
   const createPin = async (data: { pinName: string; comment: string }) => {
     if (!tempPin) {
-      console.error("Temp pin bulunamadı");
+      console.error("Temp pin not found");
       return;
     }
 
     try {
-      console.log("Pin oluşturuluyor:", data, "Konum:", tempPin);
+      console.log("Creating pin:", data, "Location:", tempPin);
 
       const createPinData: CreatePinData = {
         lat: tempPin[1],
@@ -188,7 +239,7 @@ export const useMap = () => {
       const success = await createPinInDB(createPinData);
 
       if (success) {
-        console.log("Pin başarıyla oluşturuldu");
+        console.log("Pin created successfully");
         setShowPinModal(false);
         setTempPin(null);
 
@@ -211,6 +262,10 @@ export const useMap = () => {
   // Debounced loading to prevent too many requests
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Toast throttling to prevent spam
+  const lastToastTimeRef = useRef<number>(0);
+  const TOAST_THROTTLE_MS = 5000; // 5 seconds between toasts
+
   // Cache'li pin yükleme (TanStack Query otomatik olarak cache'i yönetiyor)
   const loadPinsFromMapWithCache = useCallback(
     (forceRefresh = false) => {
@@ -229,6 +284,28 @@ export const useMap = () => {
 
         const bounds = map.current.getBounds();
         const zoom = Math.floor(map.current.getZoom());
+
+        // Minimum zoom level check (same as refresh button)
+        const MIN_ZOOM_LEVEL = 12;
+
+        if (zoom < MIN_ZOOM_LEVEL && !forceRefresh) {
+          console.log(
+            `Zoom level ${zoom} is below minimum ${MIN_ZOOM_LEVEL}, skipping pin fetch`
+          );
+
+          // Show informative toast (throttled to prevent spam)
+          const now = Date.now();
+          if (now - lastToastTimeRef.current > TOAST_THROTTLE_MS) {
+            toast.info("Zoom in closer to see pins", {
+              description: `Zoom to level ${MIN_ZOOM_LEVEL} or higher to load pins`,
+              duration: 3000,
+            });
+            lastToastTimeRef.current = now;
+          }
+
+          setIsRefreshing(false);
+          return;
+        }
 
         // Expand bounds by 20% to preload nearby pins
         const latDiff = bounds.getNorth() - bounds.getSouth();
@@ -306,6 +383,13 @@ export const useMap = () => {
             const comments = await getPinComments(pin.id);
 
             if (comments) {
+              // Check if comments array is empty (could be auto-deleted pin)
+              if (comments.length === 0) {
+                // Pin was auto-deleted, just close popup
+                popup.remove();
+                return;
+              }
+
               setSelectedPin({
                 pinId: pin.id,
                 pinName: pin.name,
@@ -388,6 +472,14 @@ export const useMap = () => {
         // Yorumları hemen yenile ki modalda görünsün - fresh data al
         const updatedComments = await getPinComments(selectedPin.pinId, true); // Force refresh
         if (updatedComments) {
+          // Check if pin was auto-deleted
+          if (updatedComments.length === 0) {
+            // Pin was auto-deleted, close modal
+            setShowPinDetailModal(false);
+            setSelectedPin(null);
+            return true;
+          }
+
           setSelectedPin((prev) =>
             prev ? { ...prev, comments: updatedComments } : null
           );
@@ -417,6 +509,14 @@ export const useMap = () => {
         // Yorumları yenile - fresh data al
         const updatedComments = await getPinComments(selectedPin.pinId, true);
         if (updatedComments) {
+          // Check if pin was auto-deleted
+          if (updatedComments.length === 0) {
+            // Pin was auto-deleted, close modal
+            setShowPinDetailModal(false);
+            setSelectedPin(null);
+            return success;
+          }
+
           setSelectedPin((prev) =>
             prev ? { ...prev, comments: updatedComments } : null
           );
@@ -439,6 +539,14 @@ export const useMap = () => {
         // Yorumları yenile - fresh data al
         const updatedComments = await getPinComments(selectedPin.pinId, true);
         if (updatedComments) {
+          // Check if pin was auto-deleted
+          if (updatedComments.length === 0) {
+            // Pin was auto-deleted, close modal
+            setShowPinDetailModal(false);
+            setSelectedPin(null);
+            return success;
+          }
+
           setSelectedPin((prev) =>
             prev ? { ...prev, comments: updatedComments } : null
           );
@@ -466,6 +574,14 @@ export const useMap = () => {
         // Başarılı olursa yorumları yenile ki güncel vote sayıları gelsin - fresh data al
         const updatedComments = await getPinComments(selectedPin.pinId, true);
         if (updatedComments) {
+          // Check if pin was auto-deleted
+          if (updatedComments.length === 0) {
+            // Pin was auto-deleted, close modal
+            setShowPinDetailModal(false);
+            setSelectedPin(null);
+            return success;
+          }
+
           setSelectedPin((prev) =>
             prev ? { ...prev, comments: updatedComments } : null
           );
@@ -568,6 +684,10 @@ export const useMap = () => {
 
       map.current.on("load", () => {
         console.log("CartoDB haritası yüklendi!");
+        // İlk zoom seviyesini ayarla
+        if (map.current) {
+          setCurrentZoom(map.current.getZoom());
+        }
         getUserLocation();
         // Harita yüklendiğinde pin'leri yükle
         loadPinsFromMapWithCache();
@@ -578,8 +698,11 @@ export const useMap = () => {
         loadPinsFromMapWithCache();
       });
 
-      // Harita zoom olduğunda da pin'leri yeniden yükle
+      // Harita zoom olduğunda da pin'leri yeniden yükle ve zoom seviyesini güncelle
       map.current.on("zoomend", () => {
+        if (map.current) {
+          setCurrentZoom(map.current.getZoom());
+        }
         loadPinsFromMapWithCache();
       });
     }
@@ -637,5 +760,6 @@ export const useMap = () => {
     refreshPins,
     isRefreshing,
     getPinComments,
+    currentZoom,
   };
 };
