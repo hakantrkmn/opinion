@@ -33,18 +33,18 @@ export default function Auth() {
     try {
       const { error } = isLogin
         ? await supabase.auth.signInWithPassword({
-            email,
-            password,
-          })
+          email,
+          password,
+        })
         : await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-              data: {
-                display_name: displayName,
-              },
+          email,
+          password,
+          options: {
+            data: {
+              display_name: displayName,
             },
-          });
+          },
+        });
       console.log(error);
       if (error) {
         setError(error.message);
@@ -63,8 +63,8 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <div className="text-center pt-6 pb-2">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            oPINion
+          <h1 className="text-3xl font-bold text-foreground">
+            <span className="font-serif">oPINion</span>
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Share your thoughts on the map

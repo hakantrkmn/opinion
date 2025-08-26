@@ -12,6 +12,13 @@ import type {
 } from "@/types";
 
 import { generateUserMarkerHTML } from "@/components/UserMarker";
+import {
+  checkGeolocationSupport,
+  getDetailedErrorMessage,
+  getGeolocationWithFallback,
+  getMobileInstructions,
+  isHTTPS,
+} from "@/utils/geolocation";
 import { parseLocation } from "@/utils/mapUtils";
 import { mapStyles } from "@/utils/variables";
 import maplibregl from "maplibre-gl";
@@ -103,11 +110,21 @@ export const useMap = () => {
     detect: LongPressEventType.Pointer,
   });
 
-  // Get user location
-  const getUserLocation = () => {
+  // Get user location with improved mobile support
+  const getUserLocation = async () => {
     setLocationPermission("loading");
 
-    if (!navigator.geolocation) {
+    // Check HTTPS requirement
+    if (!isHTTPS()) {
+      setLocationPermission("denied");
+      toast.error("HTTPS Required", {
+        description: "Location services require a secure connection (HTTPS)",
+      });
+      return;
+    }
+
+    // Check geolocation support
+    if (!checkGeolocationSupport()) {
       setLocationPermission("denied");
       toast.error("Location services not supported", {
         description: "Your browser doesn't support location services",
@@ -115,16 +132,18 @@ export const useMap = () => {
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude, accuracy } = position.coords;
+    try {
+      const result = await getGeolocationWithFallback();
+
+      if (result.success && result.position) {
+        const { latitude, longitude, accuracy } = result.position.coords;
         console.log("Location accuracy:", accuracy, "meters");
         setUserLocation([longitude, latitude]);
         setLocationPermission("granted");
 
         if (map.current) {
           map.current.flyTo({
-            center: [longitude, latitude], // Focus on your location
+            center: [longitude, latitude],
             zoom: 16,
             duration: 2000,
           });
@@ -139,58 +158,52 @@ export const useMap = () => {
         toast.success("Location obtained successfully", {
           description: `Accuracy: ${Math.round(accuracy)} meters`,
         });
-      },
-      (error) => {
+      } else if (result.error) {
         console.error("Location could not be obtained:", {
-          code: error.code,
-          message: error.message,
+          code: result.error.code,
+          message: result.error.message,
           timestamp: new Date().toISOString(),
         });
         setLocationPermission("denied");
 
-        // User-friendly error messages based on error code
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            toast.error("Location permission denied", {
-              description:
-                "Please enable location access in your browser settings",
-            });
-            break;
-          case error.POSITION_UNAVAILABLE:
-            toast.error("Location information unavailable", {
-              description:
-                "GPS signal is weak or location services are disabled. Try going to an open area",
-            });
-            // Fallback to Istanbul as default location
-            if (map.current) {
-              map.current.flyTo({
-                center: [29.0322, 41.0082], // Istanbul coordinates
-                zoom: 10,
-                duration: 2000,
-              });
-              // Load pins
-              setTimeout(() => {
-                loadPinsFromMapWithCache();
-              }, 1000);
-            }
-            break;
-          case error.TIMEOUT:
-            toast.error("Location request timeout", {
-              description: "Could not get location, please try again",
-            });
-            break;
-          default:
-            toast.error("Location error", {
-              description: `Error code: ${error.code} - ${error.message}`,
-            });
+        const errorMessage = getDetailedErrorMessage(result.error);
+        const instructions = getMobileInstructions();
+
+        toast.error("Location unavailable", {
+          description: errorMessage,
+        });
+
+        // Show mobile-specific instructions
+        setTimeout(() => {
+          toast.info("Mobile device instructions", {
+            description: instructions.join(" • "),
+            duration: 8000,
+          });
+        }, 2000);
+
+        // Fallback to Istanbul for position unavailable errors
+        if (
+          result.error.code === result.error.POSITION_UNAVAILABLE &&
+          map.current
+        ) {
+          map.current.flyTo({
+            center: [29.0322, 41.0082], // Istanbul coordinates
+            zoom: 10,
+            duration: 2000,
+          });
+          // Load pins
+          setTimeout(() => {
+            loadPinsFromMapWithCache();
+          }, 1000);
         }
-      },
-      {
-        enableHighAccuracy: false, // false for faster results
-        timeout: 15000, // 15 second timeout
-        maximumAge: 300000, // 5 minute cache
       }
-    );
+    } catch (error) {
+      console.error("Unexpected geolocation error:", error);
+      setLocationPermission("denied");
+      toast.error("Unexpected error", {
+        description: "An error occurred while getting location",
+      });
+    }
   };
 
   // Get user information
@@ -639,7 +652,7 @@ export const useMap = () => {
     setCurrentStyle(styleName);
   };
 
-  // Konuma git
+  // Go to user location
   const goToUserLocation = () => {
     if (map.current && userLocation) {
       map.current.flyTo({
