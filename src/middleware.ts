@@ -8,8 +8,11 @@ export async function middleware(request: NextRequest) {
   }
 
   // Sitemap ve robots.txt için middleware bypass
-  if (request.nextUrl.pathname === "/sitemap.xml" || 
-      request.nextUrl.pathname === "/robots.txt") {
+  if (
+    request.nextUrl.pathname === "/sitemap.xml" ||
+    request.nextUrl.pathname === "/robots.txt" ||
+    request.nextUrl.pathname === "/googleb77d2e6c4cda70af.html"
+  ) {
     return NextResponse.next();
   }
 
