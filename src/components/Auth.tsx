@@ -56,7 +56,13 @@ export default function Auth() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
+        <div className="text-center pt-6 pb-2">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            oPINion
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">Share your thoughts on the map</p>
+        </div>
+        <CardHeader className="space-y-1 text-center pt-2">
           <CardTitle className="text-xl sm:text-2xl font-bold">
             {isLogin ? "Sign In" : "Create Account"}
           </CardTitle>
