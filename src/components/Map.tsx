@@ -175,13 +175,14 @@ export default function Map() {
           currentUserId={user?.id || ""}
           loading={pinsLoading}
           onRefresh={async () => {
-            // Refresh pin comments
+            // Refresh only pin comments, not all pins
             if (selectedPin) {
               try {
-                const comments = await getPinComments(selectedPin.pinId);
+                const comments = await getPinComments(selectedPin.pinId, true); // Force fresh data
                 if (comments) {
                   setSelectedPin((prev) => (prev ? { ...prev, comments } : null));
                 }
+                // Note: We don't refresh all pins here, only comments
               } catch (error) {
                 console.error("Failed to refresh comments:", error);
               }

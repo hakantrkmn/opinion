@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
-import { LogOut, Search, User } from "lucide-react";
+import { LogOut, Search, Shield, User } from "lucide-react";
 import Link from "next/link";
 
 export default function Header() {
@@ -45,6 +45,14 @@ export default function Header() {
                     {user.email}
                   </span>
                 </div>
+                {user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL && (
+                  <Button variant="ghost" size="sm" asChild className="hidden sm:flex">
+                    <Link href="/admin">
+                      <Shield className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Admin</span>
+                    </Link>
+                  </Button>
+                )}
                 <Button variant="ghost" size="sm" asChild className="hidden sm:flex">
                   <Link href="/profile">
                     <User className="h-4 w-4 sm:mr-2" />

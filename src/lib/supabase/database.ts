@@ -61,7 +61,14 @@ export const pinService = {
         commentId: comment.id,
       });
 
-      return { pin, error: null };
+      // Pin'i comment count ile birlikte döndür
+      const pinWithCommentCount = {
+        ...pin,
+        comment_count: 1, // İlk yorum eklendi
+        comments_count: 1, // Alternatif field name
+      };
+
+      return { pin: pinWithCommentCount, error: null };
     } catch (error) {
       console.error("createPin error:", error);
       return { pin: null, error: "Pin oluşturulurken hata oluştu" };

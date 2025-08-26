@@ -262,6 +262,11 @@ export class HybridCacheManager {
     this.spatialIndex = {};
   }
 
+  // Alias for clear
+  clearAll(): void {
+    this.clear();
+  }
+
   // Get cache stats
   getStats() {
     const totalHits = Array.from(this.pinCache.values()).reduce(

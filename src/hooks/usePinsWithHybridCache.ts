@@ -57,7 +57,10 @@ export interface UsePinsWithHybridCacheReturn {
   deletePin: (pinId: string) => Promise<boolean>;
 
   // Comments
-  getPinComments: (pinId: string) => Promise<EnhancedComment[] | null>;
+  getPinComments: (
+    pinId: string,
+    forceRefresh?: boolean
+  ) => Promise<EnhancedComment[] | null>;
   addComment: (pinId: string, text: string) => Promise<boolean>;
   editComment: (commentId: string, newText: string) => Promise<boolean>;
   deleteComment: (commentId: string) => Promise<boolean>;
@@ -160,17 +163,31 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
     },
     onSuccess: (newPin) => {
       if (newPin) {
+        // Ensure the new pin has correct comment count (should be 1 since we create with initial comment)
+        const pinWithCorrectCount = {
+          ...newPin,
+          comment_count: 1, // Pin is created with initial comment
+        };
+
         // Add to hybrid cache
-        hybridCache.cachePin(newPin);
+        hybridCache.cachePin(pinWithCorrectCount);
 
         // Add to all relevant TanStack Query caches
         queryClient.setQueriesData(
           { queryKey: pinQueryKeys.all },
           (oldData: Pin[] | undefined) => {
-            if (!oldData) return [newPin];
-            return [newPin, ...oldData];
+            if (!oldData) return [pinWithCorrectCount];
+            return [pinWithCorrectCount, ...oldData];
           }
         );
+
+        // Invalidate all bounds queries to force refresh
+        queryClient.invalidateQueries({
+          queryKey: ["pins", "bounds"],
+        });
+
+        // Also clear hybrid cache to force fresh data
+        hybridCache.clearAll();
 
         toast.success("Pin created successfully!");
       }
@@ -213,7 +230,10 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
 
   // Get pin comments
   const getPinComments = useCallback(
-    async (pinId: string): Promise<EnhancedComment[] | null> => {
+    async (
+      pinId: string,
+      forceRefresh = false
+    ): Promise<EnhancedComment[] | null> => {
       try {
         const data = await queryClient.fetchQuery({
           queryKey: pinQueryKeys.comments(pinId),
@@ -222,7 +242,7 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
             if (error) throw new Error(error);
             return comments || [];
           },
-          staleTime: 2 * 60 * 1000, // 2 minutes for comments
+          staleTime: forceRefresh ? 0 : 2 * 60 * 1000, // Force fresh data if requested
         });
 
         // Convert to enhanced comments
@@ -259,7 +279,7 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
         // Update hybrid cache
         hybridCache.updateCommentCountInCache(pinId, 1);
 
-        // Invalidate comments cache for this pin
+        // Invalidate comments cache for this pin to force immediate refresh
         queryClient.invalidateQueries({
           queryKey: pinQueryKeys.comments(pinId),
         });
@@ -276,6 +296,9 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
             );
           }
         );
+
+        // Note: No need to invalidate bounds queries, just update the cache data
+        // The comment count is already updated above
 
         toast.success("Comment added successfully!");
       }

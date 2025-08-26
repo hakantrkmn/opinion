@@ -192,10 +192,8 @@ export const useMap = () => {
         setShowPinModal(false);
         setTempPin(null);
 
-        // Kısa bir gecikme sonrası haritayı yenile (DB'nin güncellenmesi için)
-        setTimeout(() => {
-          loadPinsFromMapWithCache(true); // Force refresh
-        }, 500);
+        // Immediately force refresh to show the new pin with correct comment count
+        loadPinsFromMapWithCache(true); // Force refresh
 
         // Başarı mesajı gösterilebilir
         console.log("Pin ve ilk yorum başarıyla oluşturuldu!");
@@ -378,22 +376,25 @@ export const useMap = () => {
     });
   }, [addPinToMap, pins]);
 
-  // Yorum ekleme (optimistic hook kullanarak)
+  // Yorum ekleme (cache ile entegre)
   const handleAddComment = async (text: string): Promise<boolean> => {
     if (!selectedPin) return false;
 
     try {
-      // Optimistic hook otomatik olarak optimistic update yapacak
+      // Yorum ekle
       const success = await addComment(selectedPin.pinId, text);
 
       if (success) {
-        // Başarılı olursa yorumları yenile ki gerçek ID'ler gelsin
-        const updatedComments = await getPinComments(selectedPin.pinId);
+        // Yorumları hemen yenile ki modalda görünsün - fresh data al
+        const updatedComments = await getPinComments(selectedPin.pinId, true); // Force refresh
         if (updatedComments) {
           setSelectedPin((prev) =>
             prev ? { ...prev, comments: updatedComments } : null
           );
         }
+
+        // Note: Cache is already updated in usePinsWithHybridCache mutation
+        // No need to refresh all pins, just the comment count is updated automatically
       }
 
       return success;
@@ -413,8 +414,8 @@ export const useMap = () => {
     try {
       const success = await editComment(commentId, newText);
       if (success) {
-        // Yorumları yenile
-        const updatedComments = await getPinComments(selectedPin.pinId);
+        // Yorumları yenile - fresh data al
+        const updatedComments = await getPinComments(selectedPin.pinId, true);
         if (updatedComments) {
           setSelectedPin((prev) =>
             prev ? { ...prev, comments: updatedComments } : null
@@ -435,8 +436,8 @@ export const useMap = () => {
     try {
       const success = await deleteComment(commentId);
       if (success) {
-        // Yorumları yenile
-        const updatedComments = await getPinComments(selectedPin.pinId);
+        // Yorumları yenile - fresh data al
+        const updatedComments = await getPinComments(selectedPin.pinId, true);
         if (updatedComments) {
           setSelectedPin((prev) =>
             prev ? { ...prev, comments: updatedComments } : null
@@ -462,8 +463,8 @@ export const useMap = () => {
       const success = await voteComment(commentId, value);
 
       if (success) {
-        // Başarılı olursa yorumları yenile ki güncel vote sayıları gelsin
-        const updatedComments = await getPinComments(selectedPin.pinId);
+        // Başarılı olursa yorumları yenile ki güncel vote sayıları gelsin - fresh data al
+        const updatedComments = await getPinComments(selectedPin.pinId, true);
         if (updatedComments) {
           setSelectedPin((prev) =>
             prev ? { ...prev, comments: updatedComments } : null
