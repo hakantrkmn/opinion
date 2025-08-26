@@ -55,7 +55,7 @@ export const useMap = () => {
   const [currentZoom, setCurrentZoom] = useState<number>(10);
   // State for batch loaded comments
   const [batchComments, setBatchComments] = useState<{
-    [pinId: string]: any[];
+    [pinId: string]: Comment[];
   }>({});
   const [commentsLoading, setCommentsLoading] = useState(false);
 

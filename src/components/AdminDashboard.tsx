@@ -116,6 +116,49 @@ export default function AdminDashboard() {
     }
   };
 
+  const refreshAllStats = async () => {
+    if (!user?.email) return;
+
+    try {
+      console.log("🔄 Refreshing all user statistics from admin panel...");
+      toast.info("Refreshing all user statistics...", {
+        description: "This may take a few moments",
+      });
+
+      const headers = {
+        "x-user-email": user.email,
+        "Content-Type": "application/json",
+      };
+
+      const response = await fetch("/api/admin/refresh-stats", {
+        method: "POST",
+        headers,
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log("✅ All user statistics refreshed successfully:", result);
+        toast.success("User statistics refreshed successfully!", {
+          description: "All user statistics have been recalculated",
+        });
+
+        // Refresh analytics data to show updated stats
+        fetchData();
+      } else {
+        const error = await response.json();
+        console.error("❌ Failed to refresh user statistics:", error);
+        toast.error("Failed to refresh user statistics", {
+          description: error.message || "Unknown error occurred",
+        });
+      }
+    } catch (error) {
+      console.error("❌ Error refreshing user statistics:", error);
+      toast.error("Failed to refresh user statistics", {
+        description: "Network error or server unavailable",
+      });
+    }
+  };
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -219,10 +262,16 @@ export default function AdminDashboard() {
             Manage users, pins, and comments
           </p>
         </div>
-        <Button onClick={fetchData} variant="outline">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={refreshAllStats} variant="outline">
+            <BarChart3 className="h-4 w-4 mr-2" />
+            Refresh Stats
+          </Button>
+          <Button onClick={fetchData} variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>

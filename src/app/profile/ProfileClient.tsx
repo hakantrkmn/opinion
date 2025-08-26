@@ -2,12 +2,26 @@
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { userService } from "@/lib/supabase/userService";
-import { Comment, Pin } from "@/types";
+import type { Comment, Pin } from "@/types";
 import type { User } from "@supabase/supabase-js";
-import { Calendar, Loader2, MapPin, MessageCircle, ThumbsDown, ThumbsUp, User as UserIcon } from "lucide-react";
+import {
+  Calendar,
+  Loader2,
+  MapPin,
+  MessageCircle,
+  ThumbsDown,
+  ThumbsUp,
+  User as UserIcon,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 
 type TabType = "stats" | "pins" | "comments";
@@ -23,26 +37,44 @@ export function ProfileClient({ user }: ProfileClientProps) {
     totalComments: number;
     totalLikes: number;
     totalDislikes: number;
+    totalVotesGiven?: number;
+    lastActivityAt?: string;
+  } | null>(null);
+  const [performanceInfo, setPerformanceInfo] = useState<{
+    queryTime: number;
+    method: string;
+    improvement?: string;
   } | null>(null);
   const [pins, setPins] = useState<Pin[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load statistics
+  // Load statistics with performance tracking
   useEffect(() => {
     const loadStats = async () => {
       setLoading(true);
-      const { stats: userStats, error } = await userService.getUserStats(user.id);
+
+      const {
+        stats: userStats,
+        performanceInfo: perfInfo,
+        error,
+      } = await userService.getUserStatsWithPerformanceInfo(user.id);
+
       if (error) {
         setError(error);
       } else {
-        setStats(userStats as {
-          totalPins: number;
-          totalComments: number;
-          totalLikes: number;
-          totalDislikes: number;
-        } | null);
+        setStats(
+          userStats as {
+            totalPins: number;
+            totalComments: number;
+            totalLikes: number;
+            totalDislikes: number;
+            totalVotesGiven?: number;
+            lastActivityAt?: string;
+          } | null
+        );
+        setPerformanceInfo(perfInfo);
       }
       setLoading(false);
     };
@@ -68,7 +100,8 @@ export function ProfileClient({ user }: ProfileClientProps) {
 
     if (tab === "comments" && comments.length === 0) {
       setLoading(true);
-      const { comments: userComments, error } = await userService.getUserComments(user.id);
+      const { comments: userComments, error } =
+        await userService.getUserComments(user.id);
       if (error) {
         setError(error);
       } else {
@@ -89,25 +122,39 @@ export function ProfileClient({ user }: ProfileClientProps) {
             </div>
             <div className="min-w-0 flex-1">
               <CardTitle className="text-xl sm:text-2xl">Profile</CardTitle>
-              <CardDescription className="text-sm sm:text-base break-all">{user.email}</CardDescription>
+              <CardDescription className="text-sm sm:text-base break-all">
+                {user.email}
+              </CardDescription>
             </div>
           </div>
         </CardHeader>
 
         <CardContent className="p-4 sm:p-6">
-          <Tabs value={activeTab} onValueChange={(value) => handleTabChange(value as TabType)}>
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => handleTabChange(value as TabType)}
+          >
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="stats" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <TabsTrigger
+                value="stats"
+                className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+              >
                 <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Statistics</span>
                 <span className="sm:hidden">Stats</span>
               </TabsTrigger>
-              <TabsTrigger value="pins" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <TabsTrigger
+                value="pins"
+                className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+              >
                 <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">My Pins</span>
                 <span className="sm:hidden">Pins</span>
               </TabsTrigger>
-              <TabsTrigger value="comments" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <TabsTrigger
+                value="comments"
+                className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+              >
                 <MessageCircle className="h-3 w-3 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">My Comments</span>
                 <span className="sm:hidden">Comments</span>
@@ -129,7 +176,7 @@ export function ProfileClient({ user }: ProfileClientProps) {
 
             <TabsContent value="stats" className="mt-4 sm:mt-6">
               {!loading && stats && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6">
                   <Card>
                     <CardContent className="p-4 sm:p-6">
                       <div className="flex items-center">
@@ -139,8 +186,12 @@ export function ProfileClient({ user }: ProfileClientProps) {
                           </div>
                         </div>
                         <div className="ml-3 sm:ml-4 min-w-0">
-                          <p className="text-xs sm:text-sm font-medium text-muted-foreground">Total Pins</p>
-                          <p className="text-xl sm:text-2xl font-bold">{stats.totalPins}</p>
+                          <p className="text-xs sm:text-sm font-medium text-muted-foreground">
+                            Total Pins
+                          </p>
+                          <p className="text-xl sm:text-2xl font-bold">
+                            {stats.totalPins}
+                          </p>
                         </div>
                       </div>
                     </CardContent>
@@ -155,8 +206,12 @@ export function ProfileClient({ user }: ProfileClientProps) {
                           </div>
                         </div>
                         <div className="ml-3 sm:ml-4 min-w-0">
-                          <p className="text-xs sm:text-sm font-medium text-muted-foreground">Total Comments</p>
-                          <p className="text-xl sm:text-2xl font-bold">{stats.totalComments}</p>
+                          <p className="text-xs sm:text-sm font-medium text-muted-foreground">
+                            Total Comments
+                          </p>
+                          <p className="text-xl sm:text-2xl font-bold">
+                            {stats.totalComments}
+                          </p>
                         </div>
                       </div>
                     </CardContent>
@@ -171,8 +226,12 @@ export function ProfileClient({ user }: ProfileClientProps) {
                           </div>
                         </div>
                         <div className="ml-3 sm:ml-4 min-w-0">
-                          <p className="text-xs sm:text-sm font-medium text-muted-foreground">Total Likes</p>
-                          <p className="text-xl sm:text-2xl font-bold">{stats.totalLikes}</p>
+                          <p className="text-xs sm:text-sm font-medium text-muted-foreground">
+                            Total Likes
+                          </p>
+                          <p className="text-xl sm:text-2xl font-bold">
+                            {stats.totalLikes}
+                          </p>
                         </div>
                       </div>
                     </CardContent>
@@ -187,8 +246,42 @@ export function ProfileClient({ user }: ProfileClientProps) {
                           </div>
                         </div>
                         <div className="ml-3 sm:ml-4 min-w-0">
-                          <p className="text-xs sm:text-sm font-medium text-muted-foreground">Total Dislikes</p>
-                          <p className="text-xl sm:text-2xl font-bold">{stats.totalDislikes}</p>
+                          <p className="text-xs sm:text-sm font-medium text-muted-foreground">
+                            Total Dislikes
+                          </p>
+                          <p className="text-xl sm:text-2xl font-bold">
+                            {stats.totalDislikes}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-4 sm:p-6">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                            <svg
+                              className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.293l-3-3a1 1 0 00-1.414 1.414L10.586 9.5H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="ml-3 sm:ml-4 min-w-0">
+                          <p className="text-xs sm:text-sm font-medium text-muted-foreground">
+                            Votes Given
+                          </p>
+                          <p className="text-xl sm:text-2xl font-bold">
+                            {stats.totalVotesGiven || 0}
+                          </p>
                         </div>
                       </div>
                     </CardContent>
@@ -204,9 +297,12 @@ export function ProfileClient({ user }: ProfileClientProps) {
                     <Card>
                       <CardContent className="p-8 sm:p-12 text-center">
                         <MapPin className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-4" />
-                        <CardTitle className="text-base sm:text-lg mb-2">No pins yet</CardTitle>
+                        <CardTitle className="text-base sm:text-lg mb-2">
+                          No pins yet
+                        </CardTitle>
                         <CardDescription className="text-sm">
-                          Click on the map to create your first pin and share your opinion!
+                          Click on the map to create your first pin and share
+                          your opinion!
                         </CardDescription>
                       </CardContent>
                     </Card>
@@ -223,15 +319,21 @@ export function ProfileClient({ user }: ProfileClientProps) {
                               <div className="flex items-center gap-2 mt-2 text-xs sm:text-sm text-muted-foreground">
                                 <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                                 <span className="truncate">
-                                  {new Date(pin.created_at).toLocaleDateString("en-US", {
-                                    day: "numeric",
-                                    month: "short",
-                                    year: "numeric",
-                                  })}
+                                  {new Date(pin.created_at).toLocaleDateString(
+                                    "en-US",
+                                    {
+                                      day: "numeric",
+                                      month: "short",
+                                      year: "numeric",
+                                    }
+                                  )}
                                 </span>
                               </div>
                             </div>
-                            <Badge variant="secondary" className="flex items-center gap-1 text-xs sm:text-sm flex-shrink-0">
+                            <Badge
+                              variant="secondary"
+                              className="flex items-center gap-1 text-xs sm:text-sm flex-shrink-0"
+                            >
                               <MessageCircle className="h-3 w-3" />
                               {pin.comments_count || 0}
                               <span className="hidden sm:inline">comments</span>
@@ -252,7 +354,9 @@ export function ProfileClient({ user }: ProfileClientProps) {
                     <Card>
                       <CardContent className="p-8 sm:p-12 text-center">
                         <MessageCircle className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-4" />
-                        <CardTitle className="text-base sm:text-lg mb-2">No comments yet</CardTitle>
+                        <CardTitle className="text-base sm:text-lg mb-2">
+                          No comments yet
+                        </CardTitle>
                         <CardDescription className="text-sm">
                           Click on pins to share your thoughts and opinions!
                         </CardDescription>
@@ -271,13 +375,19 @@ export function ProfileClient({ user }: ProfileClientProps) {
                                 <span className="flex items-center gap-1">
                                   <MapPin className="h-3 w-3 flex-shrink-0" />
                                   <span className="truncate">
-                                    {(comment as Comment & { pins?: { name: string } }).pins?.name || "Unknown Pin"}
+                                    {(
+                                      comment as Comment & {
+                                        pins?: { name: string };
+                                      }
+                                    ).pins?.name || "Unknown Pin"}
                                   </span>
                                 </span>
                                 <span className="flex items-center gap-1">
                                   <Calendar className="h-3 w-3 flex-shrink-0" />
                                   <span className="truncate">
-                                    {new Date(comment.created_at).toLocaleDateString("en-US", {
+                                    {new Date(
+                                      comment.created_at
+                                    ).toLocaleDateString("en-US", {
                                       day: "numeric",
                                       month: "short",
                                       year: "numeric",
@@ -287,7 +397,10 @@ export function ProfileClient({ user }: ProfileClientProps) {
                               </div>
                             </div>
                             <div className="flex justify-end">
-                              <Badge variant="outline" className="flex items-center gap-1 text-xs">
+                              <Badge
+                                variant="outline"
+                                className="flex items-center gap-1 text-xs"
+                              >
                                 <ThumbsUp className="h-3 w-3" />
                                 {comment.vote_count || 0}
                                 <span className="hidden sm:inline">votes</span>
