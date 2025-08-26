@@ -12,6 +12,7 @@ import type {
 } from "@/types";
 
 import { generateUserMarkerHTML } from "@/components/UserMarker";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import {
   checkGeolocationSupport,
   checkIOSPermissionState,
@@ -58,6 +59,9 @@ export const useMap = () => {
     [pinId: string]: Comment[];
   }>({});
   const [commentsLoading, setCommentsLoading] = useState(false);
+
+  // Get user profile data including avatar
+  const { profile } = useUserProfile();
 
   const getUser = async () => {
     const supabase = createClient();
@@ -392,9 +396,19 @@ export const useMap = () => {
       userMarker.current.remove();
     }
 
+    // Debug avatar data
+    console.log("UserMarker Debug:", {
+      avatarUrl: profile?.avatar_url,
+      displayName: profile?.display_name,
+      hasProfile: !!profile
+    });
+
     const markerElement = document.createElement("div");
     markerElement.className = "user-marker";
-    markerElement.innerHTML = generateUserMarkerHTML();
+    markerElement.innerHTML = generateUserMarkerHTML(
+      profile?.avatar_url,
+      profile?.display_name
+    );
 
     userMarker.current = new maplibregl.Marker({
       element: markerElement,

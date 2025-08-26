@@ -1,9 +1,9 @@
 -- Add avatar_url column to users table for avatar functionality
--- Migration: 20250826160000_add_avatar_column.sql
+-- Migration: 20250826155900_add_avatar_column.sql
 
 -- Add avatar_url column to users table
 ALTER TABLE users 
-ADD COLUMN avatar_url TEXT;
+ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 
 -- Add comment for documentation
 COMMENT ON COLUMN users.avatar_url IS 'URL path to user avatar image stored in Supabase Storage';

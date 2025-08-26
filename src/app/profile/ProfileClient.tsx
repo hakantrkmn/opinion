@@ -120,7 +120,12 @@ export function ProfileClient({ user }: ProfileClientProps) {
 
   // Handle profile updates
   const handleProfileUpdate = (updates: { display_name?: string; avatar_url?: string | null }) => {
-    updateProfile(updates);
+    // Convert null to undefined to match UserProfile interface
+    const normalizedUpdates = {
+      ...updates,
+      avatar_url: updates.avatar_url || undefined
+    };
+    updateProfile(normalizedUpdates);
   };
 
   return (

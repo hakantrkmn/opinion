@@ -36,6 +36,13 @@ export const userService = {
         return { avatarUrl: null, error: "File size must be less than 5MB" };
       }
 
+      // Get current avatar URL to delete old one
+      const { data: currentUser } = await supabase
+        .from('users')
+        .select('avatar_url')
+        .eq('id', userId)
+        .single();
+
       // Create unique filename with timestamp to prevent caching issues
       const fileExt = file.name.split('.').pop();
       const fileName = `${userId}/avatar-${Date.now()}.${fileExt}`;
@@ -71,6 +78,20 @@ export const userService = {
         // Clean up uploaded file
         await supabase.storage.from('avatars').remove([uploadData.path]);
         return { avatarUrl: null, error: "Failed to save avatar. Please try again." };
+      }
+
+      // Clean up old avatar file if it exists
+      if (currentUser?.avatar_url) {
+        try {
+          const oldPath = currentUser.avatar_url.split('/avatars/')[1];
+          if (oldPath && oldPath !== uploadData.path) {
+            await supabase.storage.from('avatars').remove([oldPath]);
+            console.log("🗑️ Old avatar cleaned up:", oldPath);
+          }
+        } catch (cleanupError) {
+          console.warn("⚠️ Failed to cleanup old avatar:", cleanupError);
+          // Don't fail the upload if cleanup fails
+        }
       }
 
       const endTime = performance.now();
