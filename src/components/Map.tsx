@@ -304,51 +304,61 @@ export default function Map() {
       />
 
       {/* Pin Detail Modal */}
-      {selectedPin && (
-        <PinDetailModal
-          isOpen={showPinDetailModal}
-          onClose={() => {
-            setShowPinDetailModal(false);
-            setSelectedPin(null);
-            // Clear map popups when modal is closed
-            const existingPopups =
-              document.querySelectorAll(".maplibregl-popup");
-            existingPopups.forEach((popup) => popup.remove());
-          }}
-          pinName={selectedPin?.pinName || ""}
-          comments={selectedPin?.comments || []}
-          onAddComment={handleAddComment}
-          onEditComment={handleEditComment}
-          onDeleteComment={handleDeleteComment}
-          onVoteComment={handleVoteComment}
-          currentUserId={user?.id || ""}
-          loading={pinsLoading}
-          onRefresh={async () => {
-            // Refresh only pin comments, not all pins
-            if (selectedPin) {
-              try {
-                const comments = await getPinComments(selectedPin.pinId, true); // Force fresh data
-                if (comments) {
-                  // Check if pin was auto-deleted
-                  if (comments.length === 0) {
-                    // Pin was auto-deleted, close modal
-                    setShowPinDetailModal(false);
-                    setSelectedPin(null);
-                    return;
-                  }
+      {selectedPin && (() => {
+        // Find the actual pin object to get coordinates
+        const actualPin = mapPins.find(pin => pin.id === selectedPin.pinId);
+        const coordinates = actualPin ? {
+          lat: actualPin.location.coordinates[1], // GeoJSON format: [lng, lat]
+          lng: actualPin.location.coordinates[0]
+        } : undefined;
+        
+        return (
+          <PinDetailModal
+            isOpen={showPinDetailModal}
+            onClose={() => {
+              setShowPinDetailModal(false);
+              setSelectedPin(null);
+              // Clear map popups when modal is closed
+              const existingPopups =
+                document.querySelectorAll(".maplibregl-popup");
+              existingPopups.forEach((popup) => popup.remove());
+            }}
+            pinName={selectedPin?.pinName || ""}
+            pinCoordinates={coordinates}
+            comments={selectedPin?.comments || []}
+            onAddComment={handleAddComment}
+            onEditComment={handleEditComment}
+            onDeleteComment={handleDeleteComment}
+            onVoteComment={handleVoteComment}
+            currentUserId={user?.id || ""}
+            loading={pinsLoading}
+            onRefresh={async () => {
+              // Refresh only pin comments, not all pins
+              if (selectedPin) {
+                try {
+                  const comments = await getPinComments(selectedPin.pinId, true); // Force fresh data
+                  if (comments) {
+                    // Check if pin was auto-deleted
+                    if (comments.length === 0) {
+                      // Pin was auto-deleted, close modal
+                      setShowPinDetailModal(false);
+                      setSelectedPin(null);
+                      return;
+                    }
 
-                  setSelectedPin((prev) =>
-                    prev ? { ...prev, comments } : null
-                  );
+                    setSelectedPin((prev) =>
+                      prev ? { ...prev, comments } : null
+                    );
+                  }
+                  // Note: We don't refresh all pins here, only comments
+                } catch (error) {
+                  console.error("Failed to refresh comments:", error);
                 }
-                // Note: We don't refresh all pins here, only comments
-              } catch (error) {
-                console.error("Failed to refresh comments:", error);
               }
-            }
-          }}
-        />
-      )}
+            }}
+          />
+        );
+      })()}
 
       {/* Pin Markers */}
       {mapPins.map((pin) => (

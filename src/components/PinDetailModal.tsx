@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { commentSortManager, type SortCriteria } from "@/lib/comment-sort-manager";
 import type { Comment, EnhancedComment } from "@/types";
-import { Loader2, MapPin, MessageCircle, RefreshCcw, Send } from "lucide-react";
+import { Loader2, MapPin, MessageCircle, Navigation, RefreshCcw, Send } from "lucide-react";
 import { useMemo, useState } from "react";
 import CommentItem from "./CommentItem";
 import CommentSortDropdown from "./CommentSortDropdown";
@@ -15,6 +15,7 @@ interface PinDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   pinName: string;
+  pinCoordinates?: { lat: number; lng: number };
   comments: (Comment | EnhancedComment)[];
   onAddComment: (text: string) => Promise<boolean>;
   onEditComment: (commentId: string, newText: string) => Promise<boolean>;
@@ -29,6 +30,7 @@ export default function PinDetailModal({
   isOpen,
   onClose,
   pinName,
+  pinCoordinates,
   comments,
   onAddComment,
   onEditComment,
@@ -62,6 +64,15 @@ export default function PinDetailModal({
     }
   };
 
+  const handleDirections = () => {
+    if (!pinCoordinates) return;
+    
+    const { lat, lng } = pinCoordinates;
+    const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+    
+    window.open(googleMapsUrl, '_blank', 'noopener,noreferrer');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim()) return;
@@ -93,24 +104,51 @@ export default function PinDetailModal({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-[95vw] max-w-2xl h-[85vh] sm:h-[80vh] flex flex-col p-4 sm:p-6">
-        <DialogHeader className="flex-shrink-0">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center gap-2 min-w-0">
-              <MapPin className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-              <div className="min-w-0 flex-1">
-                <DialogTitle className="text-lg sm:text-xl truncate">{pinName}</DialogTitle>
-                <DialogDescription className="flex items-center gap-1 mt-1 text-xs sm:text-sm">
-                  <MessageCircle className="h-3 w-3 flex-shrink-0" />
+        <DialogHeader className="flex-shrink-0 space-y-4">
+          {/* Pin Title and Description */}
+          <div className="flex items-start gap-3">
+            <MapPin className="h-5 w-5 text-primary mt-1 flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-xl font-semibold text-foreground leading-tight">
+                {pinName}
+              </DialogTitle>
+              <DialogDescription className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+                <MessageCircle className="h-4 w-4 flex-shrink-0" />
+                <span>
                   {comments.length} {comments.length === 1 ? 'comment' : 'comments'}
-                </DialogDescription>
-              </div>
+                </span>
+              </DialogDescription>
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
+          </div>
+
+          {/* Action Buttons Row */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border/50">
+            {/* Primary Actions */}
+            <div className="flex items-center gap-2">
+              {pinCoordinates && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleDirections}
+                  title="Get directions in Google Maps"
+                  className="flex items-center gap-2 h-8 px-3"
+                >
+                  <Navigation className="h-4 w-4" />
+                  <span className="hidden sm:inline text-sm">Get Directions</span>
+                </Button>
+              )}
+            </div>
+
+            {/* Secondary Actions */}
+            <div className="flex items-center gap-2">
               {comments.length > 1 && (
-                <CommentSortDropdown
-                  currentSort={sortBy}
-                  onSortChange={setSortBy}
-                />
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground hidden sm:inline">Sort by:</span>
+                  <CommentSortDropdown
+                    currentSort={sortBy}
+                    onSortChange={setSortBy}
+                  />
+                </div>
               )}
               {onRefresh && (
                 <Button
@@ -118,9 +156,11 @@ export default function PinDetailModal({
                   size="sm"
                   onClick={handleRefresh}
                   disabled={refreshing}
+                  title="Refresh comments"
+                  className="flex items-center gap-2 h-8 px-3"
                 >
                   <RefreshCcw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-                  <span className="hidden sm:inline ml-2">Refresh</span>
+                  <span className="hidden sm:inline text-sm">Refresh</span>
                 </Button>
               )}
             </div>
