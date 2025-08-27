@@ -1,12 +1,28 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { commentSortManager, type SortCriteria } from "@/lib/comment-sort-manager";
+import {
+  commentSortManager,
+  type SortCriteria,
+} from "@/lib/comment-sort-manager";
 import type { Comment, EnhancedComment } from "@/types";
-import { Loader2, MapPin, MessageCircle, Navigation, RefreshCcw, Send } from "lucide-react";
+import {
+  Loader2,
+  MapPin,
+  MessageCircle,
+  Navigation,
+  RefreshCcw,
+  Send,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import CommentItem from "./CommentItem";
 import CommentSortDropdown from "./CommentSortDropdown";
@@ -66,11 +82,11 @@ export default function PinDetailModal({
 
   const handleDirections = () => {
     if (!pinCoordinates) return;
-    
+
     const { lat, lng } = pinCoordinates;
     const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
-    
-    window.open(googleMapsUrl, '_blank', 'noopener,noreferrer');
+
+    window.open(googleMapsUrl, "_blank", "noopener,noreferrer");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -115,7 +131,8 @@ export default function PinDetailModal({
               <DialogDescription className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
                 <MessageCircle className="h-4 w-4 flex-shrink-0" />
                 <span>
-                  {comments.length} {comments.length === 1 ? 'comment' : 'comments'}
+                  {comments.length}{" "}
+                  {comments.length === 1 ? "comment" : "comments"}
                 </span>
               </DialogDescription>
             </div>
@@ -134,7 +151,9 @@ export default function PinDetailModal({
                   className="flex items-center gap-2 h-8 px-3"
                 >
                   <Navigation className="h-4 w-4" />
-                  <span className="hidden sm:inline text-sm">Get Directions</span>
+                  <span className="hidden sm:inline text-sm">
+                    Get Directions
+                  </span>
                 </Button>
               )}
             </div>
@@ -143,7 +162,9 @@ export default function PinDetailModal({
             <div className="flex items-center gap-2">
               {comments.length > 1 && (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground hidden sm:inline">Sort by:</span>
+                  <span className="text-xs text-muted-foreground hidden sm:inline">
+                    Sort by:
+                  </span>
                   <CommentSortDropdown
                     currentSort={sortBy}
                     onSortChange={setSortBy}
@@ -159,7 +180,9 @@ export default function PinDetailModal({
                   title="Refresh comments"
                   className="flex items-center gap-2 h-8 px-3"
                 >
-                  <RefreshCcw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+                  <RefreshCcw
+                    className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+                  />
                   <span className="hidden sm:inline text-sm">Refresh</span>
                 </Button>
               )}
@@ -172,13 +195,19 @@ export default function PinDetailModal({
           {loading ? (
             <div className="flex flex-col items-center justify-center py-8 sm:py-12">
               <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin mb-4" />
-              <p className="text-sm sm:text-base text-muted-foreground">Loading comments...</p>
+              <p className="text-sm sm:text-base text-muted-foreground">
+                Loading comments...
+              </p>
             </div>
           ) : comments.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center px-4">
               <MessageCircle className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-4" />
-              <h3 className="text-sm sm:text-base font-medium mb-2">No comments yet</h3>
-              <p className="text-xs sm:text-sm text-muted-foreground">Be the first to share your thoughts!</p>
+              <h3 className="text-sm sm:text-base font-medium mb-2">
+                No comments yet
+              </h3>
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                Be the first to share your thoughts!
+              </p>
             </div>
           ) : (
             <div className="space-y-3 sm:space-y-4">
@@ -206,7 +235,12 @@ export default function PinDetailModal({
               placeholder="Share your thoughts..."
               className="flex-1 text-sm sm:text-base"
             />
-            <Button type="submit" disabled={!newComment.trim()} size="sm" className="px-3">
+            <Button
+              type="submit"
+              disabled={!newComment.trim()}
+              size="sm"
+              className="px-3"
+            >
               <Send className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline ml-2">Send</span>
             </Button>

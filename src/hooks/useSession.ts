@@ -74,6 +74,47 @@ export function useSession() {
       console.log("✅ Sign in successful, session cached");
       router.push("/");
     },
+    onError: (error) => {
+      console.error("❌ Sign in failed:", error);
+    },
+  });
+
+  const signUpMutation = useMutation({
+    mutationFn: async ({
+      email,
+      password,
+      displayName,
+    }: {
+      email: string;
+      password: string;
+      displayName: string;
+    }) => {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            display_name: displayName,
+          },
+        },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      // Session'ı cache'e kaydet (eğer varsa)
+      if (data.session) {
+        cacheManager.cacheSession(data.session);
+        console.log("✅ Sign up successful, session cached");
+        router.push("/");
+      } else {
+        // Email confirmation gerekiyorsa
+        console.log("📧 Please check your email for confirmation");
+      }
+    },
+    onError: (error) => {
+      console.error("❌ Sign up failed:", error);
+    },
   });
 
   const signOutMutation = useMutation({
@@ -94,9 +135,13 @@ export function useSession() {
     isLoading,
     error,
     signIn: signInMutation.mutate,
+    signUp: signUpMutation.mutate,
     signOut: signOutMutation.mutate,
     isSigningIn: signInMutation.isPending,
+    isSigningUp: signUpMutation.isPending,
     isSigningOut: signOutMutation.isPending,
+    signInError: signInMutation.error,
+    signUpError: signUpMutation.error,
     // Cache manager'a erişim (debug için)
     cacheManager,
   };

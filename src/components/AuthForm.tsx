@@ -16,24 +16,29 @@ import { Loader2 } from "lucide-react";
 import { useState } from "react";
 
 export default function AuthForm() {
-  const { signIn, isSigningIn } = useSession();
+  const { signIn, signUp, isSigningIn, isSigningUp, signInError, signUpError } = useSession();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  // Watch for mutation errors and display them
+  const currentError = isLogin ? signInError : signUpError;
+  const displayError = error || (currentError?.message);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    try {
-      await signIn({ email, password });
-      // useSession hook başarılı girişte otomatik yönlendirecek
-    } catch (error: unknown) {
-      setError(
-        error instanceof Error ? error.message : "An unknown error occurred"
-      );
+    if (isLogin) {
+      signIn({ email, password });
+    } else {
+      if (!displayName.trim()) {
+        setError("Display name is required");
+        return;
+      }
+      signUp({ email, password, displayName: displayName.trim() });
     }
   };
 
@@ -98,19 +103,21 @@ export default function AuthForm() {
               />
             </div>
 
-            {error && (
+            {displayError && (
               <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>{displayError}</AlertDescription>
               </Alert>
             )}
 
             <Button
               type="submit"
-              disabled={isSigningIn}
+              disabled={isSigningIn || isSigningUp}
               className="w-full text-sm sm:text-base"
             >
-              {isSigningIn && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isSigningIn
+              {(isSigningIn || isSigningUp) && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {isSigningIn || isSigningUp
                 ? "Loading..."
                 : isLogin
                 ? "Sign In"
