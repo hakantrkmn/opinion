@@ -1,6 +1,8 @@
 "use client";
 
+import { EditProfile } from "@/components/EditProfile";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,10 +13,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar } from "@/components/ui/Avatar";
-import { EditProfile } from "@/components/EditProfile";
-import { userService } from "@/lib/supabase/userService";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { userService } from "@/lib/supabase/userService";
 import type { Comment, Pin } from "@/types";
 import type { User } from "@supabase/supabase-js";
 import {
@@ -25,7 +25,6 @@ import {
   MessageCircle,
   ThumbsDown,
   ThumbsUp,
-  User as UserIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -119,11 +118,14 @@ export function ProfileClient({ user }: ProfileClientProps) {
   };
 
   // Handle profile updates
-  const handleProfileUpdate = (updates: { display_name?: string; avatar_url?: string | null }) => {
+  const handleProfileUpdate = (updates: {
+    display_name?: string;
+    avatar_url?: string | null;
+  }) => {
     // Convert null to undefined to match UserProfile interface
     const normalizedUpdates = {
       ...updates,
-      avatar_url: updates.avatar_url || undefined
+      avatar_url: updates.avatar_url || undefined,
     };
     updateProfile(normalizedUpdates);
   };
@@ -141,7 +143,7 @@ export function ProfileClient({ user }: ProfileClientProps) {
               size="xl"
               fallbackText={profile?.display_name || user.email}
             />
-            
+
             {/* Profile Info */}
             <div className="min-w-0 flex-1">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -153,7 +155,7 @@ export function ProfileClient({ user }: ProfileClientProps) {
                     {user.email}
                   </CardDescription>
                 </div>
-                
+
                 {/* Edit Button */}
                 <Button
                   variant="outline"
@@ -215,96 +217,94 @@ export function ProfileClient({ user }: ProfileClientProps) {
               </div>
             )}
 
-            <TabsContent value="stats" className="mt-4 sm:mt-6">
+            <TabsContent value="stats" className="mt-6">
               {!loading && stats && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6">
-                  <Card>
-                    <CardContent className="p-4 sm:p-6">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0">
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                            <MapPin className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                <div className="space-y-6">
+                  {/* Statistics Cards Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {/* Total Pins */}
+                    <Card className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-4 sm:p-5">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <MapPin className="h-6 w-6 text-primary" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-muted-foreground mb-1">
+                              Total Pins
+                            </p>
+                            <p className="text-2xl font-bold text-foreground">
+                              {stats.totalPins}
+                            </p>
                           </div>
                         </div>
-                        <div className="ml-3 sm:ml-4 min-w-0">
-                          <p className="text-xs sm:text-sm font-medium text-muted-foreground">
-                            Total Pins
-                          </p>
-                          <p className="text-xl sm:text-2xl font-bold">
-                            {stats.totalPins}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
 
-                  <Card>
-                    <CardContent className="p-4 sm:p-6">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0">
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                            <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
+                    {/* Total Comments */}
+                    <Card className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-4 sm:p-5">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <MessageCircle className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-muted-foreground mb-1">
+                              Comments
+                            </p>
+                            <p className="text-2xl font-bold text-foreground">
+                              {stats.totalComments}
+                            </p>
                           </div>
                         </div>
-                        <div className="ml-3 sm:ml-4 min-w-0">
-                          <p className="text-xs sm:text-sm font-medium text-muted-foreground">
-                            Total Comments
-                          </p>
-                          <p className="text-xl sm:text-2xl font-bold">
-                            {stats.totalComments}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
 
-                  <Card>
-                    <CardContent className="p-4 sm:p-6">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0">
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-full flex items-center justify-center">
-                            <ThumbsUp className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
+                    {/* Total Likes */}
+                    <Card className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-4 sm:p-5">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-green-50 dark:bg-green-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <ThumbsUp className="h-6 w-6 text-green-600 dark:text-green-400" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-muted-foreground mb-1">
+                              Likes Received
+                            </p>
+                            <p className="text-2xl font-bold text-foreground">
+                              {stats.totalLikes}
+                            </p>
                           </div>
                         </div>
-                        <div className="ml-3 sm:ml-4 min-w-0">
-                          <p className="text-xs sm:text-sm font-medium text-muted-foreground">
-                            Total Likes
-                          </p>
-                          <p className="text-xl sm:text-2xl font-bold">
-                            {stats.totalLikes}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
 
-                  <Card>
-                    <CardContent className="p-4 sm:p-6">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0">
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-100 rounded-full flex items-center justify-center">
-                            <ThumbsDown className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />
+                    {/* Total Dislikes */}
+                    <Card className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-4 sm:p-5">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <ThumbsDown className="h-6 w-6 text-red-600 dark:text-red-400" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-muted-foreground mb-1">
+                              Dislikes Received
+                            </p>
+                            <p className="text-2xl font-bold text-foreground">
+                              {stats.totalDislikes}
+                            </p>
                           </div>
                         </div>
-                        <div className="ml-3 sm:ml-4 min-w-0">
-                          <p className="text-xs sm:text-sm font-medium text-muted-foreground">
-                            Total Dislikes
-                          </p>
-                          <p className="text-xl sm:text-2xl font-bold">
-                            {stats.totalDislikes}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
 
-                  <Card>
-                    <CardContent className="p-4 sm:p-6">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0">
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                    {/* Votes Given */}
+                    <Card className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-4 sm:p-5">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-purple-50 dark:bg-purple-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
                             <svg
-                              className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600"
+                              className="h-6 w-6 text-purple-600 dark:text-purple-400"
                               fill="currentColor"
                               viewBox="0 0 20 20"
                             >
@@ -315,18 +315,45 @@ export function ProfileClient({ user }: ProfileClientProps) {
                               />
                             </svg>
                           </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-muted-foreground mb-1">
+                              Votes Given
+                            </p>
+                            <p className="text-2xl font-bold text-foreground">
+                              {stats.totalVotesGiven || 0}
+                            </p>
+                          </div>
                         </div>
-                        <div className="ml-3 sm:ml-4 min-w-0">
-                          <p className="text-xs sm:text-sm font-medium text-muted-foreground">
-                            Votes Given
-                          </p>
-                          <p className="text-xl sm:text-2xl font-bold">
-                            {stats.totalVotesGiven || 0}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
+
+                    {/* Last Activity */}
+                    {stats.lastActivityAt && (
+                      <Card className="hover:shadow-md transition-shadow">
+                        <CardContent className="p-4 sm:p-5">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-12 h-12 bg-orange-50 dark:bg-orange-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <Calendar className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-muted-foreground mb-1">
+                                Last Activity
+                              </p>
+                              <p className="text-sm font-medium text-foreground">
+                                {new Date(
+                                  stats.lastActivityAt
+                                ).toLocaleDateString("en-US", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                })}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
                 </div>
               )}
             </TabsContent>
@@ -458,7 +485,7 @@ export function ProfileClient({ user }: ProfileClientProps) {
           </Tabs>
         </CardContent>
       </Card>
-      
+
       {/* Edit Profile Modal */}
       <EditProfile
         user={user}

@@ -37,13 +37,16 @@ export default function Map() {
     map,
     mapPins,
     handlePinClick,
+    showPinPopup, // Add showPinPopup for popup flow
     refreshPins,
+    invalidatePinCommentsCache, // Add cache invalidation
     isRefreshing,
     getPinComments,
     getBatchComments,
     currentZoom,
     // New batch comment features
     batchComments,
+    setBatchComments,
     commentsLoading,
     loadVisiblePinsComments,
   } = useMap();
@@ -336,9 +339,14 @@ export default function Map() {
               currentUserId={user?.id || ""}
               loading={pinsLoading}
               onRefresh={async () => {
-                // Refresh only pin comments, not all pins
+                // Refresh pin comments and update all related caches
                 if (selectedPin) {
                   try {
+                    const pinId = selectedPin.pinId;
+
+                    // First invalidate caches to ensure fresh data
+                    await invalidatePinCommentsCache(pinId);
+
                     const comments = await getPinComments(
                       selectedPin.pinId,
                       true
@@ -352,11 +360,20 @@ export default function Map() {
                         return;
                       }
 
+                      // Update selected pin state
                       setSelectedPin((prev) =>
                         prev ? { ...prev, comments } : null
                       );
+
+                      // Update batch comments cache for this pin with fresh data
+                      setBatchComments((prev) => ({
+                        ...prev,
+                        [selectedPin.pinId]: comments,
+                      }));
+
+                      // Force refresh of visible pins comments to ensure cache consistency
+                      loadVisiblePinsComments();
                     }
-                    // Note: We don't refresh all pins here, only comments
                   } catch (error) {
                     console.error("Failed to refresh comments:", error);
                   }
@@ -372,7 +389,7 @@ export default function Map() {
           key={pin.id}
           pin={pin}
           map={map.current} // ✅ map.current kullanın (maplibregl.Map instance'ı)
-          onPinClick={handlePinClick}
+          onPinClick={() => showPinPopup(pin)} // Use showPinPopup to restore popup flow
         />
       ))}
 

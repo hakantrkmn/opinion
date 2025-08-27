@@ -258,7 +258,7 @@ export const pinService = {
         .select(
           `
           *,
-          users!inner(display_name),
+          users!inner(display_name, avatar_url),
           comment_votes!left(value, user_id)
         `
         )

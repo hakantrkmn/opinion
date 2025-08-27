@@ -16,7 +16,8 @@ import { Loader2 } from "lucide-react";
 import { useState } from "react";
 
 export default function AuthForm() {
-  const { signIn, signUp, isSigningIn, isSigningUp, signInError, signUpError } = useSession();
+  const { signIn, signUp, isSigningIn, isSigningUp, signInError, signUpError } =
+    useSession();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,7 +26,7 @@ export default function AuthForm() {
 
   // Watch for mutation errors and display them
   const currentError = isLogin ? signInError : signUpError;
-  const displayError = error || (currentError?.message);
+  const displayError = error || currentError?.message;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

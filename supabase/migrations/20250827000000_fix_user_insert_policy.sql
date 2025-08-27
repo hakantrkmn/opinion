@@ -5,7 +5,7 @@ DROP FUNCTION IF EXISTS public.handle_new_user();
 
 -- Recreate function with proper security settings
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER 
+RETURNS TRIGGER
 SECURITY DEFINER
 SET search_path = public
 AS $$
@@ -32,6 +32,6 @@ CREATE TRIGGER on_auth_user_created
 
 -- Add INSERT policy for users table (allows trigger to work)
 DROP POLICY IF EXISTS "Allow user creation via trigger" ON users;
-CREATE POLICY "Allow user creation via trigger" ON users 
-FOR INSERT 
+CREATE POLICY "Allow user creation via trigger" ON users
+FOR INSERT
 WITH CHECK (true);

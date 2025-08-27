@@ -20,24 +20,12 @@ export function useSession() {
   } = useQuery({
     queryKey: ["session"],
     queryFn: async (): Promise<Session | null> => {
-      // Önce cache'den kontrol et
-      const cachedSession = cacheManager.getSession();
-      if (cachedSession) {
-        console.log("✅ Session cache hit");
-        return cachedSession;
-      }
-
-      // Cache'de yoksa Supabase'den al
-      console.log("🔄 Fetching session from Supabase");
+      // Session query'de cache kullanma (problem oluşturuyor)
+      // Sadece başarılı login'de cache'e kaydet
+      console.log("🔄 Fetching session from Supabase (no query cache)");
       const {
         data: { session },
       } = await supabase.auth.getSession();
-
-      // Session'ı cache'e kaydet
-      if (session) {
-        cacheManager.cacheSession(session);
-        console.log("💾 Session cached");
-      }
 
       return session;
     },
@@ -69,7 +57,7 @@ export function useSession() {
       return data;
     },
     onSuccess: (data) => {
-      // Session'ı cache'e kaydet
+      // Başarılı girişte cache'e kaydet
       cacheManager.cacheSession(data.session);
       console.log("✅ Sign in successful, session cached");
       router.push("/");
@@ -102,7 +90,7 @@ export function useSession() {
       return data;
     },
     onSuccess: (data) => {
-      // Session'ı cache'e kaydet (eğer varsa)
+      // Başarılı sign up'ta cache'e kaydet
       if (data.session) {
         cacheManager.cacheSession(data.session);
         console.log("✅ Sign up successful, session cached");
@@ -122,7 +110,7 @@ export function useSession() {
       await supabase.auth.signOut();
     },
     onSuccess: () => {
-      // Cache'i temizle
+      // Sign out'ta cache'i temizle
       cacheManager.clearSession();
       console.log("🗑️ Session cache cleared");
       router.push("/auth");

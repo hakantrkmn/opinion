@@ -92,6 +92,7 @@ export const useMap = () => {
     editComment,
     deleteComment,
     voteComment,
+    invalidateCache, // Add cache invalidation function
   } = usePinsWithHybridCache();
   const mapPins = pins;
 
@@ -400,7 +401,7 @@ export const useMap = () => {
     console.log("UserMarker Debug:", {
       avatarUrl: profile?.avatar_url,
       displayName: profile?.display_name,
-      hasProfile: !!profile
+      hasProfile: !!profile,
     });
 
     const markerElement = document.createElement("div");
@@ -535,6 +536,28 @@ export const useMap = () => {
   const refreshPins = useCallback(() => {
     loadPinsFromMapWithCache(true);
   }, [loadPinsFromMapWithCache]);
+
+  // Invalidate pin comments cache function
+  const invalidatePinCommentsCache = useCallback(
+    async (pinId: string) => {
+      try {
+        // Invalidate React Query caches
+        invalidateCache();
+
+        // Also clear the batch comments for this pin to force refresh
+        setBatchComments((prev) => {
+          const updated = { ...prev };
+          delete updated[pinId];
+          return updated;
+        });
+
+        console.log("✅ Pin comments cache invalidated for pin:", pinId);
+      } catch (error) {
+        console.error("❌ Failed to invalidate pin comments cache:", error);
+      }
+    },
+    [invalidateCache, setBatchComments]
+  );
 
   // Haritadan pin'leri temizle
   const clearMapPins = () => {
@@ -997,13 +1020,16 @@ export const useMap = () => {
     user,
     mapPins,
     handlePinClick,
+    showPinPopup, // Add showPinPopup to exports
     refreshPins,
+    invalidatePinCommentsCache, // Add cache invalidation function
     isRefreshing,
     getPinComments,
     getBatchComments,
     currentZoom,
     // New batch comment loading features
     batchComments,
+    setBatchComments,
     commentsLoading,
     loadVisiblePinsComments,
   };
