@@ -77,9 +77,9 @@ export const pinService = {
         ...pin,
         comment_count: 1, // İlk yorum eklendi
         comments_count: 1, // Alternatif field name
-        user: { 
+        user: {
           display_name: pin.users?.display_name || "Anonim",
-          avatar_url: pin.users?.avatar_url || null
+          avatar_url: pin.users?.avatar_url || null,
         }, // User bilgisini ekle
       };
 
@@ -142,18 +142,13 @@ export const pinService = {
     try {
       const supabase = createClient();
 
-      // User parametre olarak gelmemişse Supabase'den al
+      // User parametre olarak gelmemişse Supabase'den al (optional for public viewing)
       if (!user) {
         const {
           data: { session },
           error: userError,
         } = await supabase.auth.getSession();
-        user = session?.user;
-      }
-
-      if (!user) {
-        console.error("User not authenticated");
-        return { comments: {}, error: "Kullanıcı bulunamadı" };
+        user = session?.user || undefined; // Allow undefined for public access
       }
 
       if (pinIds.length === 0) {
@@ -166,7 +161,11 @@ export const pinService = {
         return { comments: {}, error: "Geçersiz pin ID listesi" };
       }
 
-      console.log("Fetching batch comments for pins:", pinIds);
+      console.log(
+        "🔄 Fetching batch comments for pins:",
+        pinIds,
+        user ? `(authenticated: ${user.email})` : "(public access)"
+      );
 
       // Tek query ile tüm pin'lerin comment'larını ve vote'larını çek
       const { data: comments, error } = await supabase
@@ -186,7 +185,7 @@ export const pinService = {
         return { comments: {}, error: error.message };
       }
 
-      console.log("Fetched batch comments:", comments?.length || 0);
+      console.log("✅ Fetched batch comments:", comments?.length || 0);
 
       // Comment'ları pin ID'ye göre grupla
       const commentsByPin: { [pinId: string]: Comment[] } = {};
@@ -207,9 +206,11 @@ export const pinService = {
           0
         );
 
-        // Kullanıcının oyunu bul
+        // Kullanıcının oyunu bul (sadece authenticated user için)
         const userVote =
-          votes.find((vote: any) => vote.user_id === user?.id)?.value || 0;
+          user && user.id
+            ? votes.find((vote: any) => vote.user_id === user!.id)?.value || 0
+            : 0; // Non-authenticated users have no vote
 
         const processedComment = {
           ...comment,
@@ -238,19 +239,20 @@ export const pinService = {
     try {
       const supabase = createClient();
 
-      // User parametre olarak gelmemişse Supabase'den al
+      // User parametre olarak gelmemişse Supabase'den al (optional for public viewing)
       if (!user) {
         const {
           data: { session },
           error: userError,
         } = await supabase.auth.getSession();
-        user = session?.user;
+        user = session?.user || undefined; // Allow undefined for public access
       }
 
-      if (!user) {
-        console.error("User not authenticated");
-        return { comments: null, error: "Kullanıcı bulunamadı" };
-      }
+      console.log(
+        "🔄 Fetching comments for pin:",
+        pinId,
+        user ? `(authenticated: ${user.email})` : "(public access)"
+      );
 
       // Tek query ile comment'ları ve vote'ları birlikte çek
       const { data: comments, error } = await supabase
@@ -270,7 +272,7 @@ export const pinService = {
         return { comments: null, error: error.message };
       }
 
-      console.log("Fetched comments with votes:", comments);
+      console.log("✅ Fetched comments with votes:", comments?.length || 0);
 
       // Eğer yorum yoksa boş array döndür (trigger otomatik olarak pin'i silecek)
       if (!comments || comments.length === 0) {
@@ -296,9 +298,11 @@ export const pinService = {
           0
         );
 
-        // Kullanıcının oyunu bul
+        // Kullanıcının oyunu bul (sadece authenticated user için)
         const userVote =
-          votes.find((vote: any) => vote.user_id === user?.id)?.value || 0;
+          user && user.id
+            ? votes.find((vote: any) => vote.user_id === user!.id)?.value || 0
+            : 0; // Non-authenticated users have no vote
 
         return {
           ...comment,

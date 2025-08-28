@@ -3,6 +3,10 @@ import {
   generatePinPopupHTML,
 } from "@/components/PinMarker";
 import { createClient } from "@/lib/supabase/client";
+import {
+  locationService,
+  type LocationPermissionState,
+} from "@/services/locationService";
 import type {
   Comment,
   CreatePinData,
@@ -13,16 +17,6 @@ import type {
 
 import { generateUserMarkerHTML } from "@/components/UserMarker";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import {
-  checkGeolocationSupport,
-  checkIOSPermissionState,
-  getDetailedErrorMessage,
-  getGeolocationWithFallback,
-  getIOSGeolocation,
-  getMobileInstructions,
-  isHTTPS,
-  isIOS,
-} from "@/utils/geolocation";
 import { parseLocation } from "@/utils/mapUtils";
 import { mapStyles } from "@/utils/variables";
 import maplibregl from "maplibre-gl";
@@ -31,13 +25,12 @@ import { toast } from "sonner";
 import { LongPressEventType, useLongPress } from "use-long-press";
 import { usePinsWithHybridCache } from "./usePinsWithHybridCache";
 
-export const useMap = () => {
+export const useMap = (initialCoordinates?: [number, number] | null) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const [currentStyle, setCurrentStyle] = useState("voyager");
-  const [locationPermission, setLocationPermission] = useState<
-    "granted" | "denied" | "loading" | "prompt" | null
-  >(null);
+  const [locationPermission, setLocationPermission] =
+    useState<LocationPermissionState>(null);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(
     null
   );
@@ -124,176 +117,41 @@ export const useMap = () => {
     detect: LongPressEventType.Pointer,
   });
 
-  // Check initial permission state for iOS
-  const checkInitialPermission = async () => {
-    if (isIOS()) {
-      const permissionState = await checkIOSPermissionState();
-      console.log("iOS permission state:", permissionState);
-
-      if (permissionState === "granted") {
-        // Permission already granted, get location
-        getUserLocation();
-      } else if (permissionState === "denied") {
-        // Permission denied, show denied state
-        setLocationPermission("denied");
-      } else {
-        // Permission prompt or unknown, show prompt state
-        setLocationPermission("prompt");
-      }
-      return;
-    }
-
-    // For non-iOS devices, try to get location immediately
-    getUserLocation();
-  };
-
-  // Get user location with improved mobile support
-  const getUserLocation = async () => {
-    setLocationPermission("loading");
-
-    // Check HTTPS requirement
-    if (!isHTTPS()) {
-      setLocationPermission("denied");
-      toast.error("HTTPS Required", {
-        description: "Location services require a secure connection (HTTPS)",
-      });
-      return;
-    }
-
-    // Check geolocation support
-    if (!checkGeolocationSupport()) {
-      setLocationPermission("denied");
-      toast.error("Location services not supported", {
-        description: "Your browser doesn't support location services",
-      });
-      return;
-    }
-
-    try {
-      // iOS için özel geolocation fonksiyonu kullan
-      const result = isIOS()
-        ? await getIOSGeolocation()
-        : await getGeolocationWithFallback();
-
-      if (result.success && result.position) {
-        const { latitude, longitude, accuracy } = result.position.coords;
-        console.log("Location accuracy:", accuracy, "meters");
-        setUserLocation([longitude, latitude]);
-        setLocationPermission("granted");
-
-        // iOS'ta başarılı konum alımını localStorage'a kaydet
-        if (isIOS()) {
-          try {
-            localStorage.setItem("ios-location-permission", "granted");
-          } catch (error) {
-            console.log("Failed to save iOS permission state:", error);
-          }
-        }
-
+  // Initialize location service
+  useEffect(() => {
+    // Set up location service callbacks
+    locationService.setCallbacks({
+      onLocationUpdate: (coordinates) => {
+        setUserLocation(coordinates);
+        // Remove automatic navigation - only update state
+        // User must click the location button to navigate
         if (map.current) {
-          map.current.flyTo({
-            center: [longitude, latitude],
-            zoom: 16,
-            duration: 2000,
-          });
-          addUserMarker(longitude, latitude);
-
-          // Load pins after location is obtained
-          setTimeout(() => {
-            loadPinsFromMapWithCache();
-          }, 1000);
+          addUserMarker(coordinates[0], coordinates[1]);
         }
+      },
+      onPermissionChange: (state) => {
+        setLocationPermission(state);
+      },
+      onError: (error) => {
+        console.error("Location service error:", error);
+      },
+    });
 
-        toast.success("Location obtained successfully", {
-          description: `Accuracy: ${Math.round(accuracy)} meters`,
-        });
-      } else if (result.error) {
-        console.error("Location could not be obtained:", {
-          code: result.error.code,
-          message: result.error.message,
-          timestamp: new Date().toISOString(),
-        });
+    // Initialize location service (this will check permissions and optionally request location)
+    locationService.initialize();
+  }, []);
 
-        // iOS'ta permission denied durumunda localStorage'ı güncelle ve denied state'e geç
-        if (isIOS() && result.error.code === result.error.PERMISSION_DENIED) {
-          console.log("iOS permission denied");
+  // Get user location - now uses the service
+  const getUserLocation = async () => {
+    const result = await locationService.requestLocation(true);
 
-          try {
-            localStorage.setItem("ios-location-permission", "denied");
-          } catch (error) {
-            console.log("Failed to save iOS permission state:", error);
-          }
-
-          setLocationPermission("denied");
-
-          toast.error("Location Permission Denied", {
-            description:
-              "Safari blocked location access. Enable location in Settings to use this feature.",
-            duration: 5000,
-          });
-          return;
-        }
-
-        // iOS'ta timeout durumunda da prompt state'e dön
-        if (isIOS() && result.error.code === result.error.TIMEOUT) {
-          console.log("iOS timeout, returning to prompt state");
-          setLocationPermission("prompt");
-
-          toast.error("Location Request Timed Out", {
-            description: "Location request took too long. Please try again.",
-            duration: 5000,
-          });
-          return;
-        }
-
-        setLocationPermission("denied");
-
-        const errorMessage = getDetailedErrorMessage(result.error);
-        const instructions = getMobileInstructions();
-
-        toast.error("Location unavailable", {
-          description: errorMessage,
-        });
-
-        // Show mobile-specific instructions
-        setTimeout(() => {
-          toast.info("Mobile device instructions", {
-            description: instructions.join(" • "),
-            duration: 8000,
-          });
-        }, 2000);
-
-        // Fallback to Istanbul for position unavailable errors
-        if (
-          result.error.code === result.error.POSITION_UNAVAILABLE &&
-          map.current
-        ) {
-          map.current.flyTo({
-            center: [29.0322, 41.0082], // Istanbul coordinates
-            zoom: 10,
-            duration: 2000,
-          });
-          // Load pins
-          setTimeout(() => {
-            loadPinsFromMapWithCache();
-          }, 1000);
-        }
-      }
-    } catch (error) {
-      console.error("Unexpected geolocation error:", error);
-
-      // iOS'ta unexpected error durumunda da prompt state'e dön
-      if (isIOS()) {
-        setLocationPermission("prompt");
-        toast.error("Location request failed", {
-          description: "Please try again by tapping 'Allow Location Access'",
-        });
-      } else {
-        setLocationPermission("denied");
-        toast.error("Unexpected error", {
-          description: "An error occurred while getting location",
-        });
-      }
+    // Show success toast when location is obtained
+    if (result.success && result.coordinates) {
+      // Calculate a rough accuracy estimate (location service doesn't expose this)
+      toast.success("Location found!", {
+        description:
+          "You can now use the location button to navigate to your position",
+      });
     }
   };
 
@@ -918,6 +776,16 @@ export const useMap = () => {
     console.log("initializeMap");
 
     if (mapContainer.current) {
+      // Use initialCoordinates if provided, otherwise default to Istanbul
+      const defaultCenter: [number, number] = initialCoordinates || [29.0322, 41.0082];
+      const defaultZoom = initialCoordinates ? 16 : 10; // Zoom in closer for URL coordinates
+      
+      console.log('Map initializing with:', { 
+        center: defaultCenter, 
+        zoom: defaultZoom, 
+        fromURL: !!initialCoordinates 
+      });
+
       map.current = new maplibregl.Map({
         container: mapContainer.current,
         style: {
@@ -940,8 +808,8 @@ export const useMap = () => {
             },
           ],
         },
-        center: [29.0322, 41.0082],
-        zoom: 10,
+        center: defaultCenter,
+        zoom: defaultZoom,
         maxZoom: 20,
       });
 
@@ -951,8 +819,16 @@ export const useMap = () => {
         if (map.current) {
           setCurrentZoom(map.current.getZoom());
         }
-        checkInitialPermission();
-        // Harita yüklendiğinde pin'leri yükle
+        
+        // If we have coordinates from URL, show a success message
+        if (initialCoordinates) {
+          toast.success("Map navigated to coordinates", {
+            description: `Latitude: ${initialCoordinates[1]}, Longitude: ${initialCoordinates[0]}`,
+            duration: 4000,
+          });
+        }
+        
+        // Harita yüklendiğinde pin'leri yükle (konum izni olmasa da)
         loadPinsFromMapWithCache();
       });
 

@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAuth } from "@/contexts/AuthContext";
+import { useSession } from "@/hooks/useSession";
 import {
   BarChart3,
   MapPin,
@@ -65,7 +65,7 @@ interface Analytics {
 }
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
+  const { user } = useSession();
   const [users, setUsers] = useState<User[]>([]);
   const [pins, setPins] = useState<Pin[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);

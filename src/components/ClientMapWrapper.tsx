@@ -15,6 +15,10 @@ const Map = dynamic(() => import("@/components/Map"), {
     ),
 });
 
-export default function ClientMapWrapper() {
-    return <Map />;
+interface ClientMapWrapperProps {
+    initialCoordinates?: [number, number] | null;
+}
+
+export default function ClientMapWrapper({ initialCoordinates }: ClientMapWrapperProps) {
+    return <Map initialCoordinates={initialCoordinates} />;
 }

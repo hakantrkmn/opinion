@@ -14,20 +14,32 @@ class SupabaseClientManager {
 }
 export const userService = {
   // Avatar upload and management functions
-  async uploadAvatar(userId: string, file: File): Promise<{
+  async uploadAvatar(
+    userId: string,
+    file: File
+  ): Promise<{
     avatarUrl: string | null;
     error: string | null;
   }> {
     try {
       const supabase = SupabaseClientManager.getInstance();
-      
+
       console.log("🖼️ Starting avatar upload for user:", userId);
       const startTime = performance.now();
 
       // Validate file
-      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+      const validTypes = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+      ];
       if (!validTypes.includes(file.type)) {
-        return { avatarUrl: null, error: "Please upload a valid image file (JPG, PNG, WebP, or GIF)" };
+        return {
+          avatarUrl: null,
+          error: "Please upload a valid image file (JPG, PNG, WebP, or GIF)",
+        };
       }
 
       // Validate file size (5MB limit)
@@ -38,54 +50,60 @@ export const userService = {
 
       // Get current avatar URL to delete old one
       const { data: currentUser } = await supabase
-        .from('users')
-        .select('avatar_url')
-        .eq('id', userId)
+        .from("users")
+        .select("avatar_url")
+        .eq("id", userId)
         .single();
 
       // Create unique filename with timestamp to prevent caching issues
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split(".").pop();
       const fileName = `${userId}/avatar-${Date.now()}.${fileExt}`;
 
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('avatars')
+        .from("avatars")
         .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: true // This will replace existing file
+          cacheControl: "3600",
+          upsert: true, // This will replace existing file
         });
 
       if (uploadError) {
         console.error("❌ Avatar upload error:", uploadError);
-        return { avatarUrl: null, error: "Failed to upload avatar. Please try again." };
+        return {
+          avatarUrl: null,
+          error: "Failed to upload avatar. Please try again.",
+        };
       }
 
       // Get public URL
       const { data: urlData } = supabase.storage
-        .from('avatars')
+        .from("avatars")
         .getPublicUrl(uploadData.path);
 
       const avatarUrl = urlData.publicUrl;
 
       // Update user's avatar_url in database
       const { error: updateError } = await supabase
-        .from('users')
+        .from("users")
         .update({ avatar_url: avatarUrl })
-        .eq('id', userId);
+        .eq("id", userId);
 
       if (updateError) {
         console.error("❌ Failed to update user avatar URL:", updateError);
         // Clean up uploaded file
-        await supabase.storage.from('avatars').remove([uploadData.path]);
-        return { avatarUrl: null, error: "Failed to save avatar. Please try again." };
+        await supabase.storage.from("avatars").remove([uploadData.path]);
+        return {
+          avatarUrl: null,
+          error: "Failed to save avatar. Please try again.",
+        };
       }
 
       // Clean up old avatar file if it exists
       if (currentUser?.avatar_url) {
         try {
-          const oldPath = currentUser.avatar_url.split('/avatars/')[1];
+          const oldPath = currentUser.avatar_url.split("/avatars/")[1];
           if (oldPath && oldPath !== uploadData.path) {
-            await supabase.storage.from('avatars').remove([oldPath]);
+            await supabase.storage.from("avatars").remove([oldPath]);
             console.log("🗑️ Old avatar cleaned up:", oldPath);
           }
         } catch (cleanupError) {
@@ -104,7 +122,10 @@ export const userService = {
       return { avatarUrl, error: null };
     } catch (error) {
       console.error("❌ uploadAvatar error:", error);
-      return { avatarUrl: null, error: "Avatar upload failed. Please try again." };
+      return {
+        avatarUrl: null,
+        error: "Avatar upload failed. Please try again.",
+      };
     }
   },
 
@@ -118,9 +139,9 @@ export const userService = {
 
       // Get current avatar URL
       const { data: userData, error: fetchError } = await supabase
-        .from('users')
-        .select('avatar_url')
-        .eq('id', userId)
+        .from("users")
+        .select("avatar_url")
+        .eq("id", userId)
         .single();
 
       if (fetchError || !userData?.avatar_url) {
@@ -128,23 +149,26 @@ export const userService = {
       }
 
       // Extract file path from URL
-      const avatarPath = userData.avatar_url.split('/avatars/')[1];
+      const avatarPath = userData.avatar_url.split("/avatars/")[1];
       if (avatarPath) {
         // Delete from storage
         const { error: deleteError } = await supabase.storage
-          .from('avatars')
+          .from("avatars")
           .remove([avatarPath]);
 
         if (deleteError) {
-          console.error("❌ Failed to delete avatar from storage:", deleteError);
+          console.error(
+            "❌ Failed to delete avatar from storage:",
+            deleteError
+          );
         }
       }
 
       // Update user record
       const { error: updateError } = await supabase
-        .from('users')
+        .from("users")
         .update({ avatar_url: null })
-        .eq('id', userId);
+        .eq("id", userId);
 
       if (updateError) {
         console.error("❌ Failed to update user avatar URL:", updateError);
@@ -159,7 +183,10 @@ export const userService = {
   },
 
   // Update user display name
-  async updateDisplayName(userId: string, displayName: string): Promise<{
+  async updateDisplayName(
+    userId: string,
+    displayName: string
+  ): Promise<{
     success: boolean;
     error: string | null;
   }> {
@@ -172,13 +199,16 @@ export const userService = {
       }
 
       if (displayName.length > 50) {
-        return { success: false, error: "Display name must be less than 50 characters" };
+        return {
+          success: false,
+          error: "Display name must be less than 50 characters",
+        };
       }
 
       const { error } = await supabase
-        .from('users')
+        .from("users")
         .update({ display_name: displayName.trim() })
-        .eq('id', userId);
+        .eq("id", userId);
 
       if (error) {
         console.error("❌ Failed to update display name:", error);
@@ -202,25 +232,48 @@ export const userService = {
       created_at: string;
     } | null;
     error: string | null;
+    isAuthError?: boolean; // Flag to indicate if this is an auth-related error
   }> {
     try {
       const supabase = SupabaseClientManager.getInstance();
 
       const { data: profile, error } = await supabase
-        .from('users')
-        .select('id, email, display_name, avatar_url, created_at')
-        .eq('id', userId)
+        .from("users")
+        .select("id, email, display_name, avatar_url, created_at")
+        .eq("id", userId)
         .single();
 
       if (error) {
         console.error("❌ Failed to fetch user profile:", error);
-        return { profile: null, error: "Failed to load profile" };
+
+        // Check if this is an authentication error
+        const isAuthError =
+          error.code === "PGRST301" || // JWT expired
+          error.code === "PGRST116" || // No rows (user doesn't exist)
+          error.message?.includes("JWT") ||
+          error.message?.includes("not authenticated");
+
+        console.log("🔍 getUserProfile error analysis:", {
+          errorCode: error.code,
+          errorMessage: error.message,
+          isAuthError,
+          userId,
+        });
+
+        return { profile: null, error: "Failed to load profile", isAuthError };
       }
 
-      return { profile, error: null };
+      return { profile, error: null, isAuthError: false };
     } catch (error) {
       console.error("❌ getUserProfile error:", error);
-      return { profile: null, error: "Failed to load profile" };
+      // Network or other critical errors might indicate auth issues
+      const isAuthError =
+        error instanceof Error &&
+        (error.message?.includes("JWT") ||
+          error.message?.includes("auth") ||
+          error.message?.includes("unauthorized"));
+
+      return { profile: null, error: "Failed to load profile", isAuthError };
     }
   },
   // Kullanıcının istatistiklerini getir (denormalized from user_stats table)

@@ -1,5 +1,5 @@
 "use client";
-import AuthForm from "@/components/AuthForm";
+import DynamicAuthForm from "@/components/DynamicAuthForm";
 import { useSession } from "@/hooks/useSession";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -16,13 +16,15 @@ export default function AuthPage() {
     }
   }, [user, isLoading, router]);
 
-  // Loading durumunda spinner göster
+  // Loading durumunda hafif spinner göster
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex items-center gap-2">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span>Loading...</span>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm text-muted-foreground">
+            Checking session...
+          </span>
         </div>
       </div>
     );
@@ -30,9 +32,16 @@ export default function AuthPage() {
 
   // User varsa null döndür (useEffect yönlendirecek)
   if (user) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm text-muted-foreground">Redirecting...</span>
+        </div>
+      </div>
+    );
   }
 
-  // User yoksa auth formunu göster
-  return <AuthForm />;
+  // User yoksa auth formunu göster (dynamic import ile)
+  return <DynamicAuthForm />;
 }

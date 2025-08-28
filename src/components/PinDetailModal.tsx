@@ -17,13 +17,17 @@ import {
 import type { Comment, EnhancedComment } from "@/types";
 import {
   Loader2,
+  LogIn,
   MapPin,
   MessageCircle,
   Navigation,
   RefreshCcw,
   Send,
+  Share2,
 } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import CommentItem from "./CommentItem";
 import CommentSortDropdown from "./CommentSortDropdown";
 
@@ -89,9 +93,44 @@ export default function PinDetailModal({
     window.open(googleMapsUrl, "_blank", "noopener,noreferrer");
   };
 
+  const handleShare = async () => {
+    if (!pinCoordinates) return;
+
+    const { lat, lng } = pinCoordinates;
+    const currentUrl = window.location.origin;
+    const shareUrl = `${currentUrl}/?lat=${lat.toFixed(6)}&long=${lng.toFixed(6)}`;
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Link copied to clipboard!", {
+        description: "Share this link to show others this location",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error("Failed to copy to clipboard:", error);
+      // Fallback: show the URL in a toast for manual copying
+      toast.info("Share URL", {
+        description: shareUrl,
+        duration: 5000,
+      });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim()) return;
+
+    // Check if user is authenticated
+    if (!currentUserId) {
+      toast.info("Sign in to add comments", {
+        description: "Create an account to share your thoughts",
+        action: {
+          label: "Sign In",
+          onClick: () => (window.location.href = "/auth"),
+        },
+      });
+      return;
+    }
 
     const commentText = newComment.trim();
     setNewComment(""); // Clear input immediately
@@ -143,18 +182,32 @@ export default function PinDetailModal({
             {/* Primary Actions */}
             <div className="flex items-center gap-2">
               {pinCoordinates && (
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={handleDirections}
-                  title="Get directions in Google Maps"
-                  className="flex items-center gap-2 h-8 px-3"
-                >
-                  <Navigation className="h-4 w-4" />
-                  <span className="hidden sm:inline text-sm">
-                    Get Directions
-                  </span>
-                </Button>
+                <>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleDirections}
+                    title="Get directions in Google Maps"
+                    className="flex items-center gap-2 h-8 px-3"
+                  >
+                    <Navigation className="h-4 w-4" />
+                    <span className="hidden sm:inline text-sm">
+                      Get Directions
+                    </span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleShare}
+                    title="Share this location"
+                    className="flex items-center gap-2 h-8 px-3"
+                  >
+                    <Share2 className="h-4 w-4" />
+                    <span className="hidden sm:inline text-sm">
+                      Share
+                    </span>
+                  </Button>
+                </>
               )}
             </div>
 
@@ -227,24 +280,38 @@ export default function PinDetailModal({
 
         {/* Add Comment */}
         <div className="border-t pt-3 sm:pt-4 flex-shrink-0">
-          <form onSubmit={handleSubmit} className="flex space-x-2">
-            <Input
-              type="text"
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Share your thoughts..."
-              className="flex-1 text-sm sm:text-base"
-            />
-            <Button
-              type="submit"
-              disabled={!newComment.trim()}
-              size="sm"
-              className="px-3"
-            >
-              <Send className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline ml-2">Send</span>
-            </Button>
-          </form>
+          {currentUserId ? (
+            <form onSubmit={handleSubmit} className="flex space-x-2">
+              <Input
+                type="text"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Share your thoughts..."
+                className="flex-1 text-sm sm:text-base"
+              />
+              <Button
+                type="submit"
+                disabled={!newComment.trim()}
+                size="sm"
+                className="px-3"
+              >
+                <Send className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline ml-2">Send</span>
+              </Button>
+            </form>
+          ) : (
+            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-dashed">
+              <div className="flex items-center gap-2">
+                <LogIn className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">
+                  Sign in to share your thoughts
+                </span>
+              </div>
+              <Button asChild size="sm" variant="default">
+                <Link href="/auth">Sign In</Link>
+              </Button>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

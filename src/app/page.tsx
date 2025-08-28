@@ -1,36 +1,72 @@
 "use client";
-import ClientMapWrapper from "@/components/ClientMapWrapper";
-import Header from "@/components/Header";
+import DynamicHomeContent from "@/components/DynamicHomeContent";
 import { useSession } from "@/hooks/useSession";
 import { Loader2 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { useMemo, Suspense } from "react";
 
-export default function Home() {
-  const { user, isLoading } = useSession();
+function HomeContent() {
+  const { isLoading } = useSession();
+  const searchParams = useSearchParams();
+  
+  // Parse latitude and longitude from URL query parameters
+  const initialCoordinates = useMemo(() => {
+    const lat = searchParams.get('lat');
+    const lng = searchParams.get('long') || searchParams.get('lng');
+    
+    if (lat && lng) {
+      const latitude = parseFloat(lat);
+      const longitude = parseFloat(lng);
+      
+      // Validate coordinates
+      if (
+        !isNaN(latitude) && 
+        !isNaN(longitude) && 
+        latitude >= -90 && 
+        latitude <= 90 && 
+        longitude >= -180 && 
+        longitude <= 180
+      ) {
+        console.log('Valid coordinates from URL:', { latitude, longitude });
+        return [longitude, latitude] as [number, number]; // [lng, lat] format for maplibre
+      } else {
+        console.warn('Invalid coordinates in URL:', { lat, lng });
+      }
+    }
+    
+    return null;
+  }, [searchParams]);
 
-  // Loading durumunda spinner göster
+  // Artık herkes ana sayfaya erişebilir - auth/non-auth fark etmez
+  // RLS policies database seviyesinde koruma sağlıyor
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex items-center gap-2">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span>Loading...</span>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm text-muted-foreground">Loading map...</span>
         </div>
       </div>
     );
   }
 
-  // User yoksa auth sayfasına yönlendir (useSession hook'u zaten yapıyor)
-  if (!user) {
-    return null; // useSession hook auth'a yönlendirecek
-  }
+  // Hem authenticated hem non-authenticated kullanıcılar için content yükle
+  return <DynamicHomeContent initialCoordinates={initialCoordinates} />;
+}
 
-  // User varsa ana sayfayı göster
+export default function Home() {
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <main className="h-[calc(100vh-64px)]">
-        <ClientMapWrapper />
-      </main>
-    </div>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-sm text-muted-foreground">Loading...</span>
+          </div>
+        </div>
+      }
+    >
+      <HomeContent />
+    </Suspense>
   );
 }

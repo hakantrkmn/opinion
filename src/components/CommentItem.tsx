@@ -11,19 +11,29 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar } from "@/components/ui/Avatar";
 import type { Comment, EnhancedComment } from "@/types";
-import { Calendar, Edit2, Save, ThumbsDown, ThumbsUp, Trash2, TrendingDown, TrendingUp, User, X } from "lucide-react";
+import {
+  Calendar,
+  Edit2,
+  Save,
+  ThumbsDown,
+  ThumbsUp,
+  Trash2,
+  TrendingDown,
+  TrendingUp,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 interface CommentItemProps {
   comment: Comment | EnhancedComment;
-  currentUserId: string;
+  currentUserId: string; // Will be empty string for non-authenticated users
   onEdit: (commentId: string, newText: string) => Promise<boolean>;
   onDelete: (commentId: string) => Promise<boolean>;
   onVote: (commentId: string, value: number) => Promise<boolean>;
@@ -44,7 +54,7 @@ export default function CommentItem({
   const CHARACTER_LIMIT = 200;
 
   // Check if this is an enhanced comment with optimistic data
-  const isEnhancedComment = 'isOptimistic' in comment;
+  const isEnhancedComment = "isOptimistic" in comment;
   const isOptimistic = isEnhancedComment && comment.isOptimistic;
 
   // Local state for optimistic updates
@@ -76,7 +86,8 @@ export default function CommentItem({
   }
 
   const [localLikeCount, setLocalLikeCount] = useState(initialLikeCount);
-  const [localDislikeCount, setLocalDislikeCount] = useState(initialDislikeCount);
+  const [localDislikeCount, setLocalDislikeCount] =
+    useState(initialDislikeCount);
 
   // Helper function to calculate like/dislike counts
   const getLikeDislikeCounts = (
@@ -116,9 +127,10 @@ export default function CommentItem({
 
   // Check if comment text exceeds character limit
   const isLongComment = comment.text.length > CHARACTER_LIMIT;
-  const displayText = isLongComment && !isExpanded
-    ? comment.text.slice(0, CHARACTER_LIMIT) + "..."
-    : comment.text;
+  const displayText =
+    isLongComment && !isExpanded
+      ? comment.text.slice(0, CHARACTER_LIMIT) + "..."
+      : comment.text;
 
   const handleEdit = async () => {
     if (!editText.trim()) {
@@ -155,6 +167,18 @@ export default function CommentItem({
   };
 
   const handleVote = async (value: number) => {
+    // Check if user is authenticated
+    if (!currentUserId) {
+      toast.info("Sign in to vote on comments", {
+        description: "Create an account to like or dislike comments",
+        action: {
+          label: "Sign In",
+          onClick: () => (window.location.href = "/auth"),
+        },
+      });
+      return;
+    }
+
     // Don't allow voting on optimistic comments
     if (isOptimistic || comment.id.startsWith("temp-")) {
       console.log("Optimistic comment - voting temporarily disabled");
@@ -236,12 +260,22 @@ export default function CommentItem({
           <div className="flex items-center space-x-2 min-w-0">
             <Avatar
               src={comment.users?.avatar_url || comment.profiles?.avatar_url}
-              alt={comment.users?.display_name || comment.profiles?.display_name || "Anonymous"}
+              alt={
+                comment.users?.display_name ||
+                comment.profiles?.display_name ||
+                "Anonymous"
+              }
               size="sm"
-              fallbackText={comment.users?.display_name || comment.profiles?.display_name || "Anonymous"}
+              fallbackText={
+                comment.users?.display_name ||
+                comment.profiles?.display_name ||
+                "Anonymous"
+              }
             />
             <span className="font-medium text-xs sm:text-sm truncate">
-              {comment.users?.display_name || comment.profiles?.display_name || "Anonymous"}
+              {comment.users?.display_name ||
+                comment.profiles?.display_name ||
+                "Anonymous"}
             </span>
           </div>
           <div className="flex items-center space-x-1 text-xs text-muted-foreground flex-shrink-0">
@@ -266,7 +300,11 @@ export default function CommentItem({
               rows={3}
             />
             <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 sm:justify-end">
-              <Button onClick={handleEdit} size="sm" className="text-xs sm:text-sm">
+              <Button
+                onClick={handleEdit}
+                size="sm"
+                className="text-xs sm:text-sm"
+              >
                 <Save className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                 Save
               </Button>
@@ -309,10 +347,11 @@ export default function CommentItem({
                   size="sm"
                   onClick={() => handleVote(1)}
                   disabled={isOptimistic || comment.id.startsWith("temp-")}
-                  className={`h-7 sm:h-8 text-xs sm:text-sm transition-colors ${currentVote === 1
-                    ? "bg-green-100 border-green-500 text-green-700 hover:bg-green-200"
-                    : "hover:bg-green-50 hover:border-green-300"
-                    }`}
+                  className={`h-7 sm:h-8 text-xs sm:text-sm transition-colors ${
+                    currentVote === 1
+                      ? "bg-green-100 border-green-500 text-green-700 hover:bg-green-200"
+                      : "hover:bg-green-50 hover:border-green-300"
+                  }`}
                 >
                   <ThumbsUp className="h-3 w-3 mr-1" />
                   {localLikeCount > 0 ? localLikeCount : 0}
@@ -322,10 +361,11 @@ export default function CommentItem({
                   size="sm"
                   onClick={() => handleVote(-1)}
                   disabled={isOptimistic || comment.id.startsWith("temp-")}
-                  className={`h-7 sm:h-8 text-xs sm:text-sm transition-colors ${currentVote === -1
-                    ? "bg-red-100 border-red-500 text-red-700 hover:bg-red-200"
-                    : "hover:bg-red-50 hover:border-red-300"
-                    }`}
+                  className={`h-7 sm:h-8 text-xs sm:text-sm transition-colors ${
+                    currentVote === -1
+                      ? "bg-red-100 border-red-500 text-red-700 hover:bg-red-200"
+                      : "hover:bg-red-50 hover:border-red-300"
+                  }`}
                 >
                   <ThumbsDown className="h-3 w-3 mr-1" />
                   {localDislikeCount > 0 ? localDislikeCount : 0}
@@ -335,19 +375,23 @@ export default function CommentItem({
                 {(localLikeCount > 0 || localDislikeCount > 0) && (
                   <Badge
                     variant="secondary"
-                    className={`h-7 text-xs flex items-center space-x-1 ${(localLikeCount - localDislikeCount) > 0
-                      ? "bg-green-50 text-green-700 border-green-200"
-                      : (localLikeCount - localDislikeCount) < 0
+                    className={`h-7 text-xs flex items-center space-x-1 ${
+                      localLikeCount - localDislikeCount > 0
+                        ? "bg-green-50 text-green-700 border-green-200"
+                        : localLikeCount - localDislikeCount < 0
                         ? "bg-red-50 text-red-700 border-red-200"
                         : "bg-slate-50 text-slate-700 border-slate-200"
-                      }`}
+                    }`}
                   >
-                    {(localLikeCount - localDislikeCount) > 0 ? (
+                    {localLikeCount - localDislikeCount > 0 ? (
                       <TrendingUp className="h-3 w-3" />
-                    ) : (localLikeCount - localDislikeCount) < 0 ? (
+                    ) : localLikeCount - localDislikeCount < 0 ? (
                       <TrendingDown className="h-3 w-3" />
                     ) : null}
-                    <span>{localLikeCount - localDislikeCount > 0 ? '+' : ''}{localLikeCount - localDislikeCount}</span>
+                    <span>
+                      {localLikeCount - localDislikeCount > 0 ? "+" : ""}
+                      {localLikeCount - localDislikeCount}
+                    </span>
                   </Badge>
                 )}
               </div>
@@ -379,7 +423,8 @@ export default function CommentItem({
                       <AlertDialogHeader>
                         <AlertDialogTitle>Delete Comment</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to delete this comment? This action cannot be undone.
+                          Are you sure you want to delete this comment? This
+                          action cannot be undone.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>

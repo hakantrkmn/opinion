@@ -13,7 +13,7 @@ export interface UserProfile {
 }
 
 export function useUserProfile() {
-  const { user } = useSession();
+  const { user, signOut } = useSession();
 
   const {
     data: profile,
@@ -25,10 +25,32 @@ export function useUserProfile() {
     queryFn: async (): Promise<UserProfile | null> => {
       if (!user?.id) return null;
 
-      const { profile, error } = await userService.getUserProfile(user.id);
-      
+      const { profile, error, isAuthError } = await userService.getUserProfile(
+        user.id
+      );
+
       if (error) {
         console.error("Failed to fetch user profile:", error);
+        console.log(
+          "🔍 Debug info - User session exists but profile fetch failed:",
+          {
+            userId: user.id,
+            userEmail: user.email,
+            errorType: typeof error,
+            errorMessage: error,
+            isAuthError,
+          }
+        );
+
+        // If this is a real authentication error, sign out the user
+        if (isAuthError) {
+          console.log("🚪 Authentication error detected, signing out user...");
+          // Delay signOut to avoid React state update conflicts
+          setTimeout(() => signOut(), 100);
+          return null;
+        }
+
+        // Database error but session is valid - return fallback profile
         // Return basic profile from auth user if database fetch fails
         return {
           id: user.id,
@@ -43,7 +65,7 @@ export function useUserProfile() {
       if (profile) {
         return {
           ...profile,
-          avatar_url: profile.avatar_url || undefined
+          avatar_url: profile.avatar_url || undefined,
         };
       }
 
@@ -55,21 +77,23 @@ export function useUserProfile() {
     retry: 1,
   });
 
-  const updateProfile = (updates: Partial<Pick<UserProfile, 'display_name' | 'avatar_url'>>) => {
+  const updateProfile = (
+    updates: Partial<Pick<UserProfile, "display_name" | "avatar_url">>
+  ) => {
     if (!profile) return;
 
     // Handle null avatar_url by converting to undefined
     const sanitizedUpdates = {
       ...updates,
-      avatar_url: updates.avatar_url === null ? undefined : updates.avatar_url
+      avatar_url: updates.avatar_url === null ? undefined : updates.avatar_url,
     };
 
     // Update cache optimistically
     const updatedProfile = { ...profile, ...sanitizedUpdates };
-    
+
     // Update the query cache
     refetch();
-    
+
     return updatedProfile;
   };
 

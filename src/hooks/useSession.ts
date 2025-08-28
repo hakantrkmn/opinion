@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/client";
 import { Session } from "@supabase/supabase-js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 
 export function useSession() {
   const queryClient = useQueryClient();
@@ -22,24 +21,23 @@ export function useSession() {
     queryFn: async (): Promise<Session | null> => {
       // Session query'de cache kullanma (problem oluşturuyor)
       // Sadece başarılı login'de cache'e kaydet
-      console.log("🔄 Fetching session from Supabase (no query cache)");
+      console.log(
+        "🔄 Fetching session from Supabase (optimized for auth page)"
+      );
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
       return session;
     },
-    staleTime: 15 * 60 * 1000, // 15 minutes cache (increased from 5)
-    gcTime: 30 * 60 * 1000, // 30 minutes garbage collection (increased from 10)
+    staleTime: 0, // Auth sayfasında fresh session kontrolü
+    gcTime: 5 * 60 * 1000, // 5 dakika garbage collection
     retry: 1,
+    enabled: true, // Her zaman session kontrolü yap
   });
 
-  // Session yoksa auth'a yönlendir
-  useEffect(() => {
-    if (!isLoading && !session && !error) {
-      router.push("/auth");
-    }
-  }, [session, isLoading, error, router]);
+  // Middleware zaten auth redirection'ı server-side yapıyor
+  // Client-side redirect'e gerek yok
 
   const signInMutation = useMutation({
     mutationFn: async ({
@@ -57,9 +55,21 @@ export function useSession() {
       return data;
     },
     onSuccess: (data) => {
-      // Başarılı girişte cache'e kaydet
+      // Başarılı girişte cache'e kaydet ve query cache'i güncelle
       cacheManager.cacheSession(data.session);
-      console.log("✅ Sign in successful, session cached");
+
+      // Session query'yi güncelle (selective caching)
+      queryClient.setQueryData(["session"], data.session);
+
+      // Query cache'i enable et başarılı login sonrası
+      queryClient.setQueryDefaults(["session"], {
+        staleTime: 15 * 60 * 1000, // 15 dakika cache
+        gcTime: 30 * 60 * 1000, // 30 dakika GC
+      });
+
+      console.log(
+        "✅ Sign in successful, session cached with optimized query settings"
+      );
       router.push("/");
     },
     onError: (error) => {
@@ -93,7 +103,19 @@ export function useSession() {
       // Başarılı sign up'ta cache'e kaydet
       if (data.session) {
         cacheManager.cacheSession(data.session);
-        console.log("✅ Sign up successful, session cached");
+
+        // Session query'yi güncelle (selective caching)
+        queryClient.setQueryData(["session"], data.session);
+
+        // Query cache'i enable et başarılı signup sonrası
+        queryClient.setQueryDefaults(["session"], {
+          staleTime: 15 * 60 * 1000, // 15 dakika cache
+          gcTime: 30 * 60 * 1000, // 30 dakika GC
+        });
+
+        console.log(
+          "✅ Sign up successful, session cached with optimized query settings"
+        );
         router.push("/");
       } else {
         // Email confirmation gerekiyorsa

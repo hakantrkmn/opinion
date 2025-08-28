@@ -1,7 +1,6 @@
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
-import { AuthProvider } from "@/contexts/AuthContext";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -98,12 +97,10 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <AuthProvider>
-              <Analytics />
-              <SpeedInsights />
-              {children}
-              <Toaster />
-            </AuthProvider>
+            <Analytics />
+            <SpeedInsights />
+            {children}
+            <Toaster />
           </ThemeProvider>
         </QueryProvider>
       </body>
