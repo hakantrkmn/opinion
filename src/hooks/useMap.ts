@@ -302,7 +302,17 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
   };
 
   // Create pin (integrated with DB)
-  const createPin = async (data: { pinName: string; comment: string }) => {
+  const createPin = async (data: { 
+    pinName: string; 
+    comment: string;
+    photo?: File;
+    photoMetadata?: {
+      file_size: number;
+      width?: number;
+      height?: number;
+      format: string;
+    };
+  }) => {
     if (!tempPin) {
       console.error("Temp pin not found");
       return;
@@ -316,6 +326,8 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
         lng: tempPin[0],
         pinName: data.pinName,
         comment: data.comment,
+        photo: data.photo,
+        photoMetadata: data.photoMetadata,
       };
 
       const success = await createPinInDB(createPinData);

@@ -98,7 +98,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const { data: locations, error: locationError } = await supabase
       .from("pins")
       .select("location")
-      .eq("is_deleted", false)
       .not("location", "is", null);
 
     if (!locationError && locations) {

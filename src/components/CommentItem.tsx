@@ -62,6 +62,18 @@ export default function CommentItem({
   onDelete,
   onVote,
 }: CommentItemProps) {
+  // Helper to get user data regardless of whether it's an array or single object
+  const userData = comment.users
+    ? Array.isArray(comment.users)
+      ? comment.users[0]
+      : comment.users
+    : null;
+
+  const userDisplayName =
+    userData?.display_name || comment.profiles?.display_name || "Anonymous";
+
+  const userAvatarUrl = userData?.avatar_url || comment.profiles?.avatar_url;
+
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(comment.text);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -483,23 +495,13 @@ export default function CommentItem({
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-0 mb-3">
           <div className="flex items-center space-x-2 min-w-0">
             <Avatar
-              src={comment.users?.avatar_url || comment.profiles?.avatar_url}
-              alt={
-                comment.users?.display_name ||
-                comment.profiles?.display_name ||
-                "Anonymous"
-              }
+              src={userAvatarUrl}
+              alt={userDisplayName}
               size="sm"
-              fallbackText={
-                comment.users?.display_name ||
-                comment.profiles?.display_name ||
-                "Anonymous"
-              }
+              fallbackText={userDisplayName}
             />
             <span className="font-medium text-xs sm:text-sm truncate">
-              {comment.users?.display_name ||
-                comment.profiles?.display_name ||
-                "Anonymous"}
+              {userDisplayName}
             </span>
           </div>
           <div className="flex items-center space-x-1 text-xs text-muted-foreground flex-shrink-0">

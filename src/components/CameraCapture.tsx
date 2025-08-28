@@ -300,6 +300,7 @@ export default function CameraCapture({
 
             <div className="flex justify-center gap-4 mt-4">
               <Button
+                type="button"
                 onClick={captureFromStream}
                 disabled={isProcessing}
                 className="bg-white text-black hover:bg-gray-200"
@@ -310,6 +311,7 @@ export default function CameraCapture({
               </Button>
 
               <Button
+                type="button"
                 onClick={stopCameraStream}
                 variant="outline"
                 className="border-white text-white hover:bg-white hover:text-black"

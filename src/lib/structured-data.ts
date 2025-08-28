@@ -4,26 +4,26 @@ export interface StructuredDataConfig {
 
 interface PinData {
   id: string;
-  title?: string;
+  name?: string; // Changed from title to name
   description?: string;
-  location: string;
+  location: string | { type: string; coordinates: [number, number] }; // Can be string or GeoJSON
   latitude?: number;
   longitude?: number;
   comments?: CommentData[];
   users?: {
     display_name?: string;
-  };
+  }[];
 }
 
 interface CommentData {
   id: string;
-  content: string;
+  text: string; // Changed from content to text
   created_at: string;
   upvotes?: number;
   downvotes?: number;
   users?: {
     display_name?: string;
-  };
+  }[];
   pins?: PinData;
 }
 
@@ -66,7 +66,7 @@ export function generatePlaceSchema(
   const schema: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Place",
-    name: pin.title || "Location Pin",
+    name: pin.name || "Location Pin",
     description: pin.description || `Opinion shared about ${pin.location}`,
     url: `${config.baseUrl}/pin/${pin.id}`,
     address: {
@@ -125,11 +125,11 @@ export function generateReviewSchema(
   return {
     "@context": "https://schema.org",
     "@type": "Review",
-    reviewBody: comment.content,
+    reviewBody: comment.text,
     datePublished: comment.created_at,
     author: {
       "@type": "Person",
-      name: comment.users?.display_name || "Anonymous User",
+      name: comment.users?.[0]?.display_name || "Anonymous User",
     },
     reviewRating: {
       "@type": "Rating",
@@ -140,7 +140,7 @@ export function generateReviewSchema(
     itemReviewed: comment.pins
       ? {
           "@type": "Place",
-          name: comment.pins.title || "Location",
+          name: comment.pins.name || "Location",
           address: {
             "@type": "PostalAddress",
             addressLocality: comment.pins.location,

@@ -214,13 +214,17 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
           }
         );
 
-        // Invalidate all bounds queries to force refresh
+        // Invalidate bounds queries to trigger refresh, but don't clear hybrid cache
+        // The new pin is already in the cache with correct user data
         queryClient.invalidateQueries({
           queryKey: ["pins", "bounds"],
         });
 
-        // Also clear hybrid cache to force fresh data
-        hybridCache.clearAll();
+        console.log('✅ Pin added to cache with user data:', {
+          pinId: pinWithCorrectCount.id,
+          userName: pinWithCorrectCount.user?.display_name,
+          cacheCleared: false
+        });
 
         toast.success("Pin created successfully!");
       }

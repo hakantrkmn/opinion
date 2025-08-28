@@ -21,6 +21,15 @@ export interface Pin {
     display_name: string;
     avatar_url?: string;
   };
+  users?:
+    | {
+        display_name: string;
+        avatar_url?: string;
+      }
+    | Array<{
+        display_name: string;
+        avatar_url?: string;
+      }>;
   profiles?: {
     display_name: string;
     avatar_url?: string;
@@ -43,11 +52,15 @@ export interface Comment {
     format?: string;
     upload_date?: string;
   };
-  users?: {
-    // user yerine users
-    display_name: string;
-    avatar_url?: string;
-  };
+  users?:
+    | {
+        display_name: string;
+        avatar_url?: string;
+      }
+    | Array<{
+        display_name: string;
+        avatar_url?: string;
+      }>;
   profiles?: {
     display_name: string;
     avatar_url?: string;
@@ -107,7 +120,17 @@ export interface User {
 export interface PinModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreatePin: (data: { pinName: string; comment: string }) => void;
+  onCreatePin: (data: { 
+    pinName: string; 
+    comment: string;
+    photo?: File;
+    photoMetadata?: {
+      file_size: number;
+      width?: number;
+      height?: number;
+      format: string;
+    };
+  }) => void;
 }
 
 export interface PinDetailModalProps {
@@ -133,6 +156,13 @@ export interface CreatePinData {
   comment: string;
   lat: number;
   lng: number;
+  photo?: File;
+  photoMetadata?: {
+    file_size: number;
+    width?: number;
+    height?: number;
+    format: string;
+  };
 }
 
 export interface MapBounds {

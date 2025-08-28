@@ -1,5 +1,4 @@
 import {
-  generateGeoMetadata,
   generateLocationKeywords,
   generateOGMetadata,
   generateTwitterMetadata,
@@ -28,12 +27,12 @@ export async function generateMetadata({
   // Query pin data for metadata generation
   const { data: pin, error } = await supabase
     .from("pins")
-    .select("id, name, created_at, updated_at")
+    .select("id, name, location, created_at, updated_at")
     .eq("id", id)
     .single();
 
   if (error || !pin) {
-    console.error('Metadata query error:', error, 'for pin ID:', id);
+    console.error("Metadata query error:", error, "for pin ID:", id);
     return {
       title: "Pin Not Found | oPINion",
       description: "The requested pin could not be found.",
@@ -42,7 +41,7 @@ export async function generateMetadata({
 
   const title = pin.name || "Pin Details";
   const description = `Discover opinions and thoughts about ${pin.name}. Read what the community thinks about this location on oPINion.`;
-  
+
   // Use the pin name as location for now (coordinates will be handled separately)
   const locationName = pin.name || "Unknown Location";
 
@@ -104,7 +103,11 @@ export async function generateMetadata({
   };
 }
 
-export default async function PinPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PinPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
   const supabase = await createClient();
   const baseUrl =
@@ -114,9 +117,21 @@ export default async function PinPage({ params }: { params: Promise<{ id: string
     .from("pins")
     .select(
       `
-      *,
+      id,
+      name,
+      location,
+      created_at,
+      updated_at,
+      user_id,
       users:user_id(display_name, avatar_url),
-      comments(*)
+      comments(
+        id,
+        text,
+        created_at,
+        is_first_comment,
+        photo_url,
+        users:user_id(display_name, avatar_url)
+      )
     `
     )
     .eq("id", id)
@@ -125,6 +140,13 @@ export default async function PinPage({ params }: { params: Promise<{ id: string
   if (error || !pin) {
     notFound();
   }
+
+  // Handle users data - could be single object or array depending on Supabase response
+  const userData = pin.users
+    ? Array.isArray(pin.users)
+      ? pin.users[0]
+      : pin.users
+    : null;
 
   // Generate structured data
   const placeSchema = generatePlaceSchema(pin, { baseUrl });
@@ -165,12 +187,6 @@ export default async function PinPage({ params }: { params: Promise<{ id: string
               <h1 className="text-3xl font-bold mb-4">
                 {pin.name || "Untitled Pin"}
               </h1>
-
-              {pin.description && (
-                <p className="text-gray-600 mb-6 text-lg leading-relaxed">
-                  {pin.description}
-                </p>
-              )}
             </header>
 
             <div className="bg-gray-100 p-4 rounded-lg mb-6">
@@ -179,19 +195,19 @@ export default async function PinPage({ params }: { params: Promise<{ id: string
               {/* Coordinates display removed temporarily due to PostGIS complexity */}
             </div>
 
-            {pin.users && (
+            {userData && (
               <div className="mb-6 p-4 bg-blue-50 rounded-lg">
                 <h2 className="text-lg font-semibold mb-2">👤 Posted by</h2>
                 <div className="flex items-center gap-3">
-                  {pin.users.avatar_url && (
+                  {userData.avatar_url && (
                     <img
-                      src={pin.users.avatar_url}
-                      alt={pin.users.display_name}
+                      src={userData.avatar_url}
+                      alt={userData.display_name}
                       className="w-10 h-10 rounded-full"
                     />
                   )}
                   <span className="text-gray-700 font-medium">
-                    {pin.users.display_name}
+                    {userData.display_name}
                   </span>
                 </div>
               </div>
@@ -208,14 +224,14 @@ export default async function PinPage({ params }: { params: Promise<{ id: string
                     .map(
                       (comment: {
                         id: string;
-                        content: string;
+                        text: string;
                         created_at: string;
                       }) => (
                         <div
                           key={comment.id}
                           className="bg-gray-50 p-3 rounded"
                         >
-                          <p className="text-gray-700">{comment.content}</p>
+                          <p className="text-gray-700">{comment.text}</p>
                           <div className="text-xs text-gray-500 mt-1">
                             {new Date(comment.created_at).toLocaleDateString()}
                           </div>

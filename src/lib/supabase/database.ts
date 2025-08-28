@@ -37,7 +37,12 @@ export const pinService = {
         })
         .select(
           `
-          *,
+          id,
+          user_id,
+          name,
+          location,
+          created_at,
+          updated_at,
           users!inner(display_name, avatar_url)
         `
         )
@@ -48,15 +53,55 @@ export const pinService = {
         return { pin: null, error: pinError.message };
       }
 
+      // Handle photo upload if provided
+      let photoUrl: string | undefined;
+      console.log('CreatePin: Checking for photo data:', {
+        hasPhoto: !!data.photo,
+        photoFileName: data.photo?.name,
+        photoSize: data.photo?.size,
+        photoMetadata: data.photoMetadata
+      });
+      
+      if (data.photo) {
+        console.log('CreatePin: Starting photo upload process');
+        try {
+          const { uploadCommentPhoto } = await import("./photoService");
+          const result = await uploadCommentPhoto(data.photo, user.id);
+          
+          console.log('CreatePin: Photo upload result:', result);
+          
+          if (result.success && result.url) {
+            photoUrl = result.url;
+            console.log("Photo uploaded successfully:", photoUrl);
+          } else {
+            console.error("Photo upload failed:", result.error);
+            // Don't fail pin creation if photo upload fails, just log it
+          }
+        } catch (photoError) {
+          console.error("Photo upload error:", photoError);
+          // Continue with pin creation even if photo upload fails
+        }
+      }
+
       // İlk yorumu ekle (is_first_comment = true ile)
+      const commentData: any = {
+        pin_id: pin.id,
+        user_id: user.id,
+        text: data.comment,
+        is_first_comment: true,
+      };
+
+      // Add photo data if available
+      if (photoUrl) {
+        commentData.photo_url = photoUrl;
+        if (data.photoMetadata) {
+          commentData.photo_metadata = data.photoMetadata;
+        }
+      }
+
       const { data: comment, error: commentError } = await supabase
         .from("comments")
-        .insert({
-          pin_id: pin.id,
-          user_id: user.id,
-          text: data.comment,
-          is_first_comment: true,
-        })
+        .insert(commentData)
         .select("*")
         .single();
 
@@ -64,24 +109,44 @@ export const pinService = {
         console.error("Comment creation error:", commentError);
         // Pin oluşturuldu ama yorum eklenemedi - pin'i sil
         await supabase.from("pins").delete().eq("id", pin.id);
+        
+        // Also clean up uploaded photo if it exists
+        if (photoUrl) {
+          try {
+            const { deleteCommentPhoto } = await import("./photoService");
+            await deleteCommentPhoto(photoUrl);
+          } catch (cleanupError) {
+            console.error("Failed to cleanup photo after pin creation failure:", cleanupError);
+          }
+        }
+        
         return { pin: null, error: "İlk yorum eklenirken hata oluştu" };
       }
 
       console.log("Pin ve ilk yorum başarıyla oluşturuldu:", {
         pinId: pin.id,
         commentId: comment.id,
+        hasPhoto: !!photoUrl,
       });
 
-      // Pin'i comment count ve user bilgisi ile birlikte döndür
+      // Pin'i comment count ve user bilgisi ile birlikte döndür - RPC formatına uygun
       const pinWithCommentCount = {
         ...pin,
         comment_count: 1, // İlk yorum eklendi
         comments_count: 1, // Alternatif field name
         user: {
-          display_name: pin.users?.display_name || "Anonim",
-          avatar_url: pin.users?.avatar_url || null,
-        }, // User bilgisini ekle
+          display_name: pin.users?.[0]?.display_name || user.user_metadata?.display_name || user.email?.split('@')[0] || "Anonim",
+          avatar_url: pin.users?.[0]?.avatar_url || user.user_metadata?.avatar_url || null,
+        },
       };
+
+      console.log('Returning pin with user data:', {
+        pinId: pin.id,
+        userName: pinWithCommentCount.user.display_name,
+        hasUsers: !!pin.users,
+        usersLength: pin.users?.length,
+        userMetadata: user.user_metadata
+      });
 
       return { pin: pinWithCommentCount, error: null };
     } catch (error) {
@@ -172,8 +237,14 @@ export const pinService = {
         .from("comments")
         .select(
           `
-          *,
-          users!inner(display_name, avatar_url),
+          id,
+          pin_id,
+          user_id,
+          text,
+          created_at,
+          is_first_comment,
+          photo_url,
+          users:user_id(display_name, avatar_url),
           comment_votes!left(value, user_id)
         `
         )
@@ -216,6 +287,10 @@ export const pinService = {
           ...comment,
           vote_count: voteCount,
           user_vote: userVote,
+          users: comment.users || {
+            display_name: "Anonymous",
+            avatar_url: null,
+          },
         };
 
         // Pin ID'ye göre grupla
@@ -259,8 +334,14 @@ export const pinService = {
         .from("comments")
         .select(
           `
-          *,
-          users!inner(display_name, avatar_url),
+          id,
+          pin_id,
+          user_id,
+          text,
+          created_at,
+          is_first_comment,
+          photo_url,
+          users:user_id(display_name, avatar_url),
           comment_votes!left(value, user_id)
         `
         )
@@ -308,6 +389,10 @@ export const pinService = {
           ...comment,
           vote_count: voteCount,
           user_vote: userVote,
+          users: comment.users || {
+            display_name: "Anonymous",
+            avatar_url: null,
+          },
           // comment_votes array'ini koru - component'ta sayıları hesaplamak için gerekli
           // comment_votes: undefined,
         };

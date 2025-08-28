@@ -534,9 +534,14 @@ export const userService = {
         .from("pins")
         .select(
           `
-          *,
+          id,
+          user_id,
+          name,
+          location,
+          created_at,
+          updated_at,
           comments!inner(count),
-          users!inner(display_name, avatar_url)
+          users:user_id(display_name, avatar_url)
         `
         )
         .eq("user_id", userId)
@@ -565,10 +570,16 @@ export const userService = {
         .from("comments")
         .select(
           `
-          *,
-          pins!inner(name, location),
+          id,
+          user_id,
+          text,
+          created_at,
+          is_first_comment,
+          photo_url,
+          pin_id,
+          pins!inner(id, name, location),
           comment_votes(value),
-          users!inner(display_name, avatar_url)
+          users:user_id(display_name, avatar_url)
         `
         )
         .eq("user_id", userId)
@@ -578,7 +589,7 @@ export const userService = {
         return { comments: null, error: error.message };
       }
 
-      // Her yorum için vote sayısını hesapla
+      // Her yorum için vote sayısını hesapla ve users array'ini dönüştür
       const commentsWithVotes = (comments || []).map((comment) => ({
         ...comment,
         vote_count:
@@ -586,6 +597,7 @@ export const userService = {
             (sum: number, vote: { value: number }) => sum + vote.value,
             0
           ) || 0,
+        users: comment.users || { display_name: "Anonymous", avatar_url: null },
       }));
 
       return { comments: commentsWithVotes, error: null };
