@@ -22,25 +22,10 @@ export default function CameraCapture({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
-  const [isDesktop, setIsDesktop] = useState(false);
   const [showCameraUI, setShowCameraUI] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-
-  // Detect if user is on desktop
-  useEffect(() => {
-    const checkDevice = () => {
-      const isMobile =
-        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-          navigator.userAgent
-        );
-      setIsDesktop(!isMobile);
-    };
-
-    if (typeof window !== "undefined") {
-      checkDevice();
-    }
-  }, []);
+  const [facingMode, setFacingMode] = useState<"user" | "environment">("environment"); // Default to back camera
 
   // Validate file before processing
   const validateFile = (file: File): boolean => {
@@ -81,12 +66,12 @@ export default function CameraCapture({
     return URL.createObjectURL(file);
   };
 
-  // Start camera stream for desktop users
+  // Start camera stream for both mobile and desktop users
   const startCameraStream = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: "environment",
+          facingMode: facingMode,
           width: { ideal: 1280 },
           height: { ideal: 720 },
         },
@@ -104,7 +89,7 @@ export default function CameraCapture({
     } catch (error) {
       console.error("Failed to access camera:", error);
       toast.error("Camera access failed", {
-        description: "Please allow camera access or try using mobile device.",
+        description: "Please allow camera access to take photos.",
       });
       // Fallback to file input
       fileInputRef.current?.click();
@@ -118,6 +103,45 @@ export default function CameraCapture({
       setStream(null);
     }
     setShowCameraUI(false);
+  };
+
+  // Switch between front and back camera
+  const switchCamera = async () => {
+    if (stream) {
+      // Stop current stream
+      stream.getTracks().forEach((track) => track.stop());
+      setStream(null);
+    }
+
+    // Toggle facing mode
+    const newFacingMode = facingMode === "environment" ? "user" : "environment";
+    setFacingMode(newFacingMode);
+
+    // Start stream with new facing mode
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: newFacingMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+      });
+
+      setStream(mediaStream);
+      
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream;
+        }
+      }, 100);
+    } catch (error) {
+      console.error("Failed to switch camera:", error);
+      toast.error("Camera switch failed", {
+        description: "Could not access the other camera.",
+      });
+      // Revert to original facing mode
+      setFacingMode(facingMode);
+    }
   };
 
   // Capture photo from camera stream
@@ -221,29 +245,11 @@ export default function CameraCapture({
     await processFile(file);
   };
 
-  // Trigger camera with custom UI for desktop
+  // Trigger camera - simplified for both mobile and desktop
   const triggerCamera = async () => {
     if (disabled || isProcessing) return;
-
-    // For desktop users, use custom camera UI
-    if (
-      isDesktop &&
-      typeof navigator !== "undefined" &&
-      navigator.mediaDevices &&
-      typeof navigator.mediaDevices.getUserMedia === "function"
-    ) {
-      await startCameraStream();
-    } else {
-      // For mobile users or fallback, use file input
-      if (isDesktop) {
-        toast.info("Camera Access", {
-          description:
-            "Please allow camera access when prompted. Only fresh photos are accepted.",
-          duration: 4000,
-        });
-      }
-      fileInputRef.current?.click();
-    }
+    
+    await startCameraStream();
   };
 
   // Clear preview and stop camera
@@ -286,46 +292,56 @@ export default function CameraCapture({
         disabled={disabled || isProcessing}
       />
 
-      {/* Desktop Camera UI */}
+      {/* Camera UI - Full Screen */}
       {showCameraUI && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center">
-          <div className="relative max-w-2xl w-full mx-4">
+        <div className="fixed inset-0 bg-black z-50 flex flex-col">
+          {/* Video */}
+          <div className="flex-1 relative">
             <video
               ref={videoRef}
               autoPlay
               playsInline
               muted
-              className="w-full aspect-video bg-black rounded-lg"
+              className="w-full h-full object-cover"
             />
+          </div>
 
-            <div className="flex justify-center gap-4 mt-4">
-              <Button
-                type="button"
-                onClick={captureFromStream}
-                disabled={isProcessing}
-                className="bg-white text-black hover:bg-gray-200"
-                size="lg"
-              >
-                <Camera className="h-5 w-5 mr-2" />
-                {isProcessing ? "Processing..." : "Capture Photo"}
-              </Button>
-
+          {/* Controls */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
+            <div className="flex justify-center items-center gap-6">
+              {/* Cancel */}
               <Button
                 type="button"
                 onClick={stopCameraStream}
                 variant="outline"
-                className="border-white text-white hover:bg-white hover:text-black"
+                className="border-white text-white hover:bg-white hover:text-black bg-black/50"
                 size="lg"
               >
-                <X className="h-5 w-5 mr-2" />
                 Cancel
               </Button>
-            </div>
 
-            <p className="text-white text-center mt-4 text-sm">
-              📸 Position your camera and click &quot;Capture Photo&quot; to
-              take a fresh photo
-            </p>
+              {/* Capture */}
+              <Button
+                type="button"
+                onClick={captureFromStream}
+                disabled={isProcessing}
+                className="bg-white text-black hover:bg-gray-200 px-8"
+                size="lg"
+              >
+                {isProcessing ? "Processing..." : "Capture"}
+              </Button>
+
+              {/* Switch Camera */}
+              <Button
+                type="button"
+                onClick={switchCamera}
+                variant="outline"
+                className="border-white text-white hover:bg-white hover:text-black bg-black/50"
+                size="lg"
+              >
+                🔄
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -339,7 +355,7 @@ export default function CameraCapture({
           onClick={triggerCamera}
           disabled={disabled || isProcessing}
           className="flex items-center gap-2"
-          title="Take photo with camera"
+          title="Take photo"
         >
           <Camera className="h-4 w-4" />
           <span className="text-sm">
