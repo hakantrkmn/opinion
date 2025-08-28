@@ -6,17 +6,17 @@ import { useState } from "react";
 // Import the shared image cache from Avatar component
 // Note: This is accessing the internal cache - in a production app,
 // you might want to export this from a shared cache module
-const getImageCache = () => {
+const getImageCache = (): Map<string, boolean> => {
   // Access the same cache used by Avatar component
   // This is a bit of a hack but works for our use case
   if (typeof window !== "undefined") {
-    return (window as any).__avatarImageCache || new Map<string, boolean>();
+    return (window as unknown as { __avatarImageCache?: Map<string, boolean> }).__avatarImageCache || new Map<string, boolean>();
   }
   return new Map<string, boolean>();
 };
 
-const setImageCache = (cache: Map<string, boolean>) => {
-  (window as any).__avatarImageCache = cache;
+const setImageCache = (cache: Map<string, boolean>): void => {
+  (window as unknown as { __avatarImageCache: Map<string, boolean> }).__avatarImageCache = cache;
 };
 
 interface UserMarkerProps {
@@ -37,7 +37,9 @@ export default function UserMarker({
   };
 
   return (
-    <div className={`relative flex flex-col items-center animate-bounce ${className}`}>
+    <div
+      className={`relative flex flex-col items-center animate-bounce ${className}`}
+    >
       <div className="relative">
         {avatarUrl && !imageError ? (
           <div className="w-8 h-8 rounded-full border-2 border-white shadow-lg overflow-hidden bg-black">

@@ -22,10 +22,11 @@ const sizeClasses = {
 // Simple in-memory cache for images - use global window cache for consistency
 const getImageCache = (): Map<string, boolean> => {
   if (typeof window !== "undefined") {
-    if (!(window as any).__avatarImageCache) {
-      (window as any).__avatarImageCache = new Map<string, boolean>();
+    const windowWithCache = window as unknown as { __avatarImageCache?: Map<string, boolean> };
+    if (!windowWithCache.__avatarImageCache) {
+      windowWithCache.__avatarImageCache = new Map<string, boolean>();
     }
-    return (window as any).__avatarImageCache;
+    return windowWithCache.__avatarImageCache;
   }
   // Fallback for SSR
   return new Map<string, boolean>();
