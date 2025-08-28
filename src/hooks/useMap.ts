@@ -56,6 +56,18 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
   // Get user profile data including avatar
   const { profile } = useUserProfile();
 
+  // Recreate user marker when profile changes (to update avatar)
+  useEffect(() => {
+    if (userLocation && profile) {
+      console.log("Profile changed, updating user marker:", {
+        avatarUrl: profile.avatar_url,
+        displayName: profile.display_name,
+        userLocation,
+      });
+      addUserMarker(userLocation[0], userLocation[1]);
+    }
+  }, [profile?.avatar_url, profile?.display_name, userLocation]);
+
   const getUser = async () => {
     const supabase = createClient();
     const {
@@ -85,6 +97,7 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
     editComment,
     deleteComment,
     voteComment,
+    hasUserCommented,
     invalidateCache, // Add cache invalidation function
   } = usePinsWithHybridCache();
   const mapPins = pins;
@@ -260,14 +273,23 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
       avatarUrl: profile?.avatar_url,
       displayName: profile?.display_name,
       hasProfile: !!profile,
+      avatarUrlValid: profile?.avatar_url
+        ? profile.avatar_url.includes("supabase")
+        : false,
     });
 
     const markerElement = document.createElement("div");
     markerElement.className = "user-marker";
-    markerElement.innerHTML = generateUserMarkerHTML(
+    const generatedHTML = generateUserMarkerHTML(
       profile?.avatar_url,
       profile?.display_name
     );
+
+    console.log(
+      "Generated UserMarker HTML:",
+      generatedHTML.substring(0, 200) + "..."
+    );
+    markerElement.innerHTML = generatedHTML;
 
     userMarker.current = new maplibregl.Marker({
       element: markerElement,
@@ -275,6 +297,8 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
     })
       .setLngLat([lng, lat])
       .addTo(map.current);
+
+    console.log("UserMarker added to map at:", [lng, lat]);
   };
 
   // Create pin (integrated with DB)
@@ -582,12 +606,21 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
   }, [addPinToMap, pins]);
 
   // Yorum ekleme (cache ile entegre)
-  const handleAddComment = async (text: string): Promise<boolean> => {
+  const handleAddComment = async (
+    text: string,
+    photoUrl?: string,
+    photoMetadata?: Record<string, unknown>
+  ): Promise<boolean> => {
     if (!selectedPin) return false;
 
     try {
-      // Yorum ekle
-      const success = await addComment(selectedPin.pinId, text);
+      // Yorum ekle - photo parameters'ı geç
+      const success = await addComment(
+        selectedPin.pinId,
+        text,
+        photoUrl,
+        photoMetadata
+      );
 
       if (success) {
         // Yorumları hemen yenile ki modalda görünsün - fresh data al
@@ -620,12 +653,19 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
   // Yorum düzenleme
   const handleEditComment = async (
     commentId: string,
-    newText: string
+    newText: string,
+    photoUrl?: string | null,
+    photoMetadata?: Record<string, unknown>
   ): Promise<boolean> => {
     if (!selectedPin) return false;
 
     try {
-      const success = await editComment(commentId, newText);
+      const success = await editComment(
+        commentId,
+        newText,
+        photoUrl,
+        photoMetadata
+      );
       if (success) {
         // Yorumları yenile - fresh data al
         const updatedComments = await getPinComments(selectedPin.pinId, true);
@@ -910,5 +950,6 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
     setBatchComments,
     commentsLoading,
     loadVisiblePinsComments,
+    hasUserCommented,
   };
 };

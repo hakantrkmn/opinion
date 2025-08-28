@@ -139,7 +139,9 @@ export function ProfileClient({ user }: ProfileClientProps) {
     // Extract coordinates from PostGIS POINT format
     const [lng, lat] = pin.location.coordinates;
     const currentUrl = window.location.origin;
-    const shareUrl = `${currentUrl}/?lat=${lat.toFixed(6)}&long=${lng.toFixed(6)}`;
+    const shareUrl = `${currentUrl}/?lat=${lat.toFixed(6)}&long=${lng.toFixed(
+      6
+    )}`;
 
     try {
       await navigator.clipboard.writeText(shareUrl);
@@ -432,7 +434,9 @@ export function ProfileClient({ user }: ProfileClientProps) {
                               >
                                 <MessageCircle className="h-3 w-3" />
                                 {pin.comments_count || 0}
-                                <span className="hidden sm:inline">comments</span>
+                                <span className="hidden sm:inline">
+                                  comments
+                                </span>
                               </Badge>
                               <Button
                                 variant="outline"
@@ -442,7 +446,9 @@ export function ProfileClient({ user }: ProfileClientProps) {
                                 className="flex items-center gap-1 h-8 px-2 sm:px-3"
                               >
                                 <Share2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                                <span className="hidden sm:inline text-xs">Share</span>
+                                <span className="hidden sm:inline text-xs">
+                                  Share
+                                </span>
                               </Button>
                             </div>
                           </div>

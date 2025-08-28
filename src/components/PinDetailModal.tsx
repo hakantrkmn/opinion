@@ -1,5 +1,6 @@
 "use client";
 
+import CameraCapture from "@/components/CameraCapture";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -8,13 +9,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
 import {
   commentSortManager,
   type SortCriteria,
 } from "@/lib/comment-sort-manager";
-import type { Comment, EnhancedComment } from "@/types";
+import { uploadCommentPhoto } from "@/lib/supabase/photoService";
+import type {
+  CameraCapture as CameraCaptureType,
+  Comment,
+  EnhancedComment,
+} from "@/types";
 import {
   Loader2,
   LogIn,
@@ -26,7 +32,7 @@ import {
   Share2,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import CommentItem from "./CommentItem";
 import CommentSortDropdown from "./CommentSortDropdown";
@@ -35,21 +41,39 @@ interface PinDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   pinName: string;
+  pinId: string;
   pinCoordinates?: { lat: number; lng: number };
   comments: (Comment | EnhancedComment)[];
-  onAddComment: (text: string) => Promise<boolean>;
-  onEditComment: (commentId: string, newText: string) => Promise<boolean>;
+  onAddComment: (
+    text: string,
+    photoUrl?: string,
+    photoMetadata?: Record<string, unknown>
+  ) => Promise<boolean>;
+  onEditComment: (
+    commentId: string,
+    newText: string,
+    photoUrl?: string | null,
+    photoMetadata?: Record<string, unknown>
+  ) => Promise<boolean>;
   onDeleteComment: (commentId: string) => Promise<boolean>;
   onVoteComment: (commentId: string, value: number) => Promise<boolean>;
   currentUserId: string;
   loading?: boolean;
   onRefresh?: () => void;
+  hasUserCommented: (
+    pinId: string
+  ) => Promise<{
+    hasCommented: boolean;
+    commentId?: string;
+    error: string | null;
+  }>;
 }
 
 export default function PinDetailModal({
   isOpen,
   onClose,
   pinName,
+  pinId,
   pinCoordinates,
   comments,
   onAddComment,
@@ -59,10 +83,65 @@ export default function PinDetailModal({
   currentUserId,
   loading = false,
   onRefresh,
+  hasUserCommented,
 }: PinDetailModalProps) {
   const [newComment, setNewComment] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [sortBy, setSortBy] = useState<SortCriteria>("newest");
+  const [capturedPhoto, setCapturedPhoto] = useState<CameraCaptureType | null>(
+    null
+  );
+  const [isUploading, setIsUploading] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [userAlreadyCommented, setUserAlreadyCommented] = useState(false);
+  const [existingCommentId, setExistingCommentId] = useState<
+    string | undefined
+  >();
+  const [checkingCommentStatus, setCheckingCommentStatus] = useState(false);
+
+  // Auto-expand textarea
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      // Reset height to auto to get the correct scrollHeight
+      textarea.style.height = "auto";
+      // Set height based on content, with min and max constraints
+      const newHeight = Math.min(Math.max(textarea.scrollHeight, 60), 120);
+      textarea.style.height = `${newHeight}px`;
+    }
+  }, [newComment]);
+
+  // Check if user has already commented when modal opens
+  useEffect(() => {
+    const checkUserCommentStatus = async () => {
+      if (!isOpen || !currentUserId || !pinId) {
+        setUserAlreadyCommented(false);
+        setExistingCommentId(undefined);
+        return;
+      }
+
+      setCheckingCommentStatus(true);
+      try {
+        const result = await hasUserCommented(pinId);
+        if (!result.error) {
+          setUserAlreadyCommented(result.hasCommented);
+          setExistingCommentId(result.commentId);
+        } else {
+          console.error("Error checking comment status:", result.error);
+          setUserAlreadyCommented(false);
+          setExistingCommentId(undefined);
+        }
+      } catch (error) {
+        console.error("Error checking if user has commented:", error);
+        setUserAlreadyCommented(false);
+        setExistingCommentId(undefined);
+      } finally {
+        setCheckingCommentStatus(false);
+      }
+    };
+
+    checkUserCommentStatus();
+  }, [isOpen, currentUserId, pinId, hasUserCommented]);
 
   // Sort comments based on selected criteria
   const sortedComments = useMemo(() => {
@@ -118,9 +197,32 @@ export default function PinDetailModal({
     }
   };
 
+  // Handle photo capture from camera
+  const handlePhotoCapture = (capture: CameraCaptureType) => {
+    setCapturedPhoto(capture);
+    console.log("Photo captured for comment:", {
+      fileName: capture.file.name,
+      fileSize: capture.file.size,
+      hasPreview: !!capture.preview,
+    });
+  };
+
+  // Handle photo removal
+  const handleRemovePhoto = () => {
+    if (capturedPhoto?.preview) {
+      URL.revokeObjectURL(capturedPhoto.preview);
+    }
+    setCapturedPhoto(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newComment.trim()) return;
+    if (!newComment.trim() && !capturedPhoto) {
+      toast.info("Add text or photo", {
+        description: "Please write something or capture a photo",
+      });
+      return;
+    }
 
     // Check if user is authenticated
     if (!currentUserId) {
@@ -135,11 +237,39 @@ export default function PinDetailModal({
     }
 
     const commentText = newComment.trim();
+    setIsUploading(true);
     setNewComment(""); // Clear input immediately
 
     try {
-      const success = await onAddComment(commentText);
+      let photoUrl: string | undefined;
+      let photoMetadata: Record<string, unknown> | undefined;
+
+      // Upload photo if captured
+      if (capturedPhoto) {
+        console.log("Uploading photo with comment...");
+        const uploadResult = await uploadCommentPhoto(
+          capturedPhoto.file,
+          currentUserId
+        );
+
+        if (uploadResult.success && uploadResult.url) {
+          photoUrl = uploadResult.url;
+          photoMetadata = uploadResult.metadata;
+          console.log("Photo uploaded successfully:", photoUrl);
+        } else {
+          throw new Error(uploadResult.error || "Photo upload failed");
+        }
+      }
+
+      // Submit comment with photo data
+      const success = await onAddComment(commentText, photoUrl, photoMetadata);
+
       if (success) {
+        // Clear photo after successful submission
+        if (capturedPhoto) {
+          handleRemovePhoto();
+        }
+
         // Focus back to input after successful addition
         setTimeout(() => {
           const input = document.querySelector(
@@ -147,14 +277,28 @@ export default function PinDetailModal({
           ) as HTMLInputElement;
           if (input) input.focus();
         }, 100);
+
+        toast.success("Comment added successfully!", {
+          description: capturedPhoto
+            ? "Comment with photo posted"
+            : "Comment posted",
+        });
       } else {
         // Restore input on failure
         setNewComment(commentText);
       }
     } catch (error) {
-      console.error("Comment addition error:", error);
+      console.error("Comment submission error:", error);
+
       // Restore input on error
       setNewComment(commentText);
+
+      toast.error("Failed to add comment", {
+        description:
+          error instanceof Error ? error.message : "An error occurred",
+      });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -281,24 +425,97 @@ export default function PinDetailModal({
         {/* Add Comment */}
         <div className="border-t pt-3 sm:pt-4 flex-shrink-0">
           {currentUserId ? (
-            <form onSubmit={handleSubmit} className="flex space-x-2">
-              <Input
-                type="text"
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Share your thoughts..."
-                className="flex-1 text-sm sm:text-base"
-              />
-              <Button
-                type="submit"
-                disabled={!newComment.trim()}
-                size="sm"
-                className="px-3"
-              >
-                <Send className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline ml-2">Send</span>
-              </Button>
-            </form>
+            checkingCommentStatus ? (
+              <div className="flex items-center justify-center p-4">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <span className="text-sm text-muted-foreground">
+                  Checking comment status...
+                </span>
+              </div>
+            ) : userAlreadyCommented ? (
+              <div className="flex items-center justify-center p-4 bg-muted/50 rounded-lg border border-dashed">
+                <div className="text-center">
+                  <MessageCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                  <h3 className="text-sm font-medium mb-1">
+                    You already commented on this pin
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Each user can only make one comment per pin. You can edit or
+                    delete your existing comment.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Photo Preview */}
+                {capturedPhoto && (
+                  <div className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg">
+                    <img
+                      src={capturedPhoto.preview}
+                      alt="Captured photo preview"
+                      className="w-12 h-12 object-cover rounded border"
+                    />
+                    <div className="flex-1 text-sm text-muted-foreground">
+                      Photo ready to upload
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRemovePhoto}
+                      className="h-8 w-8 p-0"
+                    >
+                      ×
+                    </Button>
+                  </div>
+                )}
+
+                {/* Comment Input Form */}
+                <form onSubmit={handleSubmit} className="space-y-3">
+                  {/* Text Area at Top */}
+                  <Textarea
+                    ref={textareaRef}
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Share your thoughts..."
+                    className="min-h-[60px] max-h-[120px] text-sm sm:text-base resize-none overflow-hidden"
+                    disabled={isUploading}
+                    rows={2}
+                  />
+
+                  {/* Action Buttons at Bottom */}
+                  <div className="flex items-center gap-2">
+                    {/* Camera Capture Button */}
+                    {!capturedPhoto && (
+                      <CameraCapture
+                        onPhotoCapture={handlePhotoCapture}
+                        disabled={isUploading}
+                        className="flex-shrink-0"
+                      />
+                    )}
+
+                    {/* Submit Button */}
+                    <Button
+                      type="submit"
+                      disabled={
+                        (!newComment.trim() && !capturedPhoto) || isUploading
+                      }
+                      size="sm"
+                      className="px-4 ml-auto"
+                    >
+                      {isUploading ? (
+                        <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-3 w-3 sm:h-4 sm:w-4" />
+                      )}
+                      <span className="hidden sm:inline ml-2">
+                        {isUploading ? "Posting..." : "Send"}
+                      </span>
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            )
           ) : (
             <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-dashed">
               <div className="flex items-center gap-2">

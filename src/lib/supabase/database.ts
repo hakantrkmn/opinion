@@ -324,7 +324,9 @@ export const pinService = {
   async addComment(
     pinId: string,
     text: string,
-    user?: User
+    user?: User,
+    photoUrl?: string,
+    photoMetadata?: any
   ): Promise<{ comment: Comment | null; error: string | null }> {
     try {
       const supabase = createClient();
@@ -342,17 +344,28 @@ export const pinService = {
         return { comment: null, error: "Kullanıcı bulunamadı" };
       }
 
+      // Comment data to insert
+      const commentData: any = {
+        pin_id: pinId,
+        user_id: user.id,
+        text: text,
+      };
+
+      // Add photo data if provided
+      if (photoUrl) {
+        commentData.photo_url = photoUrl;
+        if (photoMetadata) {
+          commentData.photo_metadata = photoMetadata;
+        }
+      }
+
       const { data: comment, error } = await supabase
         .from("comments")
-        .insert({
-          pin_id: pinId,
-          user_id: user.id,
-          text: text,
-        })
+        .insert(commentData)
         .select(
           `
           *,
-          users(display_name)
+          users(display_name, avatar_url)
         `
         )
         .single();
@@ -371,7 +384,9 @@ export const pinService = {
   async updateComment(
     commentId: string,
     newText: string,
-    user?: User
+    user?: User,
+    photoUrl?: string | null, // null means remove existing photo, undefined means don't change
+    photoMetadata?: Record<string, unknown>
   ): Promise<{ success: boolean; error: string | null }> {
     try {
       const supabase = createClient();
@@ -389,9 +404,29 @@ export const pinService = {
         return { success: false, error: "Kullanıcı bulunamadı" };
       }
 
+      // Prepare update data
+      const updateData: Record<string, unknown> = {
+        text: newText,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Handle photo operations
+      if (photoUrl !== undefined) {
+        if (photoUrl === null) {
+          // Remove photo
+          updateData.photo_url = null;
+          updateData.photo_metadata = null;
+        } else {
+          // Add or replace photo
+          updateData.photo_url = photoUrl;
+          updateData.photo_metadata = photoMetadata || {};
+        }
+      }
+      // If photoUrl is undefined, don't change existing photo
+
       const { error } = await supabase
         .from("comments")
-        .update({ text: newText, updated_at: new Date().toISOString() })
+        .update(updateData)
         .eq("id", commentId)
         .eq("user_id", user.id); // Sadece kendi yorumunu düzenleyebilir
 
@@ -426,6 +461,29 @@ export const pinService = {
         return { success: false, error: "Kullanıcı bulunamadı" };
       }
 
+      // Önce yorumun foto bilgisini al
+      const { data: comment, error: fetchError } = await supabase
+        .from("comments")
+        .select("photo_url")
+        .eq("id", commentId)
+        .eq("user_id", user.id)
+        .single();
+
+      if (fetchError) {
+        return { success: false, error: fetchError.message };
+      }
+
+      // Eğer fotoğraf varsa önce onu sil
+      if (comment?.photo_url) {
+        const { deleteCommentPhoto } = await import("./photoService");
+        const photoDeleted = await deleteCommentPhoto(comment.photo_url);
+        if (!photoDeleted) {
+          console.warn("Failed to delete comment photo:", comment.photo_url);
+          // Continue with comment deletion even if photo deletion fails
+        }
+      }
+
+      // Yorumu sil
       const { error } = await supabase
         .from("comments")
         .delete()
@@ -549,6 +607,29 @@ export const pinService = {
         return { success: false, error: "Bu pin'i silme yetkiniz yok" };
       }
 
+      // Pin'e ait tüm yorum fotoğraflarını al
+      const { data: commentsWithPhotos, error: photosError } = await supabase
+        .from("comments")
+        .select("photo_url")
+        .eq("pin_id", pinId)
+        .not("photo_url", "is", null);
+
+      // Fotoğrafları sil (hata olsa bile devam et)
+      if (commentsWithPhotos && commentsWithPhotos.length > 0) {
+        const { deleteCommentPhoto } = await import("./photoService");
+        for (const comment of commentsWithPhotos) {
+          if (comment.photo_url) {
+            const photoDeleted = await deleteCommentPhoto(comment.photo_url);
+            if (!photoDeleted) {
+              console.warn(
+                "Failed to delete comment photo during pin deletion:",
+                comment.photo_url
+              );
+            }
+          }
+        }
+      }
+
       // Pin'i sil (cascade ile yorumlar da silinir)
       const { error: deleteError } = await supabase
         .from("pins")
@@ -595,10 +676,10 @@ export const pinService = {
         };
       }
 
-      // Önce yorumun bilgilerini al (pin_id ve user_id kontrolü için)
+      // Önce yorumun bilgilerini al (pin_id, user_id ve photo_url için)
       const { data: comment, error: commentError } = await supabase
         .from("comments")
-        .select("pin_id, user_id")
+        .select("pin_id, user_id, photo_url")
         .eq("id", commentId)
         .single();
 
@@ -620,6 +701,16 @@ export const pinService = {
       }
 
       const pinId = comment.pin_id;
+
+      // Eğer fotoğraf varsa önce onu sil
+      if (comment.photo_url) {
+        const { deleteCommentPhoto } = await import("./photoService");
+        const photoDeleted = await deleteCommentPhoto(comment.photo_url);
+        if (!photoDeleted) {
+          console.warn("Failed to delete comment photo:", comment.photo_url);
+          // Continue with comment deletion even if photo deletion fails
+        }
+      }
 
       // Yorumu silmeden önce bu pin'de kaç yorum olduğunu kontrol et
       const { data: commentsBefore, error: countBeforeError } = await supabase
@@ -689,6 +780,52 @@ export const pinService = {
         pinDeleted: false,
         error: "An error occurred while deleting comment",
       };
+    }
+  },
+
+  // Check if user has already commented on a pin
+  async hasUserCommented(
+    pinId: string,
+    user?: User
+  ): Promise<{
+    hasCommented: boolean;
+    commentId?: string;
+    error: string | null;
+  }> {
+    try {
+      const supabase = createClient();
+
+      // User parametre olarak gelmemişse Supabase'den al
+      if (!user) {
+        const {
+          data: { session },
+          error: userError,
+        } = await supabase.auth.getSession();
+        user = session?.user;
+      }
+
+      if (!user) {
+        return { hasCommented: false, error: "Kullanıcı bulunamadı" };
+      }
+
+      const { data: existingComment, error } = await supabase
+        .from("comments")
+        .select("id")
+        .eq("pin_id", pinId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (error) {
+        return { hasCommented: false, error: error.message };
+      }
+
+      return {
+        hasCommented: !!existingComment,
+        commentId: existingComment?.id,
+        error: null,
+      };
+    } catch {
+      return { hasCommented: false, error: "Kontrol edilirken hata oluştu" };
     }
   },
 };

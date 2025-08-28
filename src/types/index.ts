@@ -17,7 +17,7 @@ export interface Pin {
   location: GeoJSONPoint; // ✅ Doğru tip
   created_at: string;
   updated_at: string;
-  user?: { 
+  user?: {
     display_name: string;
     avatar_url?: string;
   };
@@ -35,6 +35,14 @@ export interface Comment {
   text: string;
   is_first_comment: boolean;
   created_at: string;
+  photo_url?: string; // URL to photo in Supabase Storage
+  photo_metadata?: {
+    file_size?: number;
+    width?: number;
+    height?: number;
+    format?: string;
+    upload_date?: string;
+  };
   users?: {
     // user yerine users
     display_name: string;
@@ -145,6 +153,46 @@ export interface CommentDeleteResult {
   pinDeleted: boolean;
   error: string | null;
   pinId?: string;
+}
+
+// Photo Upload Types
+export interface PhotoUploadResult {
+  success: boolean;
+  url?: string;
+  error?: string;
+  metadata?: {
+    file_size: number;
+    width: number;
+    height: number;
+    format: string;
+  };
+}
+
+export interface PhotoCompressionOptions {
+  maxWidth: number;
+  maxHeight: number;
+  quality: number;
+  format: "webp" | "jpeg";
+}
+
+export interface CameraCapture {
+  file: File;
+  preview: string;
+  compressed?: File;
+}
+
+// Comment with photo creation
+export interface CreateCommentData {
+  text: string;
+  pinId: string;
+  photo?: File;
+  photoUrl?: string;
+  photoMetadata?: {
+    file_size: number;
+    width: number;
+    height: number;
+    format: string;
+  };
 }
 
 // Hook Return Types

@@ -47,6 +47,7 @@ export default function Map({ initialCoordinates }: MapProps) {
     isRefreshing,
     getPinComments,
     getBatchComments,
+    hasUserCommented,
     currentZoom,
     // New batch comment features
     batchComments,
@@ -180,6 +181,7 @@ export default function Map({ initialCoordinates }: MapProps) {
                 existingPopups.forEach((popup) => popup.remove());
               }}
               pinName={selectedPin?.pinName || ""}
+              pinId={selectedPin?.pinId || ""}
               pinCoordinates={coordinates}
               comments={selectedPin?.comments || []}
               onAddComment={handleAddComment}
@@ -188,6 +190,7 @@ export default function Map({ initialCoordinates }: MapProps) {
               onVoteComment={handleVoteComment}
               currentUserId={user?.id || ""}
               loading={pinsLoading}
+              hasUserCommented={hasUserCommented}
               onRefresh={async () => {
                 // Refresh pin comments and update all related caches
                 if (selectedPin) {

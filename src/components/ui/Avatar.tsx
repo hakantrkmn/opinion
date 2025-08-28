@@ -14,30 +14,43 @@ interface AvatarProps {
 
 const sizeClasses = {
   sm: "w-8 h-8 text-xs",
-  md: "w-10 h-10 text-sm", 
+  md: "w-10 h-10 text-sm",
   lg: "w-12 h-12 text-base",
-  xl: "w-16 h-16 text-lg"
+  xl: "w-16 h-16 text-lg",
 };
 
-// Simple in-memory cache for images
-const imageCache = new Map<string, boolean>();
+// Simple in-memory cache for images - use global window cache for consistency
+const getImageCache = (): Map<string, boolean> => {
+  if (typeof window !== "undefined") {
+    if (!(window as any).__avatarImageCache) {
+      (window as any).__avatarImageCache = new Map<string, boolean>();
+    }
+    return (window as any).__avatarImageCache;
+  }
+  // Fallback for SSR
+  return new Map<string, boolean>();
+};
 
-export function Avatar({ 
-  src, 
-  alt = "Avatar", 
-  size = "md", 
-  className, 
-  fallbackText 
+const imageCache = getImageCache();
+
+export function Avatar({
+  src,
+  alt = "Avatar",
+  size = "md",
+  className,
+  fallbackText,
 }: AvatarProps) {
   const [imageLoaded, setImageLoaded] = useState(() => {
     // Check cache first
-    return src ? imageCache.get(src) ?? false : false;
+    const cache = getImageCache();
+    return src ? cache.get(src) ?? false : false;
   });
   const [imageError, setImageError] = useState(false);
 
   const handleImageLoad = () => {
     if (src) {
-      imageCache.set(src, true);
+      const cache = getImageCache();
+      cache.set(src, true);
       setImageLoaded(true);
     }
   };
@@ -45,7 +58,8 @@ export function Avatar({
   const handleImageError = () => {
     setImageError(true);
     if (src) {
-      imageCache.delete(src);
+      const cache = getImageCache();
+      cache.delete(src);
     }
   };
 
@@ -53,7 +67,7 @@ export function Avatar({
   const shouldShowFallback = !src || imageError || !imageLoaded;
 
   return (
-    <div 
+    <div
       className={cn(
         "relative flex items-center justify-center rounded-full bg-muted overflow-hidden flex-shrink-0",
         sizeClasses[size],
@@ -73,7 +87,7 @@ export function Avatar({
           )}
         />
       )}
-      
+
       {/* Fallback */}
       {shouldShowFallback && (
         <div className="absolute inset-0 flex items-center justify-center bg-muted">
@@ -82,27 +96,31 @@ export function Avatar({
               {fallbackText.charAt(0)}
             </span>
           ) : (
-            <User className={cn(
-              "text-muted-foreground",
-              size === "sm" && "w-4 h-4",
-              size === "md" && "w-5 h-5", 
-              size === "lg" && "w-6 h-6",
-              size === "xl" && "w-8 h-8"
-            )} />
+            <User
+              className={cn(
+                "text-muted-foreground",
+                size === "sm" && "w-4 h-4",
+                size === "md" && "w-5 h-5",
+                size === "lg" && "w-6 h-6",
+                size === "xl" && "w-8 h-8"
+              )}
+            />
           )}
         </div>
       )}
-      
+
       {/* Loading spinner */}
       {src && !imageError && !imageLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-muted">
-          <div className={cn(
-            "animate-spin rounded-full border-2 border-primary border-t-transparent",
-            size === "sm" && "w-3 h-3",
-            size === "md" && "w-4 h-4",
-            size === "lg" && "w-5 h-5", 
-            size === "xl" && "w-6 h-6"
-          )} />
+          <div
+            className={cn(
+              "animate-spin rounded-full border-2 border-primary border-t-transparent",
+              size === "sm" && "w-3 h-3",
+              size === "md" && "w-4 h-4",
+              size === "lg" && "w-5 h-5",
+              size === "xl" && "w-6 h-6"
+            )}
+          />
         </div>
       )}
     </div>
@@ -111,5 +129,6 @@ export function Avatar({
 
 // Clear cache function for memory management
 export const clearAvatarCache = () => {
-  imageCache.clear();
+  const cache = getImageCache();
+  cache.clear();
 };

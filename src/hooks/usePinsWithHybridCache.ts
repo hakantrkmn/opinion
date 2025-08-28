@@ -64,10 +64,27 @@ export interface UsePinsWithHybridCacheReturn {
     pinIds: string[],
     forceRefresh?: boolean
   ) => Promise<{ [pinId: string]: EnhancedComment[] } | null>;
-  addComment: (pinId: string, text: string) => Promise<boolean>;
-  editComment: (commentId: string, newText: string) => Promise<boolean>;
+  addComment: (
+    pinId: string,
+    text: string,
+    photoUrl?: string,
+    photoMetadata?: Record<string, unknown>
+  ) => Promise<boolean>;
+  editComment: (
+    commentId: string,
+    newText: string,
+    photoUrl?: string | null,
+    photoMetadata?: Record<string, unknown>
+  ) => Promise<boolean>;
   deleteComment: (commentId: string) => Promise<boolean>;
   voteComment: (commentId: string, value: number) => Promise<boolean>;
+  hasUserCommented: (
+    pinId: string
+  ) => Promise<{
+    hasCommented: boolean;
+    commentId?: string;
+    error: string | null;
+  }>;
 
   // Cache utilities
   invalidateCache: () => void;
@@ -393,12 +410,24 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
 
   // Add comment mutation
   const addCommentMutation = useMutation({
-    mutationFn: async ({ pinId, text }: { pinId: string; text: string }) => {
+    mutationFn: async ({
+      pinId,
+      text,
+      photoUrl,
+      photoMetadata,
+    }: {
+      pinId: string;
+      text: string;
+      photoUrl?: string;
+      photoMetadata?: Record<string, unknown>;
+    }) => {
       // User bilgisini parametre olarak geç
       const { comment, error } = await pinService.addComment(
         pinId,
         text,
-        user || undefined
+        user || undefined,
+        photoUrl,
+        photoMetadata
       );
       if (error) throw new Error(error);
       return { comment, pinId };
@@ -445,15 +474,21 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
     mutationFn: async ({
       commentId,
       newText,
+      photoUrl,
+      photoMetadata,
     }: {
       commentId: string;
       newText: string;
+      photoUrl?: string | null;
+      photoMetadata?: Record<string, unknown>;
     }) => {
       // User bilgisini parametre olarak geç
       const { success, error } = await pinService.updateComment(
         commentId,
         newText,
-        user || undefined
+        user || undefined,
+        photoUrl,
+        photoMetadata
       );
       if (error) throw new Error(error);
       return success;
@@ -629,17 +664,37 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
     // Comments
     getPinComments,
     getBatchComments,
-    addComment: async (pinId: string, text: string) => {
+    addComment: async (
+      pinId: string,
+      text: string,
+      photoUrl?: string,
+      photoMetadata?: Record<string, unknown>
+    ) => {
       try {
-        await addCommentMutation.mutateAsync({ pinId, text });
+        await addCommentMutation.mutateAsync({
+          pinId,
+          text,
+          photoUrl,
+          photoMetadata,
+        });
         return true;
       } catch {
         return false;
       }
     },
-    editComment: async (commentId: string, newText: string) => {
+    editComment: async (
+      commentId: string,
+      newText: string,
+      photoUrl?: string | null,
+      photoMetadata?: Record<string, unknown>
+    ) => {
       try {
-        await editCommentMutation.mutateAsync({ commentId, newText });
+        await editCommentMutation.mutateAsync({
+          commentId,
+          newText,
+          photoUrl,
+          photoMetadata,
+        });
         return true;
       } catch {
         return false;
@@ -659,6 +714,13 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
         return true;
       } catch {
         return false;
+      }
+    },
+    hasUserCommented: async (pinId: string) => {
+      try {
+        return await pinService.hasUserCommented(pinId, user || undefined);
+      } catch {
+        return { hasCommented: false, error: "Failed to check comment status" };
       }
     },
 
