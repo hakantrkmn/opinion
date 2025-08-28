@@ -31,7 +31,9 @@ interface DynamicHomeContentProps {
   initialCoordinates?: [number, number] | null;
 }
 
-export default function DynamicHomeContent({ initialCoordinates }: DynamicHomeContentProps) {
+export default function DynamicHomeContent({
+  initialCoordinates,
+}: DynamicHomeContentProps) {
   return (
     <div className="min-h-screen bg-background">
       <Header />

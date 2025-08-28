@@ -777,13 +777,15 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
 
     if (mapContainer.current) {
       // Use initialCoordinates if provided, otherwise default to Istanbul
-      const defaultCenter: [number, number] = initialCoordinates || [29.0322, 41.0082];
+      const defaultCenter: [number, number] = initialCoordinates || [
+        29.0322, 41.0082,
+      ];
       const defaultZoom = initialCoordinates ? 16 : 10; // Zoom in closer for URL coordinates
-      
-      console.log('Map initializing with:', { 
-        center: defaultCenter, 
-        zoom: defaultZoom, 
-        fromURL: !!initialCoordinates 
+
+      console.log("Map initializing with:", {
+        center: defaultCenter,
+        zoom: defaultZoom,
+        fromURL: !!initialCoordinates,
       });
 
       map.current = new maplibregl.Map({
@@ -819,7 +821,7 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
         if (map.current) {
           setCurrentZoom(map.current.getZoom());
         }
-        
+
         // If we have coordinates from URL, show a success message
         if (initialCoordinates) {
           toast.success("Map navigated to coordinates", {
@@ -827,7 +829,7 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
             duration: 4000,
           });
         }
-        
+
         // Harita yüklendiğinde pin'leri yükle (konum izni olmasa da)
         loadPinsFromMapWithCache();
       });

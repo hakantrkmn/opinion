@@ -98,7 +98,9 @@ export default function PinDetailModal({
 
     const { lat, lng } = pinCoordinates;
     const currentUrl = window.location.origin;
-    const shareUrl = `${currentUrl}/?lat=${lat.toFixed(6)}&long=${lng.toFixed(6)}`;
+    const shareUrl = `${currentUrl}/?lat=${lat.toFixed(6)}&long=${lng.toFixed(
+      6
+    )}`;
 
     try {
       await navigator.clipboard.writeText(shareUrl);
@@ -203,9 +205,7 @@ export default function PinDetailModal({
                     className="flex items-center gap-2 h-8 px-3"
                   >
                     <Share2 className="h-4 w-4" />
-                    <span className="hidden sm:inline text-sm">
-                      Share
-                    </span>
+                    <span className="hidden sm:inline text-sm">Share</span>
                   </Button>
                 </>
               )}

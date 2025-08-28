@@ -23,10 +23,12 @@ import {
   Loader2,
   MapPin,
   MessageCircle,
+  Share2,
   ThumbsDown,
   ThumbsUp,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 type TabType = "stats" | "pins" | "comments";
 
@@ -128,6 +130,31 @@ export function ProfileClient({ user }: ProfileClientProps) {
       avatar_url: updates.avatar_url || undefined,
     };
     updateProfile(normalizedUpdates);
+  };
+
+  // Handle pin sharing
+  const handlePinShare = async (pin: Pin) => {
+    if (!pin.location?.coordinates) return;
+
+    // Extract coordinates from PostGIS POINT format
+    const [lng, lat] = pin.location.coordinates;
+    const currentUrl = window.location.origin;
+    const shareUrl = `${currentUrl}/?lat=${lat.toFixed(6)}&long=${lng.toFixed(6)}`;
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Pin link copied to clipboard!", {
+        description: `Share "${pin.name}" with others`,
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error("Failed to copy to clipboard:", error);
+      // Fallback: show the URL in a toast for manual copying
+      toast.info("Share URL", {
+        description: shareUrl,
+        duration: 5000,
+      });
+    }
   };
 
   return (
@@ -398,14 +425,26 @@ export function ProfileClient({ user }: ProfileClientProps) {
                                 </span>
                               </div>
                             </div>
-                            <Badge
-                              variant="secondary"
-                              className="flex items-center gap-1 text-xs sm:text-sm flex-shrink-0"
-                            >
-                              <MessageCircle className="h-3 w-3" />
-                              {pin.comments_count || 0}
-                              <span className="hidden sm:inline">comments</span>
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge
+                                variant="secondary"
+                                className="flex items-center gap-1 text-xs sm:text-sm flex-shrink-0"
+                              >
+                                <MessageCircle className="h-3 w-3" />
+                                {pin.comments_count || 0}
+                                <span className="hidden sm:inline">comments</span>
+                              </Badge>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handlePinShare(pin)}
+                                title="Share this pin"
+                                className="flex items-center gap-1 h-8 px-2 sm:px-3"
+                              >
+                                <Share2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                                <span className="hidden sm:inline text-xs">Share</span>
+                              </Button>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>

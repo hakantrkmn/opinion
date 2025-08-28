@@ -3,37 +3,37 @@ import DynamicHomeContent from "@/components/DynamicHomeContent";
 import { useSession } from "@/hooks/useSession";
 import { Loader2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useMemo, Suspense } from "react";
+import { Suspense, useMemo } from "react";
 
 function HomeContent() {
   const { isLoading } = useSession();
   const searchParams = useSearchParams();
-  
+
   // Parse latitude and longitude from URL query parameters
   const initialCoordinates = useMemo(() => {
-    const lat = searchParams.get('lat');
-    const lng = searchParams.get('long') || searchParams.get('lng');
-    
+    const lat = searchParams.get("lat");
+    const lng = searchParams.get("long") || searchParams.get("lng");
+
     if (lat && lng) {
       const latitude = parseFloat(lat);
       const longitude = parseFloat(lng);
-      
+
       // Validate coordinates
       if (
-        !isNaN(latitude) && 
-        !isNaN(longitude) && 
-        latitude >= -90 && 
-        latitude <= 90 && 
-        longitude >= -180 && 
+        !isNaN(latitude) &&
+        !isNaN(longitude) &&
+        latitude >= -90 &&
+        latitude <= 90 &&
+        longitude >= -180 &&
         longitude <= 180
       ) {
-        console.log('Valid coordinates from URL:', { latitude, longitude });
+        console.log("Valid coordinates from URL:", { latitude, longitude });
         return [longitude, latitude] as [number, number]; // [lng, lat] format for maplibre
       } else {
-        console.warn('Invalid coordinates in URL:', { lat, lng });
+        console.warn("Invalid coordinates in URL:", { lat, lng });
       }
     }
-    
+
     return null;
   }, [searchParams]);
 
