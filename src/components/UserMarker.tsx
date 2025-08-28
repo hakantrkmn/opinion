@@ -10,13 +10,18 @@ const getImageCache = (): Map<string, boolean> => {
   // Access the same cache used by Avatar component
   // This is a bit of a hack but works for our use case
   if (typeof window !== "undefined") {
-    return (window as unknown as { __avatarImageCache?: Map<string, boolean> }).__avatarImageCache || new Map<string, boolean>();
+    return (
+      (window as unknown as { __avatarImageCache?: Map<string, boolean> })
+        .__avatarImageCache || new Map<string, boolean>()
+    );
   }
   return new Map<string, boolean>();
 };
 
 const setImageCache = (cache: Map<string, boolean>): void => {
-  (window as unknown as { __avatarImageCache: Map<string, boolean> }).__avatarImageCache = cache;
+  (
+    window as unknown as { __avatarImageCache: Map<string, boolean> }
+  ).__avatarImageCache = cache;
 };
 
 interface UserMarkerProps {

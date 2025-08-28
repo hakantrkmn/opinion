@@ -1,13 +1,16 @@
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import {
+  createJsonLdScript,
+  generateOrganizationSchema,
+} from "@/lib/structured-data";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { generateOrganizationSchema, createJsonLdScript } from "@/lib/structured-data";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -79,7 +82,9 @@ export const metadata: Metadata = {
     description:
       "Interactive map platform where you can share opinions and discover what others think about different locations.",
     creator: "@opinion_map",
-    images: ["/api/og?title=oPINion&description=Share Your Thoughts on the Map&type=default"],
+    images: [
+      "/api/og?title=oPINion&description=Share Your Thoughts on the Map&type=default",
+    ],
   },
   robots: {
     index: true,
@@ -109,7 +114,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://opinion-xi.vercel.app";
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL || "https://opinion-xi.vercel.app";
   const organizationSchema = generateOrganizationSchema({ baseUrl });
 
   return (

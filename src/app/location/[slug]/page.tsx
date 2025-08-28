@@ -1,27 +1,37 @@
+import {
+  generateLocationKeywords,
+  generateOGMetadata,
+  generateTwitterMetadata,
+} from "@/lib/og-utils";
+import {
+  createJsonLdScript,
+  generateBreadcrumbSchema,
+  generateLocationSchema,
+} from "@/lib/structured-data";
 import { createClient } from "@/lib/supabase/server";
 import { Metadata } from "next";
 import Link from "next/link";
-import { generateLocationSchema, generateBreadcrumbSchema, createJsonLdScript } from "@/lib/structured-data";
-import { generateOGMetadata, generateTwitterMetadata, generateLocationKeywords } from "@/lib/og-utils";
 
 // Dinamik metadata oluştur
 export async function generateMetadata({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const locationName = decodeURIComponent(params.slug);
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://opinion-xi.vercel.app";
-  
+  const { slug } = await params;
+  const locationName = decodeURIComponent(slug);
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL || "https://opinion-xi.vercel.app";
+
   const title = `Opinions in ${locationName} | oPINion`;
   const description = `Discover what people think about ${locationName}. Read ${locationName} opinions, reviews, and community thoughts about locations, restaurants, attractions and more.`;
-  
+
   // Generate enhanced Open Graph metadata
   const ogMetadata = generateOGMetadata({
     title,
     description,
     location: locationName,
-    type: 'location',
+    type: "location",
     baseUrl,
   });
 
@@ -30,7 +40,7 @@ export async function generateMetadata({
     title,
     description,
     location: locationName,
-    type: 'location',
+    type: "location",
     baseUrl,
   });
 
@@ -56,9 +66,9 @@ export async function generateMetadata({
     },
     twitter: twitterMetadata,
     other: {
-      'og:locality': locationName,
-      'geo.placename': locationName,
-      'geo.region': locationName,
+      "og:locality": locationName,
+      "geo.placename": locationName,
+      "geo.region": locationName,
     },
     alternates: {
       canonical: `/location/${encodeURIComponent(locationName)}`,
@@ -69,11 +79,13 @@ export async function generateMetadata({
 export default async function LocationPage({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
-  const locationName = decodeURIComponent(params.slug);
+  const { slug } = await params;
+  const locationName = decodeURIComponent(slug);
   const supabase = await createClient();
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://opinion-xi.vercel.app";
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL || "https://opinion-xi.vercel.app";
 
   // Bu location'daki pin'leri çek
   const { data: pins, error } = await supabase
@@ -94,12 +106,17 @@ export default async function LocationPage({
   }
 
   // Generate structured data
-  const locationSchema = generateLocationSchema(locationName, pins || [], { baseUrl });
+  const locationSchema = generateLocationSchema(locationName, pins || [], {
+    baseUrl,
+  });
   const breadcrumbSchema = generateBreadcrumbSchema(
     [
       { name: "Home", url: "/" },
       { name: "Locations", url: "/locations" },
-      { name: locationName, url: `/location/${encodeURIComponent(locationName)}` },
+      {
+        name: locationName,
+        url: `/location/${encodeURIComponent(locationName)}`,
+      },
     ],
     { baseUrl }
   );
@@ -118,14 +135,18 @@ export default async function LocationPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={createJsonLdScript(breadcrumbSchema)}
       />
-      
+
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
           {/* Breadcrumb Navigation */}
           <nav className="mb-6 text-sm text-gray-600">
-            <Link href="/" className="hover:text-blue-600">Home</Link>
+            <Link href="/" className="hover:text-blue-600">
+              Home
+            </Link>
             <span className="mx-2">/</span>
-            <Link href="/locations" className="hover:text-blue-600">Locations</Link>
+            <Link href="/locations" className="hover:text-blue-600">
+              Locations
+            </Link>
             <span className="mx-2">/</span>
             <span>{locationName}</span>
           </nav>
@@ -137,13 +158,15 @@ export default async function LocationPage({
 
             <div className="bg-gradient-to-r from-blue-50 to-green-50 p-6 rounded-lg">
               <p className="text-gray-700 text-lg mb-4">
-                Discover what people think about locations in {locationName}. Read
-                community opinions, reviews, and experiences shared by real visitors.
+                Discover what people think about locations in {locationName}.
+                Read community opinions, reviews, and experiences shared by real
+                visitors.
               </p>
-              
+
               <div className="flex flex-wrap gap-4 text-sm">
                 <div className="bg-white px-3 py-1 rounded-full shadow-sm">
-                  📊 {totalPins} {totalPins === 1 ? 'opinion' : 'opinions'} shared
+                  📊 {totalPins} {totalPins === 1 ? "opinion" : "opinions"}{" "}
+                  shared
                 </div>
                 {hasContent && (
                   <div className="bg-white px-3 py-1 rounded-full shadow-sm">
@@ -161,16 +184,16 @@ export default async function LocationPage({
                   Recent Opinions ({totalPins})
                 </h2>
               </div>
-              
+
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {pins!.map((pin) => (
-                  <article 
-                    key={pin.id} 
+                  <article
+                    key={pin.id}
                     className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
                   >
                     <header className="mb-3">
                       <h3 className="text-xl font-semibold mb-2">
-                        <a 
+                        <a
                           href={`/pin/${pin.id}`}
                           className="hover:text-blue-600 transition-colors"
                         >
@@ -193,8 +216,8 @@ export default async function LocationPage({
                       {pin.users && (
                         <div className="flex items-center gap-2 text-gray-600">
                           {pin.users.avatar_url && (
-                            <img 
-                              src={pin.users.avatar_url} 
+                            <img
+                              src={pin.users.avatar_url}
                               alt={pin.users.display_name}
                               className="w-6 h-6 rounded-full"
                             />
@@ -202,7 +225,7 @@ export default async function LocationPage({
                           <span>By {pin.users.display_name}</span>
                         </div>
                       )}
-                      
+
                       <time className="text-gray-400">
                         {new Date(pin.created_at).toLocaleDateString()}
                       </time>
@@ -210,16 +233,17 @@ export default async function LocationPage({
                   </article>
                 ))}
               </div>
-              
+
               {/* Call to Action */}
               <div className="mt-12 text-center bg-gray-50 p-8 rounded-lg">
                 <h3 className="text-xl font-semibold mb-4">
                   Share Your Experience in {locationName}
                 </h3>
                 <p className="text-gray-600 mb-6">
-                  Have you visited {locationName}? Share your thoughts and help others discover great places!
+                  Have you visited {locationName}? Share your thoughts and help
+                  others discover great places!
                 </p>
-                <Link 
+                <Link
                   href="/"
                   className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
                 >
@@ -234,10 +258,11 @@ export default async function LocationPage({
                 No opinions yet in {locationName}
               </h2>
               <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                Be the first to share your thoughts about locations in {locationName}! 
-                Your opinion could help others discover amazing places.
+                Be the first to share your thoughts about locations in{" "}
+                {locationName}! Your opinion could help others discover amazing
+                places.
               </p>
-              <Link 
+              <Link
                 href="/"
                 className="inline-block bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors"
               >

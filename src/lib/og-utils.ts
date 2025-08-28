@@ -6,7 +6,7 @@ export interface OGImageConfig {
   title: string;
   description?: string;
   location?: string;
-  type?: 'pin' | 'location' | 'default';
+  type?: "pin" | "location" | "default";
   baseUrl: string;
 }
 
@@ -17,15 +17,15 @@ export interface OGImageConfig {
 export function generateOGImageUrl(config: OGImageConfig): string {
   const params = new URLSearchParams({
     title: config.title,
-    type: config.type || 'default',
+    type: config.type || "default",
   });
 
   if (config.description) {
-    params.append('description', config.description.substring(0, 100));
+    params.append("description", config.description.substring(0, 100));
   }
 
   if (config.location) {
-    params.append('location', config.location);
+    params.append("location", config.location);
   }
 
   return `${config.baseUrl}/api/og?${params.toString()}`;
@@ -34,7 +34,10 @@ export function generateOGImageUrl(config: OGImageConfig): string {
 /**
  * Generate fallback Open Graph image based on content type
  */
-export function getFallbackOGImage(type: 'pin' | 'location' | 'default', baseUrl: string): string {
+export function getFallbackOGImage(
+  type: "pin" | "location" | "default",
+  baseUrl: string
+): string {
   const images = {
     pin: `${baseUrl}/og-pin-default.png`,
     location: `${baseUrl}/og-location-default.png`,
@@ -49,7 +52,10 @@ export function getFallbackOGImage(type: 'pin' | 'location' | 'default', baseUrl
  */
 export function generateOGMetadata(config: OGImageConfig) {
   const ogImage = generateOGImageUrl(config);
-  const fallbackImage = getFallbackOGImage(config.type || 'default', config.baseUrl);
+  const fallbackImage = getFallbackOGImage(
+    config.type || "default",
+    config.baseUrl
+  );
 
   return {
     title: config.title,
@@ -68,7 +74,7 @@ export function generateOGMetadata(config: OGImageConfig) {
         alt: config.title,
       },
     ],
-    type: config.type === 'pin' ? 'article' : 'website',
+    type: config.type === "pin" ? "article" : "website",
   };
 }
 
@@ -79,28 +85,32 @@ export function generateTwitterMetadata(config: OGImageConfig) {
   const ogImage = generateOGImageUrl(config);
 
   return {
-    card: 'summary_large_image' as const,
+    card: "summary_large_image" as const,
     title: config.title,
     description: config.description || `Discover opinions on oPINion map`,
     images: [ogImage],
-    creator: '@opinion_map',
+    creator: "@opinion_map",
   };
 }
 
 /**
  * Generate geographic metadata for local SEO
  */
-export function generateGeoMetadata(latitude?: number, longitude?: number, location?: string) {
+export function generateGeoMetadata(
+  latitude?: number,
+  longitude?: number,
+  location?: string
+) {
   const geo: Record<string, string> = {};
 
   if (latitude && longitude) {
-    geo['geo.position'] = `${latitude};${longitude}`;
-    geo['ICBM'] = `${latitude}, ${longitude}`;
+    geo["geo.position"] = `${latitude};${longitude}`;
+    geo["ICBM"] = `${latitude}, ${longitude}`;
   }
 
   if (location) {
-    geo['geo.placename'] = location;
-    geo['geo.region'] = location;
+    geo["geo.placename"] = location;
+    geo["geo.region"] = location;
   }
 
   return geo;
@@ -111,13 +121,13 @@ export function generateGeoMetadata(latitude?: number, longitude?: number, locat
  */
 export function generateLocationKeywords(location: string): string[] {
   const baseKeywords = [
-    'opinion',
-    'review',
-    'thoughts',
-    'community',
-    'map',
-    'location',
-    'feedback',
+    "opinion",
+    "review",
+    "thoughts",
+    "community",
+    "map",
+    "location",
+    "feedback",
   ];
 
   const locationKeywords = [

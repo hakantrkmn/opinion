@@ -22,7 +22,9 @@ const sizeClasses = {
 // Simple in-memory cache for images - use global window cache for consistency
 const getImageCache = (): Map<string, boolean> => {
   if (typeof window !== "undefined") {
-    const windowWithCache = window as unknown as { __avatarImageCache?: Map<string, boolean> };
+    const windowWithCache = window as unknown as {
+      __avatarImageCache?: Map<string, boolean>;
+    };
     if (!windowWithCache.__avatarImageCache) {
       windowWithCache.__avatarImageCache = new Map<string, boolean>();
     }

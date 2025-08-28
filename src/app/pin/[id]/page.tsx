@@ -1,42 +1,57 @@
+import {
+  generateGeoMetadata,
+  generateLocationKeywords,
+  generateOGMetadata,
+  generateTwitterMetadata,
+} from "@/lib/og-utils";
+import {
+  createJsonLdScript,
+  generateBreadcrumbSchema,
+  generatePlaceSchema,
+} from "@/lib/structured-data";
 import { createClient } from "@/lib/supabase/server";
 import { Metadata } from "next";
-import { notFound } from "next/navigation";
 import Link from "next/link";
-import { generatePlaceSchema, generateBreadcrumbSchema, createJsonLdScript } from "@/lib/structured-data";
-import { generateOGMetadata, generateTwitterMetadata, generateGeoMetadata, generateLocationKeywords } from "@/lib/og-utils";
+import { notFound } from "next/navigation";
 
 // Dinamik metadata oluştur
 export async function generateMetadata({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }): Promise<Metadata> {
+  const { id } = await params;
   const supabase = await createClient();
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://opinion-xi.vercel.app";
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL || "https://opinion-xi.vercel.app";
 
-  const { data: pin } = await supabase
+  // Query pin data for metadata generation
+  const { data: pin, error } = await supabase
     .from("pins")
-    .select("title, description, location, created_at, latitude, longitude")
-    .eq("id", params.id)
-    .eq("is_deleted", false)
+    .select("id, name, created_at, updated_at")
+    .eq("id", id)
     .single();
 
-  if (!pin) {
+  if (error || !pin) {
+    console.error('Metadata query error:', error, 'for pin ID:', id);
     return {
-      title: "Pin Not Found",
+      title: "Pin Not Found | oPINion",
       description: "The requested pin could not be found.",
     };
   }
 
-  const title = pin.title || "Pin Details";
-  const description = pin.description || `View details about ${pin.location} on oPINion map.`;
+  const title = pin.name || "Pin Details";
+  const description = `Discover opinions and thoughts about ${pin.name}. Read what the community thinks about this location on oPINion.`;
   
+  // Use the pin name as location for now (coordinates will be handled separately)
+  const locationName = pin.name || "Unknown Location";
+
   // Generate enhanced Open Graph metadata
   const ogMetadata = generateOGMetadata({
     title,
     description,
-    location: pin.location,
-    type: 'pin',
+    location: locationName,
+    type: "pin",
     baseUrl,
   });
 
@@ -44,16 +59,19 @@ export async function generateMetadata({
   const twitterMetadata = generateTwitterMetadata({
     title,
     description,
-    location: pin.location,
-    type: 'pin',
+    location: locationName,
+    type: "pin",
     baseUrl,
   });
 
-  // Generate geo metadata
-  const geoMetadata = generateGeoMetadata(pin.latitude, pin.longitude, pin.location);
+  // Generate geo metadata (without coordinates for now)
+  const geoMetadata = {
+    "geo.placename": locationName,
+    "geo.region": locationName,
+  };
 
   // Generate location-specific keywords
-  const locationKeywords = generateLocationKeywords(pin.location);
+  const locationKeywords = generateLocationKeywords(locationName);
 
   return {
     title,
@@ -64,31 +82,33 @@ export async function generateMetadata({
       "location",
       "review",
       "thoughts",
-      pin.location,
+      locationName,
       ...locationKeywords,
     ],
     openGraph: {
       ...ogMetadata,
-      url: `/pin/${params.id}`,
+      url: `/pin/${id}`,
       publishedTime: pin.created_at,
-      authors: ['oPINion Community'],
+      authors: ["oPINion Community"],
     },
     twitter: twitterMetadata,
     other: {
       ...geoMetadata,
-      'article:author': 'oPINion Community',
-      'article:published_time': pin.created_at,
-      'og:locality': pin.location,
+      "article:author": "oPINion Community",
+      "article:published_time": pin.created_at,
+      "og:locality": locationName,
     },
     alternates: {
-      canonical: `/pin/${params.id}`,
+      canonical: `/pin/${id}`,
     },
   };
 }
 
-export default async function PinPage({ params }: { params: { id: string } }) {
+export default async function PinPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = await createClient();
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://opinion-xi.vercel.app";
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL || "https://opinion-xi.vercel.app";
 
   const { data: pin, error } = await supabase
     .from("pins")
@@ -99,8 +119,7 @@ export default async function PinPage({ params }: { params: { id: string } }) {
       comments(*)
     `
     )
-    .eq("id", params.id)
-    .eq("is_deleted", false)
+    .eq("id", id)
     .single();
 
   if (error || !pin) {
@@ -113,7 +132,7 @@ export default async function PinPage({ params }: { params: { id: string } }) {
     [
       { name: "Home", url: "/" },
       { name: "Pins", url: "/pins" },
-      { name: pin.title || "Pin Details", url: `/pin/${pin.id}` },
+      { name: pin.name || "Pin Details", url: `/pin/${id}` },
     ],
     { baseUrl }
   );
@@ -129,12 +148,14 @@ export default async function PinPage({ params }: { params: { id: string } }) {
         type="application/ld+json"
         dangerouslySetInnerHTML={createJsonLdScript(breadcrumbSchema)}
       />
-      
+
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           {/* Breadcrumb Navigation */}
           <nav className="mb-6 text-sm text-gray-600">
-            <Link href="/" className="hover:text-blue-600">Home</Link>
+            <Link href="/" className="hover:text-blue-600">
+              Home
+            </Link>
             <span className="mx-2">/</span>
             <span>Pin Details</span>
           </nav>
@@ -142,7 +163,7 @@ export default async function PinPage({ params }: { params: { id: string } }) {
           <article>
             <header className="mb-6">
               <h1 className="text-3xl font-bold mb-4">
-                {pin.title || "Untitled Pin"}
+                {pin.name || "Untitled Pin"}
               </h1>
 
               {pin.description && (
@@ -154,12 +175,8 @@ export default async function PinPage({ params }: { params: { id: string } }) {
 
             <div className="bg-gray-100 p-4 rounded-lg mb-6">
               <h2 className="text-lg font-semibold mb-2">📍 Location</h2>
-              <p className="text-gray-700">{pin.location}</p>
-              {pin.latitude && pin.longitude && (
-                <p className="text-sm text-gray-500 mt-1">
-                  Coordinates: {pin.latitude.toFixed(6)}, {pin.longitude.toFixed(6)}
-                </p>
-              )}
+              <p className="text-gray-700">{pin.name || "Unknown Location"}</p>
+              {/* Coordinates display removed temporarily due to PostGIS complexity */}
             </div>
 
             {pin.users && (
@@ -167,29 +184,44 @@ export default async function PinPage({ params }: { params: { id: string } }) {
                 <h2 className="text-lg font-semibold mb-2">👤 Posted by</h2>
                 <div className="flex items-center gap-3">
                   {pin.users.avatar_url && (
-                    <img 
-                      src={pin.users.avatar_url} 
+                    <img
+                      src={pin.users.avatar_url}
                       alt={pin.users.display_name}
                       className="w-10 h-10 rounded-full"
                     />
                   )}
-                  <span className="text-gray-700 font-medium">{pin.users.display_name}</span>
+                  <span className="text-gray-700 font-medium">
+                    {pin.users.display_name}
+                  </span>
                 </div>
               </div>
             )}
 
             {pin.comments && pin.comments.length > 0 && (
               <div className="mb-6">
-                <h2 className="text-lg font-semibold mb-4">💬 Comments ({pin.comments.length})</h2>
+                <h2 className="text-lg font-semibold mb-4">
+                  💬 Comments ({pin.comments.length})
+                </h2>
                 <div className="space-y-3">
-                  {pin.comments.slice(0, 3).map((comment: { id: string; content: string; created_at: string }) => (
-                    <div key={comment.id} className="bg-gray-50 p-3 rounded">
-                      <p className="text-gray-700">{comment.content}</p>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {new Date(comment.created_at).toLocaleDateString()}
-                      </div>
-                    </div>
-                  ))}
+                  {pin.comments
+                    .slice(0, 3)
+                    .map(
+                      (comment: {
+                        id: string;
+                        content: string;
+                        created_at: string;
+                      }) => (
+                        <div
+                          key={comment.id}
+                          className="bg-gray-50 p-3 rounded"
+                        >
+                          <p className="text-gray-700">{comment.content}</p>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {new Date(comment.created_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                      )
+                    )}
                   {pin.comments.length > 3 && (
                     <p className="text-sm text-gray-600">
                       + {pin.comments.length - 3} more comments
@@ -201,9 +233,13 @@ export default async function PinPage({ params }: { params: { id: string } }) {
 
             <footer className="text-sm text-gray-500 border-t pt-4">
               <div className="flex justify-between items-center">
-                <span>Created: {new Date(pin.created_at).toLocaleDateString()}</span>
+                <span>
+                  Created: {new Date(pin.created_at).toLocaleDateString()}
+                </span>
                 {pin.updated_at && pin.updated_at !== pin.created_at && (
-                  <span>Updated: {new Date(pin.updated_at).toLocaleDateString()}</span>
+                  <span>
+                    Updated: {new Date(pin.updated_at).toLocaleDateString()}
+                  </span>
                 )}
               </div>
             </footer>

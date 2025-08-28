@@ -43,17 +43,16 @@ export function generateOrganizationSchema(config: StructuredDataConfig) {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "oPINion",
-    description: "Interactive map platform where you can share opinions and discover what others think about different locations around the world.",
+    description:
+      "Interactive map platform where you can share opinions and discover what others think about different locations around the world.",
     url: config.baseUrl,
     logo: `${config.baseUrl}/logo.png`,
-    sameAs: [
-      "https://twitter.com/opinion_map",
-    ],
+    sameAs: ["https://twitter.com/opinion_map"],
     contactPoint: {
       "@type": "ContactPoint",
       contactType: "customer service",
-      availableLanguage: ["English", "Turkish"]
-    }
+      availableLanguage: ["English", "Turkish"],
+    },
   };
 }
 
@@ -87,14 +86,20 @@ export function generatePlaceSchema(
 
   // Add aggregated rating if there are comments with votes
   if (pin.comments && pin.comments.length > 0) {
-    const totalVotes = pin.comments.reduce((sum: number, comment: CommentData) => {
-      return sum + (comment.upvotes || 0) - (comment.downvotes || 0);
-    }, 0);
-    
+    const totalVotes = pin.comments.reduce(
+      (sum: number, comment: CommentData) => {
+        return sum + (comment.upvotes || 0) - (comment.downvotes || 0);
+      },
+      0
+    );
+
     if (totalVotes > 0) {
       schema.aggregateRating = {
         "@type": "AggregateRating",
-        ratingValue: Math.max(1, Math.min(5, (totalVotes / pin.comments.length) + 3)),
+        ratingValue: Math.max(
+          1,
+          Math.min(5, totalVotes / pin.comments.length + 3)
+        ),
         reviewCount: pin.comments.length,
         bestRating: 5,
         worstRating: 1,
@@ -112,8 +117,11 @@ export function generateReviewSchema(
   comment: CommentData,
   config: StructuredDataConfig
 ) {
-  const rating = Math.max(1, Math.min(5, ((comment.upvotes || 0) - (comment.downvotes || 0)) + 3));
-  
+  const rating = Math.max(
+    1,
+    Math.min(5, (comment.upvotes || 0) - (comment.downvotes || 0) + 3)
+  );
+
   return {
     "@context": "https://schema.org",
     "@type": "Review",
@@ -129,14 +137,16 @@ export function generateReviewSchema(
       bestRating: 5,
       worstRating: 1,
     },
-    itemReviewed: comment.pins ? {
-      "@type": "Place",
-      name: comment.pins.title || "Location",
-      address: {
-        "@type": "PostalAddress",
-        addressLocality: comment.pins.location,
-      },
-    } : undefined,
+    itemReviewed: comment.pins
+      ? {
+          "@type": "Place",
+          name: comment.pins.title || "Location",
+          address: {
+            "@type": "PostalAddress",
+            addressLocality: comment.pins.location,
+          },
+        }
+      : undefined,
   };
 }
 
@@ -168,12 +178,16 @@ export function generateLocationSchema(
   config: StructuredDataConfig
 ) {
   // Calculate average coordinates from pins if available
-  const pinsWithCoords = pins.filter(pin => pin.latitude && pin.longitude);
+  const pinsWithCoords = pins.filter((pin) => pin.latitude && pin.longitude);
   let avgLat, avgLng;
-  
+
   if (pinsWithCoords.length > 0) {
-    avgLat = pinsWithCoords.reduce((sum, pin) => sum + pin.latitude!, 0) / pinsWithCoords.length;
-    avgLng = pinsWithCoords.reduce((sum, pin) => sum + pin.longitude!, 0) / pinsWithCoords.length;
+    avgLat =
+      pinsWithCoords.reduce((sum, pin) => sum + pin.latitude!, 0) /
+      pinsWithCoords.length;
+    avgLng =
+      pinsWithCoords.reduce((sum, pin) => sum + pin.longitude!, 0) /
+      pinsWithCoords.length;
   }
 
   const schema: Record<string, unknown> = {

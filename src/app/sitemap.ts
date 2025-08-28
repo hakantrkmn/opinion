@@ -56,18 +56,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       pinPages = pins.map((pin) => {
         const lastModified = new Date(pin.updated_at || pin.created_at);
         const daysSinceCreation = Math.floor(
-          (Date.now() - new Date(pin.created_at).getTime()) / (1000 * 60 * 60 * 24)
+          (Date.now() - new Date(pin.created_at).getTime()) /
+            (1000 * 60 * 60 * 24)
         );
-        
+
         // Dynamic priority based on recency and content
         let priority = 0.7;
-        if (daysSinceCreation < 7) priority = 0.9; // Recent pins get higher priority
+        if (daysSinceCreation < 7)
+          priority = 0.9; // Recent pins get higher priority
         else if (daysSinceCreation < 30) priority = 0.8;
         else if (daysSinceCreation < 90) priority = 0.7;
         else priority = 0.6;
 
         // Dynamic change frequency based on age
-        let changeFrequency: "daily" | "weekly" | "monthly" | "yearly" = "weekly";
+        let changeFrequency: "daily" | "weekly" | "monthly" | "yearly" =
+          "weekly";
         if (daysSinceCreation < 7) changeFrequency = "daily";
         else if (daysSinceCreation < 30) changeFrequency = "weekly";
         else if (daysSinceCreation < 180) changeFrequency = "monthly";
@@ -87,10 +90,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Location-based sayfalar - Enhanced with dynamic locations
   let locationPages: MetadataRoute.Sitemap = [];
-  
+
   try {
     const supabase = await createClient();
-    
+
     // Get unique locations from pins for dynamic location pages
     const { data: locations, error: locationError } = await supabase
       .from("pins")
@@ -100,18 +103,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     if (!locationError && locations) {
       // Extract unique cities/locations
-      const uniqueLocations = [...new Set(
-        locations
-          .map(item => item.location)
-          .filter(location => location && location.length > 2)
-          .map(location => {
-            // Extract city name (assuming format like "City, Country" or just "City")
-            const parts = location.split(',');
-            return parts[0].trim();
-          })
-      )].slice(0, 100); // Limit to top 100 locations
+      const uniqueLocations = [
+        ...new Set(
+          locations
+            .map((item) => item.location)
+            .filter((location) => location && location.length > 2)
+            .map((location) => {
+              // Extract city name (assuming format like "City, Country" or just "City")
+              const parts = location.split(",");
+              return parts[0].trim();
+            })
+        ),
+      ].slice(0, 100); // Limit to top 100 locations
 
-      locationPages = uniqueLocations.map(location => ({
+      locationPages = uniqueLocations.map((location) => ({
         url: `${baseUrl}/location/${encodeURIComponent(location)}`,
         lastModified: new Date(),
         changeFrequency: "weekly" as const,
@@ -132,17 +137,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "tokyo",
   ];
 
-  const predefinedLocationPages: MetadataRoute.Sitemap = predefinedLocations.map(location => ({
-    url: `${baseUrl}/location/${location}`,
-    lastModified: new Date(),
-    changeFrequency: "weekly" as const,
-    priority: 0.6,
-  }));
+  const predefinedLocationPages: MetadataRoute.Sitemap =
+    predefinedLocations.map((location) => ({
+      url: `${baseUrl}/location/${location}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.6,
+    }));
 
   return [
-    ...staticPages, 
-    ...pinPages, 
+    ...staticPages,
+    ...pinPages,
     ...locationPages,
-    ...predefinedLocationPages
+    ...predefinedLocationPages,
   ];
 }
