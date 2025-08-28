@@ -1,8 +1,22 @@
 User-agent: *
 Allow: /
+
+# Block sensitive/private areas
 Disallow: /auth/
 Disallow: /admin/
 Disallow: /api/
 Disallow: /profile/
+
+# Block development/temporary files
+Disallow: /_next/
+Disallow: /node_modules/
+
+# Allow important static files
+Allow: /favicon.ico
+Allow: /robots.txt
+Allow: /sitemap.xml
+
+# Crawl delay to be respectful to server
+Crawl-delay: 1
 
 Sitemap: https://opinion-xi.vercel.app/sitemap.xml
