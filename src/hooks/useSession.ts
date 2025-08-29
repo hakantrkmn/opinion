@@ -21,7 +21,9 @@ export function useSession() {
     queryFn: async (): Promise<Session | null> => {
       // Session query'de cache kullanma (problem oluşturuyor)
       // Sadece başarılı login'de cache'e kaydet
-      // Fetching session from Supabase
+      console.log(
+        "🔄 Fetching session from Supabase (optimized for auth page)"
+      );
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -65,7 +67,9 @@ export function useSession() {
         gcTime: 30 * 60 * 1000, // 30 dakika GC
       });
 
-      // Sign in successful, session cached
+      console.log(
+        "✅ Sign in successful, session cached with optimized query settings"
+      );
       router.push("/");
     },
     onError: (error) => {
@@ -109,11 +113,13 @@ export function useSession() {
           gcTime: 30 * 60 * 1000, // 30 dakika GC
         });
 
-        // Sign up successful, session cached
+        console.log(
+          "✅ Sign up successful, session cached with optimized query settings"
+        );
         router.push("/");
       } else {
         // Email confirmation gerekiyorsa
-        // Email confirmation required
+        console.log("📧 Please check your email for confirmation");
       }
     },
     onError: (error) => {
@@ -128,7 +134,7 @@ export function useSession() {
     onSuccess: () => {
       // Sign out'ta cache'i temizle
       cacheManager.clearSession();
-      // Session cache cleared
+      console.log("🗑️ Session cache cleared");
       router.push("/auth");
     },
   });
