@@ -120,8 +120,8 @@ export interface User {
 export interface PinModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreatePin: (data: { 
-    pinName: string; 
+  onCreatePin: (data: {
+    pinName: string;
     comment: string;
     photo?: File;
     photoMetadata?: {

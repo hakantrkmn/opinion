@@ -1,9 +1,18 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { CameraCapture as CameraCaptureType } from "@/types";
-import { Camera, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Camera, RotateCcw, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import CameraComponent, { FACING_MODES } from "react-html5-camera-photo";
+import "react-html5-camera-photo/build/css/index.css";
 import { toast } from "sonner";
 
 interface CameraCaptureProps {
@@ -19,13 +28,13 @@ export default function CameraCapture({
   disabled = false,
   className = "",
 }: CameraCaptureProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
-  const [showCameraUI, setShowCameraUI] = useState(false);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [facingMode, setFacingMode] = useState<"user" | "environment">("environment"); // Default to back camera
+  const [showCameraModal, setShowCameraModal] = useState(false);
+  const [facingMode, setFacingMode] = useState<"user" | "environment">(
+    "environment"
+  );
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
   // Validate file before processing
   const validateFile = (file: File): boolean => {
@@ -47,340 +56,287 @@ export default function CameraCapture({
       return false;
     }
 
-    // Strict validation: Only accept recently taken photos (camera capture)
-    const fileAge = Date.now() - file.lastModified;
-    const maxAge = 5 * 60 * 1000; // 5 minutes
-    if (fileAge > maxAge) {
-      toast.error("Photo must be taken instantly", {
-        description:
-          "Please use your camera to take a new photo right now. Gallery photos are not allowed.",
-      });
-      return false;
-    }
-
     return true;
   };
 
-  // Create preview URL
-  const createPreview = (file: File): string => {
-    return URL.createObjectURL(file);
-  };
-
-  // Start camera stream for both mobile and desktop users
-  const startCameraStream = async () => {
+  // Handle photo capture from react-html5-camera-photo
+  const handleTakePhoto = async (dataUri: string) => {
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: facingMode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
+      setIsProcessing(true);
+
+      // Convert data URI to blob
+      const response = await fetch(dataUri);
+      const blob = await response.blob();
+
+      // Create file from blob
+      const file = new File([blob], `camera-capture-${Date.now()}.jpg`, {
+        type: "image/jpeg",
+        lastModified: Date.now(),
       });
 
-      setStream(mediaStream);
-      setShowCameraUI(true);
+      // Validate the file
+      if (!validateFile(file)) {
+        setIsProcessing(false);
+        return;
+      }
 
-      // Wait for video element to be ready
-      setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = mediaStream;
-        }
-      }, 100);
-    } catch (error) {
-      console.error("Failed to access camera:", error);
-      toast.error("Camera access failed", {
-        description: "Please allow camera access to take photos.",
-      });
-      // Fallback to file input
-      fileInputRef.current?.click();
-    }
-  };
-
-  // Stop camera stream
-  const stopCameraStream = () => {
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-      setStream(null);
-    }
-    setShowCameraUI(false);
-  };
-
-  // Switch between front and back camera
-  const switchCamera = async () => {
-    if (stream) {
-      // Stop current stream
-      stream.getTracks().forEach((track) => track.stop());
-      setStream(null);
-    }
-
-    // Toggle facing mode
-    const newFacingMode = facingMode === "environment" ? "user" : "environment";
-    setFacingMode(newFacingMode);
-
-    // Start stream with new facing mode
-    try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: newFacingMode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-      });
-
-      setStream(mediaStream);
-      
-      setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = mediaStream;
-        }
-      }, 100);
-    } catch (error) {
-      console.error("Failed to switch camera:", error);
-      toast.error("Camera switch failed", {
-        description: "Could not access the other camera.",
-      });
-      // Revert to original facing mode
-      setFacingMode(facingMode);
-    }
-  };
-
-  // Capture photo from camera stream
-  const captureFromStream = () => {
-    if (!videoRef.current || !stream) return;
-
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
-
-    if (!context) {
-      toast.error("Canvas not supported");
-      return;
-    }
-
-    // Set canvas dimensions to video dimensions
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-
-    // Draw video frame to canvas
-    context.drawImage(videoRef.current, 0, 0);
-
-    // Convert to blob
-    canvas.toBlob(
-      async (blob) => {
-        if (!blob) {
-          toast.error("Failed to capture photo");
-          return;
-        }
-
-        // Create file from blob
-        const file = new File([blob], `camera-capture-${Date.now()}.jpg`, {
-          type: "image/jpeg",
-          lastModified: Date.now(),
-        });
-
-        // Stop camera stream
-        stopCameraStream();
-
-        // Process the captured file
-        await processFile(file);
-      },
-      "image/jpeg",
-      0.9
-    );
-  };
-
-  // Process captured or selected file
-  const processFile = async (file: File) => {
-    console.log("Processing file:", {
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      lastModified: new Date(file.lastModified),
-    });
-
-    // Validate the file
-    if (!validateFile(file)) {
-      return;
-    }
-
-    setIsProcessing(true);
-
-    try {
       // Create preview
-      const previewUrl = createPreview(file);
+      const previewUrl = URL.createObjectURL(file);
       setPreview(previewUrl);
 
-      // Create capture object
+      // Create compressed version for better performance
+      const compressedFile = await compressImage(file);
+
+      // Create the capture object
       const capture: CameraCaptureType = {
-        file,
+        file: file,
+        compressed: compressedFile,
         preview: previewUrl,
       };
 
-      // Call parent callback
+      // Pass to parent component
       onPhotoCapture(capture);
 
-      toast.success("Photo captured!", {
-        description: "Photo ready for upload",
-      });
+      // Close camera modal
+      setShowCameraModal(false);
     } catch (error) {
-      console.error("Error processing photo:", error);
-      toast.error("Processing failed", {
-        description: "Failed to process the captured photo",
+      console.error("Error processing captured photo:", error);
+      toast.error("Failed to process photo", {
+        description: "Please try again",
       });
     } finally {
       setIsProcessing(false);
-      // Reset input for next capture
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
+    }
+  };
+
+  // Compress image for better performance
+  const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(file);
+        return;
       }
-    }
+
+      const img = new Image();
+      img.onload = () => {
+        // Calculate new dimensions (max 1200px on longest side)
+        let { width, height } = img;
+        const maxWidth = 1200;
+        const maxHeight = 1200;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = (width * maxHeight) / height;
+            height = maxHeight;
+          }
+        }
+
+        // Set canvas dimensions
+        canvas.width = width;
+        canvas.height = height;
+
+        // Draw image on canvas
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Convert to blob with compression
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File(
+                [blob],
+                `compressed-${file.name}`,
+                {
+                  type: "image/jpeg",
+                  lastModified: Date.now(),
+                }
+              );
+              resolve(compressedFile);
+            } else {
+              resolve(file);
+            }
+          },
+          "image/jpeg",
+          0.8 // 80% quality
+        );
+      };
+
+      img.src = URL.createObjectURL(file);
+    });
   };
 
-  // Handle file selection from input
-  const handleFileSelect = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    await processFile(file);
+  // Handle camera error
+  const handleCameraError = (error: Error) => {
+    console.error("Camera error:", error);
+    setCameraError(error.message || "Failed to access camera");
+    toast.error("Camera access failed", {
+      description: "Please allow camera access to take photos.",
+    });
   };
 
-  // Trigger camera - simplified for both mobile and desktop
-  const triggerCamera = async () => {
-    if (disabled || isProcessing) return;
-    
-    await startCameraStream();
+  // Switch between front and back camera
+  const switchCamera = () => {
+    const newFacingMode = facingMode === "environment" ? "user" : "environment";
+    setFacingMode(newFacingMode);
   };
 
-  // Clear preview and stop camera
-  const clearPreview = () => {
-    if (preview) {
-      URL.revokeObjectURL(preview);
-      setPreview(null);
-    }
-
-    // Stop camera stream if active
-    stopCameraStream();
-
-    if (onCancel) {
-      onCancel();
-    }
+  // Reset camera state
+  const resetCamera = () => {
+    setPreview(null);
+    setCameraError(null);
   };
 
-  // Cleanup on unmount
+  // Clean up object URLs
   useEffect(() => {
     return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-      }
       if (preview) {
         URL.revokeObjectURL(preview);
       }
     };
-  }, [stream, preview]);
+  }, [preview]);
 
   return (
-    <div className={`camera-capture ${className}`}>
-      {/* Hidden file input for fallback */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment" // Use rear camera (mobile)
-        onChange={handleFileSelect}
-        style={{ display: "none" }}
-        disabled={disabled || isProcessing}
-      />
+    <div className={`space-y-4 ${className}`}>
+      {/* Camera Modal */}
+      <Dialog
+        open={showCameraModal}
+        onOpenChange={(open) => {
+          setShowCameraModal(open);
+          if (!open) {
+            resetCamera();
+            onCancel?.();
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md p-0">
+          <DialogHeader className="p-4 pb-0">
+            <DialogTitle className="flex items-center gap-2">
+              <Camera className="h-5 w-5" />
+              Take Photo
+            </DialogTitle>
+            <DialogDescription>
+              Capture a photo using your device camera
+            </DialogDescription>
+          </DialogHeader>
 
-      {/* Camera UI - Full Screen */}
-      {showCameraUI && (
-        <div className="fixed inset-0 bg-black z-50 flex flex-col">
-          {/* Video */}
-          <div className="flex-1 relative">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover"
-            />
+          <div className="p-4">
+            {showCameraModal && (
+              <div className="relative w-full" style={{ height: "300px" }}>
+                <style jsx>{`
+                  :global(.react-html5-camera-photo) {
+                    width: 100% !important;
+                    height: 100% !important;
+                    position: relative;
+                  }
+                  :global(.react-html5-camera-photo > video) {
+                    width: 100% !important;
+                    height: 100% !important;
+                    object-fit: cover !important;
+                  }
+                  :global(.react-html5-camera-photo > img) {
+                    width: 100% !important;
+                    height: 100% !important;
+                    object-fit: cover !important;
+                  }
+                `}</style>
+                <CameraComponent
+                  onTakePhoto={handleTakePhoto}
+                  onCameraError={handleCameraError}
+                  idealFacingMode={
+                    facingMode === "environment"
+                      ? FACING_MODES.ENVIRONMENT
+                      : FACING_MODES.USER
+                  }
+                  isFullscreen={false}
+                  isImageMirror={false}
+                  isDisplayStartCameraError={true}
+                />
+
+                {/* Camera controls overlay - Improved design */}
+                <div className="absolute bottom-6 left-0 right-0 flex justify-between items-center px-6">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setShowCameraModal(false)}
+                    disabled={isProcessing}
+                    className="bg-black/70 hover:bg-black text-white rounded-full w-16 h-16 flex items-center justify-center shadow-lg border-2 border-white/30"
+                  >
+                    <X className="h-8 w-8" />
+                  </Button>
+
+                  <div className="invisible w-16 h-16"></div>
+
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={switchCamera}
+                    disabled={isProcessing}
+                    className="bg-black/70 hover:bg-black text-white rounded-full w-16 h-16 flex items-center justify-center shadow-lg border-2 border-white/30"
+                  >
+                    <RotateCcw className="h-8 w-8" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Processing overlay */}
+            {isProcessing && (
+              <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
+                <div className="text-white">Processing...</div>
+              </div>
+            )}
           </div>
+        </DialogContent>
+      </Dialog>
 
-          {/* Controls */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
-            <div className="flex justify-center items-center gap-6">
-              {/* Cancel */}
-              <Button
-                type="button"
-                onClick={stopCameraStream}
-                variant="outline"
-                className="border-white text-white hover:bg-white hover:text-black bg-black/50"
-                size="lg"
-              >
-                Cancel
-              </Button>
-
-              {/* Capture */}
-              <Button
-                type="button"
-                onClick={captureFromStream}
-                disabled={isProcessing}
-                className="bg-white text-black hover:bg-gray-200 px-8"
-                size="lg"
-              >
-                {isProcessing ? "Processing..." : "Capture"}
-              </Button>
-
-              {/* Switch Camera */}
-              <Button
-                type="button"
-                onClick={switchCamera}
-                variant="outline"
-                className="border-white text-white hover:bg-white hover:text-black bg-black/50"
-                size="lg"
-              >
-                🔄
-              </Button>
-            </div>
+      {/* Preview or Take Photo Button */}
+      {preview ? (
+        // Preview state
+        <div className="space-y-4">
+          <div className="relative">
+            {preview && (
+              <img
+                src={preview}
+                alt="Preview"
+                className="w-full h-auto rounded-lg object-cover max-h-64"
+              />
+            )}
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              onClick={resetCamera}
+              disabled={isProcessing}
+              className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white rounded-full w-8 h-8"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         </div>
-      )}
+      ) : (
+        // Take Photo Button
+        <div className="space-y-4">
+          {cameraError && (
+            <div className="text-center text-red-500 text-sm p-2 bg-red-50 rounded">
+              {cameraError}
+            </div>
+          )}
 
-      {/* Camera trigger button */}
-      {!preview && !showCameraUI && (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={triggerCamera}
-          disabled={disabled || isProcessing}
-          className="flex items-center gap-2"
-          title="Take photo"
-        >
-          <Camera className="h-4 w-4" />
-          <span className="text-sm">
-            {isProcessing ? "Processing..." : "Take Photo"}
-          </span>
-        </Button>
-      )}
-
-      {/* Preview display */}
-      {preview && (
-        <div className="relative inline-block">
-          <img
-            src={preview}
-            alt="Captured photo preview"
-            className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg border"
-          />
           <Button
             type="button"
-            variant="destructive"
-            size="sm"
-            onClick={clearPreview}
-            className="absolute -top-2 -right-2 h-6 w-6 p-0 rounded-full"
-            title="Remove photo"
+            variant="outline"
+            onClick={() => setShowCameraModal(true)}
+            disabled={isProcessing || disabled}
+            className="w-full flex items-center justify-center gap-2"
           >
-            <X className="h-3 w-3" />
+            <Camera className="h-5 w-5" />
+            <span>Take Photo</span>
           </Button>
         </div>
       )}

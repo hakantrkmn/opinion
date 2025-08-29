@@ -55,21 +55,21 @@ export const pinService = {
 
       // Handle photo upload if provided
       let photoUrl: string | undefined;
-      console.log('CreatePin: Checking for photo data:', {
+      console.log("CreatePin: Checking for photo data:", {
         hasPhoto: !!data.photo,
         photoFileName: data.photo?.name,
         photoSize: data.photo?.size,
-        photoMetadata: data.photoMetadata
+        photoMetadata: data.photoMetadata,
       });
-      
+
       if (data.photo) {
-        console.log('CreatePin: Starting photo upload process');
+        console.log("CreatePin: Starting photo upload process");
         try {
           const { uploadCommentPhoto } = await import("./photoService");
           const result = await uploadCommentPhoto(data.photo, user.id);
-          
-          console.log('CreatePin: Photo upload result:', result);
-          
+
+          console.log("CreatePin: Photo upload result:", result);
+
           if (result.success && result.url) {
             photoUrl = result.url;
             console.log("Photo uploaded successfully:", photoUrl);
@@ -109,17 +109,20 @@ export const pinService = {
         console.error("Comment creation error:", commentError);
         // Pin oluşturuldu ama yorum eklenemedi - pin'i sil
         await supabase.from("pins").delete().eq("id", pin.id);
-        
+
         // Also clean up uploaded photo if it exists
         if (photoUrl) {
           try {
             const { deleteCommentPhoto } = await import("./photoService");
             await deleteCommentPhoto(photoUrl);
           } catch (cleanupError) {
-            console.error("Failed to cleanup photo after pin creation failure:", cleanupError);
+            console.error(
+              "Failed to cleanup photo after pin creation failure:",
+              cleanupError
+            );
           }
         }
-        
+
         return { pin: null, error: "İlk yorum eklenirken hata oluştu" };
       }
 
@@ -135,17 +138,24 @@ export const pinService = {
         comment_count: 1, // İlk yorum eklendi
         comments_count: 1, // Alternatif field name
         user: {
-          display_name: pin.users?.[0]?.display_name || user.user_metadata?.display_name || user.email?.split('@')[0] || "Anonim",
-          avatar_url: pin.users?.[0]?.avatar_url || user.user_metadata?.avatar_url || null,
+          display_name:
+            pin.users?.[0]?.display_name ||
+            user.user_metadata?.display_name ||
+            user.email?.split("@")[0] ||
+            "Anonim",
+          avatar_url:
+            pin.users?.[0]?.avatar_url ||
+            user.user_metadata?.avatar_url ||
+            null,
         },
       };
 
-      console.log('Returning pin with user data:', {
+      console.log("Returning pin with user data:", {
         pinId: pin.id,
         userName: pinWithCommentCount.user.display_name,
         hasUsers: !!pin.users,
         usersLength: pin.users?.length,
-        userMetadata: user.user_metadata
+        userMetadata: user.user_metadata,
       });
 
       return { pin: pinWithCommentCount, error: null };

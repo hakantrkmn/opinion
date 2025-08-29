@@ -78,9 +78,7 @@ export interface UsePinsWithHybridCacheReturn {
   ) => Promise<boolean>;
   deleteComment: (commentId: string) => Promise<boolean>;
   voteComment: (commentId: string, value: number) => Promise<boolean>;
-  hasUserCommented: (
-    pinId: string
-  ) => Promise<{
+  hasUserCommented: (pinId: string) => Promise<{
     hasCommented: boolean;
     commentId?: string;
     error: string | null;
@@ -220,10 +218,10 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
           queryKey: ["pins", "bounds"],
         });
 
-        console.log('✅ Pin added to cache with user data:', {
+        console.log("✅ Pin added to cache with user data:", {
           pinId: pinWithCorrectCount.id,
           userName: pinWithCorrectCount.user?.display_name,
-          cacheCleared: false
+          cacheCleared: false,
         });
 
         toast.success("Pin created successfully!");

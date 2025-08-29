@@ -13,7 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useSession } from "@/hooks/useSession";
-import type { CameraCapture as CameraCaptureType, PinModalProps } from "@/types";
+import type {
+  CameraCapture as CameraCaptureType,
+  PinModalProps,
+} from "@/types";
 import { Camera, LogIn, MapPin, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -26,16 +29,18 @@ export default function PinModal({
 }: PinModalProps) {
   const [pinName, setPinName] = useState("");
   const [comment, setComment] = useState("");
-  const [capturedPhoto, setCapturedPhoto] = useState<CameraCaptureType | null>(null);
+  const [capturedPhoto, setCapturedPhoto] = useState<CameraCaptureType | null>(
+    null
+  );
   const [isUploading, setIsUploading] = useState(false);
   const { user } = useSession();
 
   const handlePhotoCapture = (photo: CameraCaptureType) => {
-    console.log('Photo captured in PinModal:', {
+    console.log("Photo captured in PinModal:", {
       fileName: photo.file.name,
       fileSize: photo.file.size,
       fileType: photo.file.type,
-      hasCompressed: !!photo.compressed
+      hasCompressed: !!photo.compressed,
     });
     setCapturedPhoto(photo);
   };
@@ -46,36 +51,44 @@ export default function PinModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('PinModal form submitted');
+    console.log("PinModal form submitted");
     if (!user) return; // Shouldn't happen due to UI, but safety check
 
     if (pinName.trim() && comment.trim()) {
       setIsUploading(true);
       try {
-        let photoData: { photo?: File; photoMetadata?: { file_size: number; width?: number; height?: number; format: string; } } = {};
+        let photoData: {
+          photo?: File;
+          photoMetadata?: {
+            file_size: number;
+            width?: number;
+            height?: number;
+            format: string;
+          };
+        } = {};
 
         if (capturedPhoto) {
           // Use compressed photo if available, otherwise original
           const photoFile = capturedPhoto.compressed || capturedPhoto.file;
-          
+
           photoData = {
             photo: photoFile,
             photoMetadata: {
               file_size: photoFile.size,
               width: capturedPhoto.compressed ? 1200 : undefined, // Assume compressed width
               height: capturedPhoto.compressed ? undefined : undefined,
-              format: photoFile.type.split('/')[1] || 'webp',
-            }
+              format: photoFile.type.split("/")[1] || "webp",
+            },
           };
-          
-          console.log('Sending photo data to createPin:', {
+
+          console.log("Sending photo data to createPin:", {
             hasPhoto: true,
             fileName: photoFile.name,
             fileSize: photoFile.size,
-            photoMetadata: photoData.photoMetadata
+            photoMetadata: photoData.photoMetadata,
           });
         } else {
-          console.log('No photo data to send');
+          console.log("No photo data to send");
         }
 
         await onCreatePin({
@@ -83,14 +96,14 @@ export default function PinModal({
           comment: comment.trim(),
           ...photoData,
         });
-        
+
         // Reset form
         setPinName("");
         setComment("");
         setCapturedPhoto(null);
       } catch (error) {
-        console.error('Error creating pin:', error);
-        toast.error('Failed to create pin. Please try again.');
+        console.error("Error creating pin:", error);
+        toast.error("Failed to create pin. Please try again.");
       } finally {
         setIsUploading(false);
       }
@@ -196,7 +209,7 @@ export default function PinModal({
               <Camera className="h-4 w-4" />
               Add Photo (Optional)
             </Label>
-            
+
             {/* Photo Preview */}
             {capturedPhoto && (
               <div className="relative inline-block">
@@ -216,11 +229,12 @@ export default function PinModal({
                 </Button>
               </div>
             )}
-            
+
             {/* Camera Capture */}
             {!capturedPhoto && (
               <CameraCapture
                 onPhotoCapture={handlePhotoCapture}
+                onCancel={handleRemovePhoto}
                 className="w-full"
               />
             )}
@@ -236,12 +250,8 @@ export default function PinModal({
             >
               Cancel
             </Button>
-            <Button 
-              type="submit" 
-              className="flex-1"
-              disabled={isUploading}
-            >
-              {isUploading ? 'Creating...' : 'Create Pin'}
+            <Button type="submit" className="flex-1" disabled={isUploading}>
+              {isUploading ? "Creating..." : "Create Pin"}
             </Button>
           </div>
         </form>

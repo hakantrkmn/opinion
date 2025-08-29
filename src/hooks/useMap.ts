@@ -302,8 +302,8 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
   };
 
   // Create pin (integrated with DB)
-  const createPin = async (data: { 
-    pinName: string; 
+  const createPin = async (data: {
+    pinName: string;
     comment: string;
     photo?: File;
     photoMetadata?: {
