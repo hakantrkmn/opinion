@@ -7,6 +7,7 @@ import {
   generateOrganizationSchema,
 } from "@/lib/structured-data";
 
+import { LazyStyles } from "@/components/LazyStyles";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -122,6 +123,20 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Critical CSS - Above the fold styles */}
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            body{margin:0;padding:0;font-family:var(--font-geist-sans),system-ui,arial;background:oklch(1 0 0);color:oklch(0.145 0 0)}
+            *{box-sizing:border-box}
+            .maplibregl-popup{border-radius:12px!important;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1),0 10px 10px -5px rgba(0,0,0,0.04)!important;border:none!important;overflow:hidden!important}
+            .maplibregl-popup-content{padding:0!important;border-radius:12px!important;box-shadow:none!important;border:none!important}
+          `
+        }} />
+
+        {/* DNS prefetch for external resources */}
+        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+
         {/* Organization Schema */}
         <script
           type="application/ld+json"
@@ -139,6 +154,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <LazyAnalytics />
+            <LazyStyles />
             {children}
             <LazyToaster />
           </ThemeProvider>
