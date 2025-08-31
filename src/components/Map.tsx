@@ -43,17 +43,14 @@ export default function Map({ initialCoordinates }: MapProps) {
     user, // User'ı ekleyelim
     map,
     mapPins,
-    handlePinClick,
     showPinPopup, // Add showPinPopup for popup flow
     refreshPins,
     invalidatePinCommentsCache, // Add cache invalidation
     isRefreshing,
     getPinComments,
-    getBatchComments,
     hasUserCommented,
     currentZoom,
     // New batch comment features
-    batchComments,
     setBatchComments,
     commentsLoading,
     loadVisiblePinsComments,

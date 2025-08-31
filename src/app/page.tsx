@@ -44,7 +44,7 @@ function HomeContent() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex items-center gap-2">
           <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-sm text-muted-foreground">Loading map...</span>
+          <span className="text-sm text-muted-foreground">Loading...</span>
         </div>
       </div>
     );
