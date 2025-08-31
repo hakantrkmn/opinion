@@ -134,9 +134,10 @@ export default function RootLayout({
         <QueryProvider>
           <ThemeProvider
             attribute="class"
-            defaultTheme="light"
+            defaultTheme="system"
             enableSystem
             disableTransitionOnChange
+            storageKey="opinion-theme"
           >
             <LazyAnalytics />
             {children}

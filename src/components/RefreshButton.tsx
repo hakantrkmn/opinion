@@ -22,7 +22,7 @@ export const RefreshButton = ({
       disabled={isRefreshing || !isZoomSufficient}
       variant="outline"
       size="icon"
-      className={`fixed top-20 right-4 z-30 rounded-full shadow-lg transition-opacity ${!isZoomSufficient ? "opacity-50" : "opacity-100"
+      className={`fixed top-20 right-4 z-30 rounded-full shadow-lg !bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 hover:scale-105 disabled:hover:scale-100 ${!isZoomSufficient ? "opacity-50" : "opacity-100"
         }`}
       title={
         !isZoomSufficient
@@ -31,7 +31,7 @@ export const RefreshButton = ({
       }
     >
       <RefreshCcw
-        className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+        className={`h-4 w-4 transition-transform ${isRefreshing ? "animate-spin" : ""}`}
       />
     </Button>
   );

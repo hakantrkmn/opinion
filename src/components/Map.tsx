@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { useMap } from "@/hooks/useMap";
+import { useTheme } from "next-themes";
 import { useEffect } from "react";
 import PinDetailModal from "./PinDetailModal";
 import PinMarker from "./PinMarker";
@@ -13,6 +14,8 @@ interface MapProps {
 }
 
 export default function Map({ initialCoordinates }: MapProps) {
+  const { theme, setTheme } = useTheme();
+
   const {
     mapContainer,
     currentStyle,
@@ -74,30 +77,32 @@ export default function Map({ initialCoordinates }: MapProps) {
 
       {/* Loading Indicators */}
       {(pinsLoading || commentsLoading || isLoading) && (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white px-4 py-2 rounded-lg shadow-lg z-40">
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border z-40">
           <div className="flex items-center space-x-2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-            <span className="text-sm text-gray-600">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+            <span className="text-sm text-foreground">
               {isLoading
                 ? "Getting location..."
                 : pinsLoading && commentsLoading
-                ? "Loading pins & comments..."
-                : pinsLoading
-                ? "Loading pins..."
-                : "Loading comments..."}
+                  ? "Loading pins & comments..."
+                  : pinsLoading
+                    ? "Loading pins..."
+                    : "Loading comments..."}
             </span>
           </div>
         </div>
       )}
 
-      {/* Map Style Toggle Buttons - Updated positioning for mobile responsiveness */}
-      <div className="absolute bottom-20 sm:bottom-20 right-4 bg-background rounded-lg shadow-lg p-1 border z-40">
-        <div className="flex space-x-1">
+      {/* Map Controls - Style Toggle, Theme Toggle and Location Button */}
+      <div className="absolute bottom-4 right-4 z-50 flex flex-row items-end gap-2">
+        {/* Map Style Toggle Buttons */}
+        <div className="bg-background rounded-lg shadow-lg border flex">
           <Button
             onClick={() => changeMapStyle("light")}
             variant={currentStyle === "light" ? "default" : "ghost"}
             size="sm"
-            title="Light Theme"
+            title="Light Map Style"
+            className="text-xs px-2 py-1 h-8 rounded-r-none border-r"
           >
             Light
           </Button>
@@ -106,7 +111,8 @@ export default function Map({ initialCoordinates }: MapProps) {
             onClick={() => changeMapStyle("dark")}
             variant={currentStyle === "dark" ? "default" : "ghost"}
             size="sm"
-            title="Dark Theme"
+            title="Dark Map Style"
+            className="text-xs px-2 py-1 h-8 rounded-none border-r"
           >
             Dark
           </Button>
@@ -115,40 +121,52 @@ export default function Map({ initialCoordinates }: MapProps) {
             onClick={() => changeMapStyle("voyager")}
             variant={currentStyle === "voyager" ? "default" : "ghost"}
             size="sm"
-            title="Voyager"
+            title="Voyager Map Style"
+            className="text-xs px-2 py-1 h-8 rounded-l-none"
           >
             Voyager
           </Button>
         </div>
-      </div>
 
-      {/* Location Button - Updated with location service integration */}
-      <Button
-        onClick={userLocation ? goToUserLocation : getUserLocation}
-        variant="outline"
-        size="icon"
-        className="fixed bottom-4 right-4 z-50 shadow-lg h-12 w-12"
-        title={
-          userLocation
-            ? "Go to My Location"
-            : locationPermission === "denied"
-            ? "Get Location Permission"
-            : locationPermission === "loading"
-            ? "Getting Location..."
-            : "Allow Location Access"
-        }
-        disabled={locationPermission === "loading"}
-      >
-        {locationPermission === "loading" ? (
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-        ) : userLocation ? (
-          "📍"
-        ) : locationPermission === "denied" ? (
-          "🔒"
-        ) : (
-          "🎯"
-        )}
-      </Button>
+        {/* Theme Toggle Button */}
+        <Button
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          variant="outline"
+          size="icon"
+          className="shadow-lg h-8 w-8 flex-shrink-0 !bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 hover:scale-105"
+          title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Theme`}
+        >
+          <span className="transition-transform duration-300">
+            {theme === "dark" ? "☀️" : "🌙"}
+          </span>
+        </Button>
+
+        {/* Location Button */}
+        <Button
+          onClick={userLocation ? goToUserLocation : getUserLocation}
+          variant="outline"
+          size="icon"
+          className="shadow-lg h-8 w-8 flex-shrink-0 !bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:hover:bg-background transition-all duration-200 hover:scale-105 disabled:hover:scale-100"
+          title={
+            userLocation
+              ? "Go to My Location"
+              : locationPermission === "denied"
+                ? "Get Location Permission"
+                : locationPermission === "loading"
+                  ? "Getting Location..."
+                  : "Allow Location Access"
+          }
+          disabled={locationPermission === "loading"}
+        >
+          {locationPermission === "loading" ? (
+            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+          ) : (
+            <span className="transition-transform duration-200">
+              {userLocation ? "📍" : locationPermission === "denied" ? "🔒" : "🎯"}
+            </span>
+          )}
+        </Button>
+      </div>
 
       {/* Pin Creation Modal */}
       <PinModal
@@ -164,9 +182,9 @@ export default function Map({ initialCoordinates }: MapProps) {
           const actualPin = mapPins.find((pin) => pin.id === selectedPin.pinId);
           const coordinates = actualPin
             ? {
-                lat: actualPin.location.coordinates[1], // GeoJSON format: [lng, lat]
-                lng: actualPin.location.coordinates[0],
-              }
+              lat: actualPin.location.coordinates[1], // GeoJSON format: [lng, lat]
+              lng: actualPin.location.coordinates[0],
+            }
             : undefined;
 
           return (

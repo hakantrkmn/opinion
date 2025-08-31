@@ -150,23 +150,23 @@ export function generatePinPopupHTML(pin: Pin): string {
     ? pin.name.slice(0, MAX_PIN_NAME_LENGTH) + "..."
     : pin.name;
 
-  // Activity level badge based on comment count
+  // Activity level badge based on comment count - theme aware
   const getActivityBadge = (count?: number) => {
     if (!count || count === 0)
-      return { text: "New", color: "bg-green-100 text-green-800" };
+      return { text: "New", color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" };
     if (count <= 3)
-      return { text: "Active", color: "bg-blue-100 text-blue-800" };
+      return { text: "Active", color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300" };
     if (count <= 10)
-      return { text: "Popular", color: "bg-yellow-100 text-yellow-800" };
-    return { text: "Very Active", color: "bg-purple-100 text-purple-800" };
+      return { text: "Popular", color: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" };
+    return { text: "Very Active", color: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300" };
   };
 
   const activityBadge = getActivityBadge(commentCount);
 
   return `
-    <div class="relative p-4 max-w-sm cursor-pointer hover:bg-gray-50 transition-colors rounded-lg bg-white shadow-lg" id="pin-popup">
+    <div class="relative p-4 max-w-sm cursor-pointer hover:bg-muted transition-colors rounded-lg bg-background border shadow-lg" id="pin-popup">
       <!-- Close Button -->
-      <button class="absolute top-2 right-2 w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors z-20" onclick="event.stopPropagation(); this.closest('.maplibregl-popup').remove()">
+      <button class="absolute top-2 right-2 w-6 h-6 bg-muted hover:bg-muted rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors z-20" onclick="event.stopPropagation(); this.closest('.maplibregl-popup').remove()">
         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
         </svg>
@@ -174,7 +174,7 @@ export function generatePinPopupHTML(pin: Pin): string {
 
       <div class="mb-3 pr-8">
         <div class="flex items-center justify-between mb-2">
-          <h3 class="text-xl font-bold text-gray-800 leading-tight truncate flex-1 mr-2" title="${pin.name}">
+          <h3 class="text-xl font-bold text-foreground leading-tight truncate flex-1 mr-2" title="${pin.name}">
             ${displayName}
           </h3>
           <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${activityBadge.color} z-10 flex-shrink-0">
@@ -185,22 +185,22 @@ export function generatePinPopupHTML(pin: Pin): string {
 
       <div class="mb-3">
         <div class="flex items-center justify-between">
-          <p class="text-sm text-gray-600">
-            Created by: <span class="font-medium">${userName}</span>
+          <p class="text-sm text-muted-foreground">
+            Created by: <span class="font-medium text-foreground">${userName}</span>
           </p>
-          <p class="text-xs text-gray-400">${createdDate}</p>
+          <p class="text-xs text-muted-foreground">${createdDate}</p>
         </div>
       </div>
 
       <div class="flex items-center justify-between">
         <div class="flex items-center">
-          <svg class="w-4 h-4 text-gray-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+          <svg class="w-4 h-4 text-muted-foreground mr-2" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd" />
           </svg>
-          <span class="text-sm text-gray-600 font-medium">${commentCount} ${commentCount === 1 ? 'comment' : 'comments'}</span>
+          <span class="text-sm text-foreground font-medium">${commentCount} ${commentCount === 1 ? 'comment' : 'comments'}</span>
         </div>
 
-        <div class="text-xs text-gray-400">
+        <div class="text-xs text-muted-foreground">
           Click to open
         </div>
       </div>
@@ -210,13 +210,13 @@ export function generatePinPopupHTML(pin: Pin): string {
 
 // HTML String Generator - useMap.ts için
 export function generatePinElementHTML(pin: Pin, zoomLevel?: number): string {
-  // Pin'in yorum sayısına göre renk belirle
+  // Pin'in yorum sayısına göre renk belirle - tema uyumlu
   const getPinColor = (commentCount?: number) => {
     if (!commentCount || commentCount === 0)
-      return "bg-red-500 hover:bg-red-600";
-    if (commentCount <= 3) return "bg-blue-500 hover:bg-blue-600";
-    if (commentCount <= 10) return "bg-green-500 hover:bg-green-600";
-    return "bg-purple-500 hover:bg-purple-600";
+      return "bg-destructive hover:bg-destructive";
+    if (commentCount <= 3) return "bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700";
+    if (commentCount <= 10) return "bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-700";
+    return "bg-purple-500 hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700";
   };
 
   const pinColor = getPinColor(pin.comments_count);
@@ -233,24 +233,24 @@ export function generatePinElementHTML(pin: Pin, zoomLevel?: number): string {
   return `
     <div class="relative flex flex-col items-center">
       ${showPinName ? `
-        <div class="mb-1 px-2 py-1 bg-white rounded-md shadow-md border border-gray-200 text-xs font-medium text-gray-700 whitespace-nowrap max-w-32 truncate">
+        <div class="mb-1 px-2 py-1 bg-background border rounded-md shadow-md text-xs font-medium text-foreground whitespace-nowrap max-w-32 truncate">
           ${truncatedName}
         </div>
       ` : ""}
-      <div class="w-6 h-6 ${pinColor} rounded-full border-2 border-white shadow-lg flex items-center justify-center cursor-pointer transition-colors">
+      <div class="w-6 h-6 ${pinColor} rounded-full border-2 border-background shadow-lg flex items-center justify-center cursor-pointer transition-colors">
         <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
           <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
         </svg>
         ${pin.comments_count && pin.comments_count > 0
       ? `
-          <div class="absolute -top-1 -right-1 bg-white text-gray-700 text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold shadow-sm z-10">
+          <div class="absolute -top-1 -right-1 bg-background text-foreground text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold shadow-sm border z-10">
             ${pin.comments_count > 99 ? "99+" : pin.comments_count}
           </div>
         `
       : ""
     }
       </div>
-      <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-3 border-r-3 border-t-3 border-transparent border-t-red-500"></div>
+      <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-3 border-r-3 border-t-3 border-transparent ${pin.comments_count && pin.comments_count > 0 ? 'border-t-blue-500 dark:border-t-blue-600' : 'border-t-red-500 dark:border-t-red-600'}"></div>
     </div>
   `;
 }
