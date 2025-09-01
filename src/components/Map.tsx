@@ -74,17 +74,17 @@ export default function Map({ initialCoordinates }: MapProps) {
 
       {/* Loading Indicators */}
       {(pinsLoading || commentsLoading || isLoading) && (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border z-40">
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border z-60]">
           <div className="flex items-center space-x-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
             <span className="text-sm text-foreground">
               {isLoading
                 ? "Getting location..."
                 : pinsLoading && commentsLoading
-                  ? "Loading pins & comments..."
-                  : pinsLoading
-                    ? "Loading pins..."
-                    : "Loading comments..."}
+                ? "Loading pins & comments..."
+                : pinsLoading
+                ? "Loading pins..."
+                : "Loading comments..."}
             </span>
           </div>
         </div>
@@ -148,10 +148,10 @@ export default function Map({ initialCoordinates }: MapProps) {
             userLocation
               ? "Go to My Location"
               : locationPermission === "denied"
-                ? "Get Location Permission"
-                : locationPermission === "loading"
-                  ? "Getting Location..."
-                  : "Allow Location Access"
+              ? "Get Location Permission"
+              : locationPermission === "loading"
+              ? "Getting Location..."
+              : "Allow Location Access"
           }
           disabled={locationPermission === "loading"}
         >
@@ -159,7 +159,11 @@ export default function Map({ initialCoordinates }: MapProps) {
             <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
           ) : (
             <span className="transition-transform duration-200">
-              {userLocation ? "📍" : locationPermission === "denied" ? "🔒" : "🎯"}
+              {userLocation
+                ? "📍"
+                : locationPermission === "denied"
+                ? "🔒"
+                : "🎯"}
             </span>
           )}
         </Button>
@@ -179,9 +183,9 @@ export default function Map({ initialCoordinates }: MapProps) {
           const actualPin = mapPins.find((pin) => pin.id === selectedPin.pinId);
           const coordinates = actualPin
             ? {
-              lat: actualPin.location.coordinates[1], // GeoJSON format: [lng, lat]
-              lng: actualPin.location.coordinates[0],
-            }
+                lat: actualPin.location.coordinates[1], // GeoJSON format: [lng, lat]
+                lng: actualPin.location.coordinates[0],
+              }
             : undefined;
 
           return (

@@ -60,9 +60,7 @@ interface PinDetailModalProps {
   currentUserId: string;
   loading?: boolean;
   onRefresh?: () => void;
-  hasUserCommented: (
-    pinId: string
-  ) => Promise<{
+  hasUserCommented: (pinId: string) => Promise<{
     hasCommented: boolean;
     commentId?: string;
     error: string | null;
