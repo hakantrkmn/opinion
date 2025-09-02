@@ -27,9 +27,6 @@ export function generateViewport() {
     width: "device-width",
     initialScale: 1,
     viewportFit: "cover",
-    userScalable: "no",
-    maximumScale: 1,
-    minimumScale: 1,
   };
 }
 
