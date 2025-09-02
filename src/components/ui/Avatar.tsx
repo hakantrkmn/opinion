@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { User } from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 
 interface AvatarProps {
@@ -17,6 +18,13 @@ const sizeClasses = {
   md: "w-10 h-10 text-sm",
   lg: "w-12 h-12 text-base",
   xl: "w-16 h-16 text-lg",
+};
+
+const sizePixels = {
+  sm: 32,
+  md: 40, 
+  lg: 48,
+  xl: 64,
 };
 
 // Simple in-memory cache for images - use global window cache for consistency
@@ -79,15 +87,20 @@ export function Avatar({
     >
       {/* Image */}
       {src && !imageError && (
-        <img
+        <Image
           src={src}
           alt={alt}
+          width={sizePixels[size]}
+          height={sizePixels[size]}
           onLoad={handleImageLoad}
           onError={handleImageError}
           className={cn(
-            "w-full h-full object-cover transition-opacity duration-200",
+            "object-cover transition-opacity duration-200",
             shouldShowImage ? "opacity-100" : "opacity-0"
           )}
+          sizes={`${sizePixels[size]}px`}
+          loading="lazy"
+          placeholder="empty"
         />
       )}
 

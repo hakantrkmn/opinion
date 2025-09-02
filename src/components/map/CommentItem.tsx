@@ -39,6 +39,7 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -220,7 +221,7 @@ export default function CommentItem({
         // Only proceed if still not loaded and no timeout yet
         if (!imageLoaded && !imageError && !imageTimeout) {
           // Create a test image to check if it's already in browser cache
-          const testImg = new Image();
+          const testImg = new window.Image();
           testImg.onload = () => {
             console.log(
               "Image detected in cache, forcing display:",
@@ -532,10 +533,15 @@ export default function CommentItem({
               {/* Current photo display */}
               {comment.photo_url && editPhotoAction !== "remove" && (
                 <div className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg">
-                  <img
+                  <Image
                     src={comment.photo_url}
                     alt="Current photo"
+                    width={48}
+                    height={48}
                     className="w-12 h-12 object-cover rounded border"
+                    sizes="48px"
+                    loading="lazy"
+                    style={{ width: "48px", height: "48px" }}
                   />
                   <div className="flex-1 text-sm text-muted-foreground">
                     Current photo
@@ -555,10 +561,15 @@ export default function CommentItem({
               {/* New photo preview */}
               {editCapturedPhoto && (
                 <div className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded-lg">
-                  <img
+                  <Image
                     src={editCapturedPhoto.preview}
                     alt="New photo preview"
+                    width={48}
+                    height={48}
                     className="w-12 h-12 object-cover rounded border"
+                    sizes="48px"
+                    loading="lazy"
+                    style={{ width: "48px", height: "48px" }}
                   />
                   <div className="flex-1 text-sm text-green-700">
                     {comment.photo_url
@@ -668,12 +679,16 @@ export default function CommentItem({
                           <ImageIcon className="h-6 w-6 text-muted-foreground animate-pulse" />
                         </div>
                       )}
-                      <img
+                      <Image
                         src={comment.photo_url}
                         alt="Comment photo"
+                        width={80}
+                        height={80}
                         className={`w-20 h-20 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity duration-200 ${
                           imageLoaded ? "opacity-100" : "opacity-0"
                         }`}
+                        sizes="80px"
+                        loading="lazy"
                         onClick={() => setShowFullImage(true)}
                         onLoad={(e) => {
                           const img = e.target as HTMLImageElement;
@@ -702,7 +717,6 @@ export default function CommentItem({
                           });
                           setImageError(true);
                         }}
-                        loading="lazy"
                         style={{
                           display: imageLoaded ? "block" : "none",
                           minHeight: "1px",
@@ -758,10 +772,20 @@ export default function CommentItem({
                     onClick={() => setShowFullImage(false)}
                   >
                     <div className="relative max-w-4xl max-h-full">
-                      <img
+                      <Image
                         src={comment.photo_url}
                         alt="Comment photo - full size"
+                        width={800}
+                        height={600}
                         className="max-w-full max-h-full object-contain rounded-lg"
+                        sizes="(max-width: 768px) 100vw, 800px"
+                        style={{
+                          width: "auto",
+                          height: "auto",
+                          maxWidth: "100%",
+                          maxHeight: "100%",
+                        }}
+                        priority={true}
                         onClick={(e) => e.stopPropagation()}
                       />
                       <button

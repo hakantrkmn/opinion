@@ -2,6 +2,7 @@
 
 import CameraCapture from "@/components/CameraCapture";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 import {
   Dialog,
   DialogContent,
@@ -213,10 +214,15 @@ export default function PinModal({
             {/* Photo Preview */}
             {capturedPhoto && (
               <div className="relative inline-block">
-                <img
+                <Image
                   src={capturedPhoto.preview}
                   alt="Captured photo"
+                  width={96}
+                  height={96}
                   className="w-24 h-24 object-cover rounded-lg border"
+                  sizes="96px"
+                  style={{ width: '96px', height: '96px' }}
+                  loading="lazy"
                 />
                 <Button
                   type="button"

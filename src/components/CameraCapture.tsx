@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import type { CameraCapture as CameraCaptureType } from "@/types";
 import { Camera, RotateCcw, X } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -126,7 +127,7 @@ export default function CameraCapture({
         return;
       }
 
-      const img = new Image();
+      const img = new window.Image();
       img.onload = () => {
         // Calculate new dimensions (max 1200px on longest side)
         let { width, height } = img;
@@ -439,10 +440,15 @@ export default function CameraCapture({
         // Preview state
         <div className="space-y-4">
           <div className="relative">
-            <img
+            <Image
               src={preview}
               alt="Preview"
+              width={400}
+              height={256}
               className="w-full h-auto rounded-lg object-cover max-h-64"
+              sizes="(max-width: 768px) 100vw, 400px"
+              style={{ width: '100%', height: 'auto', maxHeight: '16rem' }}
+              loading="lazy"
             />
             <Button
               type="button"

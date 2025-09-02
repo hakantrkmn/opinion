@@ -5,6 +5,23 @@ const withBundleAnalyzer = require("@next/bundle-analyzer")({
 });
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'juuestllrnczytxmaxzm.supabase.co',
+        port: '',
+        pathname: '/storage/v1/object/public/**',
+      },
+      // Generic Supabase storage pattern for any project
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+        port: '',
+        pathname: '/storage/v1/object/public/**',
+      },
+    ],
+  },
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
   },

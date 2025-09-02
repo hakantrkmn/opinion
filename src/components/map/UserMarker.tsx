@@ -1,6 +1,7 @@
 "use client";
 
 import { User } from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 
 // Import the shared image cache from Avatar component
@@ -48,11 +49,15 @@ export default function UserMarker({
       <div className="relative">
         {avatarUrl && !imageError ? (
           <div className="w-8 h-8 rounded-full border-2 border-white shadow-lg overflow-hidden bg-black">
-            <img
+            <Image
               src={avatarUrl}
               alt={displayName || "User"}
+              width={32}
+              height={32}
               onError={handleImageError}
-              className="w-full h-full object-cover rounded-full"
+              className="object-cover rounded-full"
+              sizes="32px"
+              loading="lazy"
             />
           </div>
         ) : (
