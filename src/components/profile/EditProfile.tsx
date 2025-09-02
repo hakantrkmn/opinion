@@ -1,25 +1,39 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar } from "@/components/ui/Avatar";
-import { Camera, Loader2, Trash2, Save, X } from "lucide-react";
-import { toast } from "sonner";
-import { userService } from "@/lib/supabase/userService";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { userService } from "@/lib/supabase/userService";
 import type { User } from "@supabase/supabase-js";
+import { Camera, Loader2, Save, Trash2, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 interface EditProfileProps {
   user: User;
   isOpen: boolean;
   onClose: () => void;
-  onProfileUpdate: (updates: { display_name?: string; avatar_url?: string | null }) => void;
+  onProfileUpdate: (updates: {
+    display_name?: string;
+    avatar_url?: string | null;
+  }) => void;
 }
 
-export function EditProfile({ user, isOpen, onClose, onProfileUpdate }: EditProfileProps) {
+export function EditProfile({
+  user,
+  isOpen,
+  onClose,
+  onProfileUpdate,
+}: EditProfileProps) {
   const { profile } = useUserProfile();
   const [displayName, setDisplayName] = useState(profile?.display_name || "");
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
@@ -37,14 +51,19 @@ export function EditProfile({ user, isOpen, onClose, onProfileUpdate }: EditProf
 
   if (!isOpen) return null;
 
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     setUploading(true);
     try {
-      const { avatarUrl: newAvatarUrl, error } = await userService.uploadAvatar(user.id, file);
-      
+      const { avatarUrl: newAvatarUrl, error } = await userService.uploadAvatar(
+        user.id,
+        file
+      );
+
       if (error) {
         toast.error("Avatar upload failed", {
           description: error,
@@ -56,7 +75,7 @@ export function EditProfile({ user, isOpen, onClose, onProfileUpdate }: EditProf
         setAvatarUrl(newAvatarUrl);
         toast.success("Avatar uploaded successfully!");
       }
-    } catch (error) {
+    } catch {
       toast.error("Avatar upload failed", {
         description: "An unexpected error occurred",
       });
@@ -71,7 +90,7 @@ export function EditProfile({ user, isOpen, onClose, onProfileUpdate }: EditProf
     setDeleting(true);
     try {
       const { success, error } = await userService.deleteAvatar(user.id);
-      
+
       if (error) {
         toast.error("Failed to delete avatar", {
           description: error,
@@ -83,7 +102,7 @@ export function EditProfile({ user, isOpen, onClose, onProfileUpdate }: EditProf
         setAvatarUrl("");
         toast.success("Avatar deleted successfully!");
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete avatar", {
         description: "An unexpected error occurred",
       });
@@ -97,12 +116,15 @@ export function EditProfile({ user, isOpen, onClose, onProfileUpdate }: EditProf
     try {
       // Update display name if changed
       const currentDisplayName = profile?.display_name || "";
-      
+
       let success = true;
       let error = null;
 
       if (displayName.trim() !== currentDisplayName) {
-        const result = await userService.updateDisplayName(user.id, displayName);
+        const result = await userService.updateDisplayName(
+          user.id,
+          displayName
+        );
         if (!result.success) {
           success = false;
           error = result.error;
@@ -124,7 +146,7 @@ export function EditProfile({ user, isOpen, onClose, onProfileUpdate }: EditProf
 
       toast.success("Profile updated successfully!");
       onClose();
-    } catch (error) {
+    } catch {
       toast.error("Failed to save changes", {
         description: "An unexpected error occurred",
       });
@@ -133,7 +155,7 @@ export function EditProfile({ user, isOpen, onClose, onProfileUpdate }: EditProf
     }
   };
 
-  const hasChanges = 
+  const hasChanges =
     displayName.trim() !== (profile?.display_name || "") ||
     avatarUrl !== (profile?.avatar_url || "");
 
@@ -156,7 +178,7 @@ export function EditProfile({ user, isOpen, onClose, onProfileUpdate }: EditProf
             </Button>
           </div>
         </CardHeader>
-        
+
         <CardContent className="space-y-6">
           {/* Avatar Section */}
           <div className="flex flex-col items-center space-y-4">
@@ -167,9 +189,9 @@ export function EditProfile({ user, isOpen, onClose, onProfileUpdate }: EditProf
                 size="xl"
                 fallbackText={displayName || user.email}
               />
-              
+
               {/* Upload button */}
-              <label 
+              <label
                 htmlFor="avatar-upload"
                 className="absolute bottom-0 right-0 bg-primary hover:bg-primary/90 text-primary-foreground p-2 rounded-full cursor-pointer transition-colors"
               >
@@ -179,7 +201,7 @@ export function EditProfile({ user, isOpen, onClose, onProfileUpdate }: EditProf
                   <Camera className="h-4 w-4" />
                 )}
               </label>
-              
+
               <input
                 id="avatar-upload"
                 type="file"
@@ -189,7 +211,7 @@ export function EditProfile({ user, isOpen, onClose, onProfileUpdate }: EditProf
                 disabled={uploading || saving}
               />
             </div>
-            
+
             {/* Delete avatar button */}
             {avatarUrl && (
               <Button

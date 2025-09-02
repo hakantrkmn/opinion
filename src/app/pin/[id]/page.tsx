@@ -10,6 +10,7 @@ import {
 } from "@/lib/structured-data";
 import { createClient } from "@/lib/supabase/server";
 import { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -200,7 +201,7 @@ export default async function PinPage({
                 <h2 className="text-lg font-semibold mb-2">👤 Posted by</h2>
                 <div className="flex items-center gap-3">
                   {userData.avatar_url && (
-                    <img
+                    <Image
                       src={userData.avatar_url}
                       alt={userData.display_name}
                       className="w-10 h-10 rounded-full"

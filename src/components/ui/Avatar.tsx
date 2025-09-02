@@ -22,7 +22,7 @@ const sizeClasses = {
 
 const sizePixels = {
   sm: 32,
-  md: 40, 
+  md: 40,
   lg: 48,
   xl: 64,
 };
@@ -41,8 +41,6 @@ const getImageCache = (): Map<string, boolean> => {
   // Fallback for SSR
   return new Map<string, boolean>();
 };
-
-const imageCache = getImageCache();
 
 export function Avatar({
   src,
@@ -95,10 +93,9 @@ export function Avatar({
           onLoad={handleImageLoad}
           onError={handleImageError}
           className={cn(
-            "object-cover transition-opacity duration-200",
+            "object-cover transition-opacity duration-200 w-full h-full",
             shouldShowImage ? "opacity-100" : "opacity-0"
           )}
-          sizes={`${sizePixels[size]}px`}
           loading="lazy"
           placeholder="empty"
         />

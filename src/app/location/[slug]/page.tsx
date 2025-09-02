@@ -10,8 +10,8 @@ import {
 } from "@/lib/structured-data";
 import { createClient } from "@/lib/supabase/server";
 import { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
-
 // Dinamik metadata oluştur
 export async function generateMetadata({
   params,
@@ -216,7 +216,7 @@ export default async function LocationPage({
                       {pin.users && (
                         <div className="flex items-center gap-2 text-gray-600">
                           {pin.users.avatar_url && (
-                            <img
+                            <Image
                               src={pin.users.avatar_url}
                               alt={pin.users.display_name}
                               className="w-6 h-6 rounded-full"

@@ -183,7 +183,7 @@ export const useCommentOperations = ({
         });
       }
     },
-    onError: (error, pinId) => {
+    onError: (error) => {
       console.log("deleteCommentMutation", error);
       toast.error("Failed to delete comment", { description: error.message });
     },

@@ -48,7 +48,6 @@ export default function Map({ initialCoordinates }: MapProps) {
     invalidatePinCommentsCache, // Add cache invalidation
     isRefreshing,
     getPinComments,
-    hasUserCommented,
     currentZoom,
     // New batch comment features
     setBatchComments,
@@ -183,9 +182,7 @@ export default function Map({ initialCoordinates }: MapProps) {
             className="shadow-lg flex-shrink-0 !bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
             title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Theme`}
           >
-            <span className="text-base">
-              {theme === "dark" ? "☀️" : "🌙"}
-            </span>
+            <span className="text-base">{theme === "dark" ? "☀️" : "🌙"}</span>
           </Button>
 
           <Button

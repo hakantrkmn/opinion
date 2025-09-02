@@ -133,7 +133,7 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
     setBatchComments: mapCore.setBatchComments,
     commentsLoading: mapCore.commentsLoading,
     loadVisiblePinsComments: commentOps.loadVisiblePinsComments,
-    hasUserCommented: async (pinId: string) => {
+    hasUserCommented: async () => {
       // This functionality is now handled locally in PinDetailModal
       return { hasCommented: false, commentId: undefined };
     },

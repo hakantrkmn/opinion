@@ -113,10 +113,7 @@ export function generatePlaceSchema(
 /**
  * Generate Review schema for comments
  */
-export function generateReviewSchema(
-  comment: CommentData,
-  config: StructuredDataConfig
-) {
+export function generateReviewSchema(comment: CommentData) {
   const rating = Math.max(
     1,
     Math.min(5, (comment.upvotes || 0) - (comment.downvotes || 0) + 3)

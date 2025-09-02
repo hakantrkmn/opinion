@@ -19,12 +19,6 @@ const getImageCache = (): Map<string, boolean> => {
   return new Map<string, boolean>();
 };
 
-const setImageCache = (cache: Map<string, boolean>): void => {
-  (
-    window as unknown as { __avatarImageCache: Map<string, boolean> }
-  ).__avatarImageCache = cache;
-};
-
 interface UserMarkerProps {
   className?: string;
   avatarUrl?: string | null;

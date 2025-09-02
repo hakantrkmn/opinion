@@ -16,7 +16,6 @@ export const pinService = {
       if (!user) {
         const {
           data: { session },
-          error: userError,
         } = await supabase.auth.getSession();
         user = session?.user;
       }
@@ -199,7 +198,6 @@ export const pinService = {
       if (!user) {
         const {
           data: { session },
-          error: userError,
         } = await supabase.auth.getSession();
         user = session?.user || undefined; // Allow undefined for public access
       }
@@ -299,7 +297,6 @@ export const pinService = {
       if (!user) {
         const {
           data: { session },
-          error: userError,
         } = await supabase.auth.getSession();
         user = session?.user || undefined; // Allow undefined for public access
       }
@@ -393,7 +390,6 @@ export const pinService = {
       if (!user) {
         const {
           data: { session },
-          error: userError,
         } = await supabase.auth.getSession();
         user = session?.user;
       }
@@ -453,7 +449,6 @@ export const pinService = {
       if (!user) {
         const {
           data: { session },
-          error: userError,
         } = await supabase.auth.getSession();
         user = session?.user;
       }
@@ -510,7 +505,6 @@ export const pinService = {
       if (!user) {
         const {
           data: { session },
-          error: userError,
         } = await supabase.auth.getSession();
         user = session?.user;
       }
@@ -571,7 +565,6 @@ export const pinService = {
       if (!user) {
         const {
           data: { session },
-          error: userError,
         } = await supabase.auth.getSession();
         user = session?.user;
       }
@@ -645,7 +638,6 @@ export const pinService = {
       if (!user) {
         const {
           data: { session },
-          error: userError,
         } = await supabase.auth.getSession();
         user = session?.user;
       }
@@ -666,7 +658,7 @@ export const pinService = {
       }
 
       // Pin'e ait tüm yorum fotoğraflarını al
-      const { data: commentsWithPhotos, error: photosError } = await supabase
+      const { data: commentsWithPhotos } = await supabase
         .from("comments")
         .select("photo_url")
         .eq("pin_id", pinId)
@@ -721,7 +713,6 @@ export const pinService = {
       if (!user) {
         const {
           data: { session },
-          error: userError,
         } = await supabase.auth.getSession();
         user = session?.user;
       }
@@ -857,7 +848,6 @@ export const pinService = {
       if (!user) {
         const {
           data: { session },
-          error: userError,
         } = await supabase.auth.getSession();
         user = session?.user;
       }

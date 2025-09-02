@@ -47,11 +47,6 @@ export function ProfileClient({ user }: ProfileClientProps) {
     totalVotesGiven?: number;
     lastActivityAt?: string;
   } | null>(null);
-  const [performanceInfo, setPerformanceInfo] = useState<{
-    queryTime: number;
-    method: string;
-    improvement?: string;
-  } | null>(null);
   const [pins, setPins] = useState<Pin[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -63,11 +58,7 @@ export function ProfileClient({ user }: ProfileClientProps) {
     const loadStats = async () => {
       setLoading(true);
 
-      const {
-        stats: userStats,
-        performanceInfo: perfInfo,
-        error,
-      } = await getProfileFromDB();
+      const { stats: userStats, error } = await getProfileFromDB();
 
       if (error) {
         setError(error);
@@ -82,7 +73,6 @@ export function ProfileClient({ user }: ProfileClientProps) {
             lastActivityAt?: string;
           } | null
         );
-        setPerformanceInfo(perfInfo);
       }
       setLoading(false);
     };

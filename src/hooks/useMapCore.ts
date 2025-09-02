@@ -1,22 +1,18 @@
+import { generateUserMarkerHTML } from "@/components/map/UserMarker";
+import { locationService } from "@/services/locationService";
 import type {
-  Comment,
   EnhancedComment,
   LocationPermissionState,
   SelectedPin,
 } from "@/types";
-import { generateUserMarkerHTML } from "@/components/map/UserMarker";
-import { locationService } from "@/services/locationService";
 import { mapStyles } from "@/utils/variables";
 import maplibregl from "maplibre-gl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useSession } from "./useSession";
 import { useUserProfile } from "./useUserProfile";
-import type { UserProfile } from "./useUserProfile";
 
-export const useMapCore = (
-  initialCoordinates?: [number, number] | null
-) => {
+export const useMapCore = (initialCoordinates?: [number, number] | null) => {
   // Session and profile
   const { session, user: userSession } = useSession();
   const { profile } = useUserProfile();
@@ -115,14 +111,17 @@ export const useMapCore = (
 
   // Change map style
   const changeMapStyle = useCallback(
-    (styleName: string, loadPinsCallback?: (forceRefresh?: boolean) => void) => {
+    (
+      styleName: string,
+      loadPinsCallback?: (forceRefresh?: boolean) => void
+    ) => {
       if (!map.current) return;
 
       const style = mapStyles[styleName as keyof typeof mapStyles];
       const currentCenter = map.current.getCenter();
       const currentZoom = map.current.getZoom();
       localStorage.setItem("mapStyle", styleName);
-      
+
       map.current.setStyle({
         version: 8,
         sources: {
@@ -161,83 +160,81 @@ export const useMapCore = (
   );
 
   // Initialize map
-  const initializeMap = useCallback((loadPinsCallback?: (forceRefresh?: boolean) => void) => {
-    console.log("initializeMap");
+  const initializeMap = useCallback(
+    (loadPinsCallback?: (forceRefresh?: boolean) => void) => {
+      console.log("initializeMap");
 
-    if (!mapContainer.current) return;
+      if (!mapContainer.current) return;
 
-    const defaultCenter: [number, number] = initialCoordinates || [
-      29.0322, 41.0082,
-    ];
-    const defaultZoom = initialCoordinates ? 16 : 10;
+      const defaultCenter: [number, number] = initialCoordinates || [
+        29.0322, 41.0082,
+      ];
+      const defaultZoom = initialCoordinates ? 16 : 10;
 
-    console.log("Map initializing with:", {
-      center: defaultCenter,
-      zoom: defaultZoom,
-      fromURL: !!initialCoordinates,
-    });
-    
-    const mapStyle = localStorage.getItem("mapStyle") || "voyager";
-    map.current = new maplibregl.Map({
-      container: mapContainer.current!,
-      style: {
-        version: 8,
-        sources: {
-          cartodb: {
-            type: "raster",
-            tiles: mapStyles[mapStyle as keyof typeof mapStyles].tiles,
-            tileSize: 256,
-            attribution:
-              mapStyles[mapStyle as keyof typeof mapStyles].attribution,
+      console.log("Map initializing with:", {
+        center: defaultCenter,
+        zoom: defaultZoom,
+        fromURL: !!initialCoordinates,
+      });
+
+      const mapStyle = localStorage.getItem("mapStyle") || "voyager";
+      map.current = new maplibregl.Map({
+        container: mapContainer.current!,
+        style: {
+          version: 8,
+          sources: {
+            cartodb: {
+              type: "raster",
+              tiles: mapStyles[mapStyle as keyof typeof mapStyles].tiles,
+              tileSize: 256,
+              attribution:
+                mapStyles[mapStyle as keyof typeof mapStyles].attribution,
+            },
           },
+          layers: [
+            {
+              id: "cartodb-tiles",
+              type: "raster",
+              source: "cartodb",
+              minzoom: 0,
+              maxzoom: 20,
+            },
+          ],
         },
-        layers: [
-          {
-            id: "cartodb-tiles",
-            type: "raster",
-            source: "cartodb",
-            minzoom: 0,
-            maxzoom: 20,
-          },
-        ],
-      },
-      center: defaultCenter,
-      zoom: defaultZoom,
-      maxZoom: 20,
-    });
+        center: defaultCenter,
+        zoom: defaultZoom,
+        maxZoom: 20,
+      });
 
-    map.current.on("load", () => {
-      console.log("CartoDB haritası yüklendi!");
-      if (map.current) {
-        setCurrentZoom(map.current.getZoom());
-      }
+      map.current.on("load", () => {
+        console.log("CartoDB haritası yüklendi!");
+        if (map.current) {
+          setCurrentZoom(map.current.getZoom());
+        }
 
-      if (initialCoordinates) {
-        toast.success("Map navigated to coordinates", {
-          description: `Latitude: ${initialCoordinates[1]}, Longitude: ${initialCoordinates[0]}`,
-          duration: 4000,
-        });
-      }
+        if (initialCoordinates) {
+          toast.success("Map navigated to coordinates", {
+            description: `Latitude: ${initialCoordinates[1]}, Longitude: ${initialCoordinates[0]}`,
+            duration: 4000,
+          });
+        }
 
-      loadPinsCallback?.();
-    });
+        loadPinsCallback?.();
+      });
 
-    map.current.on("moveend", () => {
-      loadPinsCallback?.();
-    });
+      map.current.on("moveend", () => {
+        loadPinsCallback?.();
+      });
 
-    map.current.on("zoomend", () => {
-      if (map.current) {
-        setCurrentZoom(map.current.getZoom());
-      }
-      loadPinsCallback?.();
-    });
-  }, [
-    map,
-    mapContainer,
-    initialCoordinates,
-    setCurrentZoom,
-  ]);
+      map.current.on("zoomend", () => {
+        if (map.current) {
+          setCurrentZoom(map.current.getZoom());
+        }
+        loadPinsCallback?.();
+      });
+    },
+    [map, mapContainer, initialCoordinates, setCurrentZoom]
+  );
 
   // Initialize location service
   useEffect(() => {

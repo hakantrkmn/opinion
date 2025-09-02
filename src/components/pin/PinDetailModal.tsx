@@ -1,7 +1,6 @@
 "use client";
 
 import CameraCapture from "@/components/CameraCapture";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,6 +31,7 @@ import {
   Send,
   Share2,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -71,7 +71,6 @@ export default function PinDetailModal({
   isOpen,
   onClose,
   pinName,
-  pinId,
   pinCoordinates,
   comments,
   onAddComment,
@@ -427,7 +426,7 @@ export default function PinDetailModal({
                       height={48}
                       className="w-12 h-12 object-cover rounded border"
                       sizes="48px"
-                      style={{ width: '48px', height: '48px' }}
+                      style={{ width: "48px", height: "48px" }}
                       loading="lazy"
                     />
                     <div className="flex-1 text-sm text-muted-foreground">

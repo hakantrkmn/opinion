@@ -78,7 +78,7 @@ export class HybridCacheManager {
         queryKey: [["pins"], "bounds", bounds, zoom, boundsKey],
         queryFn: async () => {
           if (!forceRefresh) {
-            const cachedPins = this.getPinsForBounds(bounds, zoom);
+            const cachedPins = this.getPinsForBounds(bounds);
             if (cachedPins) {
               console.log("🎯 Hybrid cache hit:", cachedPins.length, "pins");
               return cachedPins;
@@ -309,7 +309,7 @@ export class HybridCacheManager {
   }
 
   // Get pins for bounds using TanStack Query cache
-  getPinsForBounds(bounds: MapBounds, zoom: number): Pin[] | null {
+  getPinsForBounds(bounds: MapBounds): Pin[] | null {
     // Use the same zoom levels that we cache pins at
     const cacheZoomLevels = [10, 12, 15];
     const allTiles = new Set<string>();
@@ -399,8 +399,8 @@ export class HybridCacheManager {
   }
 
   // Get cached pins (for compatibility)
-  get(bounds: MapBounds, zoom: number): Pin[] | null {
-    return this.getPinsForBounds(bounds, zoom);
+  get(bounds: MapBounds): Pin[] | null {
+    return this.getPinsForBounds(bounds);
   }
 
   // Set pins in cache (for compatibility)
@@ -409,7 +409,7 @@ export class HybridCacheManager {
   }
 
   // Clear cache for specific area
-  clearArea(bounds: MapBounds, zoom: number): void {
+  clearArea(bounds: MapBounds): void {
     // Use the same zoom levels that we cache pins at
     const cacheZoomLevels = [10, 12, 15];
     const allTiles = new Set<string>();
@@ -504,12 +504,12 @@ export class HybridCacheManager {
   invalidatePinComments(pinId: string): void {
     console.log("🧹 Invalidating pin comments cache for:", pinId);
     // Invalidate both the specific pin comments cache and related batch caches
-    this.queryClient.removeQueries({ 
-      queryKey: [["pins"] as const, "comments", pinId] as const 
+    this.queryClient.removeQueries({
+      queryKey: [["pins"] as const, "comments", pinId] as const,
     });
-    
+
     // Also invalidate batch comments that might contain this pin
-    this.queryClient.removeQueries({ 
+    this.queryClient.removeQueries({
       queryKey: [...pinQueryKeys.all, "batch_comments"],
       predicate: (query) => {
         // Check if this pin is part of any batch query
@@ -519,7 +519,7 @@ export class HybridCacheManager {
           return batchKey.includes(pinId);
         }
         return false;
-      }
+      },
     });
   }
 
