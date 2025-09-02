@@ -132,8 +132,14 @@ export interface PinModalProps {
       height?: number;
       format: string;
     };
-  }) => void;
+  }) => Promise<void> | void;
 }
+
+export type SelectedPin = {
+  pinId: string;
+  pinName: string;
+  comments: (Comment | EnhancedComment)[];
+} | null;
 
 export interface PinDetailModalProps {
   isOpen: boolean;

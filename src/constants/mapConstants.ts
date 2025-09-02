@@ -1,4 +1,5 @@
 import { MapBounds } from "@/types";
+export const MIN_ZOOM_LEVEL = 12;
 
 export const pinQueryKeys = {
   all: ["pins"] as const,

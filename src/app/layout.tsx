@@ -22,6 +22,14 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
+export function generateViewport() {
+  return {
+    width: 'device-width',
+    initialScale: 1,
+    viewportFit: 'cover',
+  }
+}
+
 export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL || "https://opinion-xi.vercel.app"

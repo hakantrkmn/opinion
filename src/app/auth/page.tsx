@@ -1,5 +1,5 @@
 "use client";
-import DynamicAuthForm from "@/components/DynamicAuthForm";
+import DynamicAuthForm from "@/components/auth/AuthForm";
 import { useSession } from "@/hooks/useSession";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";

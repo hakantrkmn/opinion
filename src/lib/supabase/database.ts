@@ -55,31 +55,20 @@ export const pinService = {
 
       // Handle photo upload if provided
       let photoUrl: string | undefined;
-      console.log("CreatePin: Checking for photo data:", {
-        hasPhoto: !!data.photo,
-        photoFileName: data.photo?.name,
-        photoSize: data.photo?.size,
-        photoMetadata: data.photoMetadata,
-      });
 
       if (data.photo) {
-        console.log("CreatePin: Starting photo upload process");
         try {
           const { uploadCommentPhoto } = await import("./photoService");
           const result = await uploadCommentPhoto(data.photo, user.id);
-
-          console.log("CreatePin: Photo upload result:", result);
 
           if (result.success && result.url) {
             photoUrl = result.url;
             console.log("Photo uploaded successfully:", photoUrl);
           } else {
             console.error("Photo upload failed:", result.error);
-            // Don't fail pin creation if photo upload fails, just log it
           }
         } catch (photoError) {
           console.error("Photo upload error:", photoError);
-          // Continue with pin creation even if photo upload fails
         }
       }
 
@@ -150,14 +139,6 @@ export const pinService = {
         },
       };
 
-      console.log("Returning pin with user data:", {
-        pinId: pin.id,
-        userName: pinWithCommentCount.user.display_name,
-        hasUsers: !!pin.users,
-        usersLength: pin.users?.length,
-        userMetadata: user.user_metadata,
-      });
-
       return { pin: pinWithCommentCount, error: null };
     } catch (error) {
       console.error("createPin error:", error);
@@ -171,9 +152,6 @@ export const pinService = {
   ): Promise<{ pins: Pin[] | null; error: string | null }> {
     try {
       const supabase = createClient();
-
-      console.log("Getting pins for bounds:", bounds);
-
       // RPC function'ı çağır
       const { data: pins, error } = await supabase.rpc("get_pins_in_bounds", {
         min_lat: bounds.minLat,
@@ -235,13 +213,6 @@ export const pinService = {
         console.error("pinIds must be an array");
         return { comments: {}, error: "Geçersiz pin ID listesi" };
       }
-
-      console.log(
-        "🔄 Fetching batch comments for pins:",
-        pinIds,
-        user ? `(authenticated: ${user.email})` : "(public access)"
-      );
-
       // Tek query ile tüm pin'lerin comment'larını ve vote'larını çek
       const { data: comments, error } = await supabase
         .from("comments")
@@ -332,14 +303,6 @@ export const pinService = {
         } = await supabase.auth.getSession();
         user = session?.user || undefined; // Allow undefined for public access
       }
-
-      console.log(
-        "🔄 Fetching comments for pin:",
-        pinId,
-        user ? `(authenticated: ${user.email})` : "(public access)"
-      );
-
-      // Tek query ile comment'ları ve vote'ları birlikte çek
       const { data: comments, error } = await supabase
         .from("comments")
         .select(

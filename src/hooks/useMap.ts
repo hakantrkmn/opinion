@@ -1,94 +1,44 @@
-import { EnhancedComment } from "@/types";
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 import { LongPressEventType, useLongPress } from "use-long-press";
-import { useMapComments } from "./useMapComments";
-import { useMapInteractions } from "./useMapInteractions";
-import { useMapLocation } from "./useMapLocation";
-import { useMapPins } from "./useMapPins";
-import { useMapState } from "./useMapState";
-import { usePinsWithHybridCache } from "./usePinsWithHybridCache";
+import { useCommentOperations } from "./useCommentOperations";
+import { useMapCore } from "./useMapCore";
+import { usePinOperations } from "./usePinOperations";
 
 export const useMap = (initialCoordinates?: [number, number] | null) => {
-  // State management
-  const state = useMapState(initialCoordinates);
-  state.currentStyle = localStorage.getItem("mapStyle") || "voyager";
+  // Core map state and functionality
+  const mapCore = useMapCore(initialCoordinates);
+  mapCore.currentStyle = localStorage.getItem("mapStyle") || "voyager";
+
   // Pin operations
-  const {
-    pins: pinData,
-    loading: pinsLoading,
-    createPin: createPinInDB,
-    getPinComments,
-    getBatchComments,
-    addComment,
-    loadPins: loadPinsFromDB,
-    editComment,
-    deleteComment,
-    voteComment,
-    hasUserCommented,
-    invalidateCache,
-  } = usePinsWithHybridCache();
+  const pinOps = usePinOperations({
+    map: mapCore.map,
+    tempPin: mapCore.tempPin,
+    setTempPin: mapCore.setTempPin,
+    setShowPinModal: mapCore.setShowPinModal,
+    setSelectedPin: mapCore.setSelectedPin,
+    setShowPinDetailModal: mapCore.setShowPinDetailModal,
+    selectedPin: mapCore.selectedPin,
+  });
 
-  const mapPins = pinData;
+  // Setup loadPinsFromMapWithCache callback for mapCore
+  const loadPinsFromMapWithCache = pinOps.loadPinsFromMapWithCache;
 
-  // Location management
-  const location = useMapLocation(
-    state.map,
-    state.userMarker,
-    state.setLocationPermission,
-    state.setUserLocation,
-    state.userLocation,
-    state.profile || undefined
-  );
+  // Comment operations
+  const commentOps = useCommentOperations({
+    mapPins: pinOps.pins,
+    commentsLoading: mapCore.commentsLoading,
+    setCommentsLoading: mapCore.setCommentsLoading,
+    batchComments: mapCore.batchComments,
+    setBatchComments: mapCore.setBatchComments,
+    selectedPin: mapCore.selectedPin,
+    setSelectedPin: mapCore.setSelectedPin,
+    setShowPinDetailModal: mapCore.setShowPinDetailModal,
+    getPinComments: pinOps.getPinComments,
+    getBatchComments: pinOps.getBatchComments,
+  });
 
-  // Pin management
-  const pinOperations = useMapPins(
-    state.map,
-    state.tempPin,
-    state.setTempPin,
-    state.setShowPinModal,
-    createPinInDB,
-    loadPinsFromDB,
-    getPinComments,
-    state.setSelectedPin,
-    state.setShowPinDetailModal,
-    state.selectedPin as {
-      pinId: string;
-      pinName: string;
-      comments: EnhancedComment[];
-    } | null
-  );
-
-  // Comments management
-  const comments = useMapComments(
-    mapPins,
-    state.commentsLoading,
-    state.setCommentsLoading,
-    state.batchComments,
-    state.setBatchComments,
-    getBatchComments,
-    getPinComments,
-    addComment,
-    editComment,
-    deleteComment,
-    voteComment,
-    state.setSelectedPin,
-    state.setShowPinDetailModal,
-    invalidateCache
-  );
-
-  // Map interactions
-  const interactions = useMapInteractions(
-    state.map,
-    state.mapContainer,
-    state.setCurrentStyle,
-    state.setCurrentZoom,
-    state.userLocation,
-    location.addUserMarker,
-    pinOperations.loadPinsFromMapWithCache,
-    initialCoordinates
-  );
   // Long press hook
-  const longPressBind = useLongPress(pinOperations.onLongPress, {
+  const longPressBind = useLongPress(pinOps.onLongPress, {
     onCancel: () => {
       // Action to take when cancelled
     },
@@ -99,260 +49,93 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
 
   // Recreate user marker when profile changes
   useEffect(() => {
-    if (state.userLocation && state.profile) {
-      console.log("Profile changed, updating user marker:", {
-        avatarUrl: state.profile.avatar_url,
-        displayName: state.profile.display_name,
-        userLocation: state.userLocation,
-      });
-      location.addUserMarker(state.userLocation[0], state.userLocation[1]);
+    if (mapCore.userLocation && mapCore.profile) {
+      mapCore.addUserMarker(mapCore.userLocation[0], mapCore.userLocation[1]);
     }
   }, [
-    state.profile?.avatar_url,
-    state.profile?.display_name,
-    state.userLocation,
-    location.addUserMarker,
+    mapCore.profile?.avatar_url,
+    mapCore.profile?.display_name,
+    mapCore.userLocation,
+    mapCore.addUserMarker,
   ]);
 
   // Watch pins state for debugging
   useEffect(() => {
-    if (mapPins.length > 0) {
-      console.log("Pins loaded:", mapPins.length);
+    if (pinOps.pins.length > 0) {
+      console.log("Pins loaded:", pinOps.pins.length);
     }
-  }, [mapPins]);
+  }, [pinOps.pins]);
 
   // Cleanup
   useEffect(() => {
     return () => {
-      if (pinOperations.loadingTimeoutRef.current) {
-        clearTimeout(pinOperations.loadingTimeoutRef.current);
+      if (pinOps.loadingTimeoutRef.current) {
+        clearTimeout(pinOps.loadingTimeoutRef.current);
       }
-      if (state.userMarker.current) {
-        state.userMarker.current.remove();
+      if (mapCore.userMarker.current) {
+        mapCore.userMarker.current.remove();
       }
-      if (state.map.current) {
-        state.map.current.remove();
+      if (mapCore.map.current) {
+        mapCore.map.current.remove();
       }
     };
-  }, [pinOperations.loadingTimeoutRef, state.userMarker, state.map]);
-
-  // Comment handlers that need selectedPin
-  const handleAddComment = useCallback(
-    async (
-      text: string,
-      photoUrl?: string,
-      photoMetadata?: Record<string, unknown>
-    ): Promise<boolean> => {
-      if (!state.selectedPin) return false;
-
-      try {
-        const success = await addComment(
-          state.selectedPin.pinId,
-          text,
-          photoUrl,
-          photoMetadata
-        );
-
-        if (success) {
-          const updatedComments = await getPinComments(
-            state.selectedPin.pinId,
-            true
-          );
-          if (updatedComments) {
-            if (updatedComments.length === 0) {
-              state.setShowPinDetailModal(false);
-              state.setSelectedPin(null);
-              return true;
-            }
-
-            state.setSelectedPin((prev) =>
-              prev ? { ...prev, comments: updatedComments } : null
-            );
-          }
-        }
-
-        return success;
-      } catch (error) {
-        console.error("Yorum ekleme hatası:", error);
-        return false;
-      }
-    },
-    [
-      state.selectedPin,
-      addComment,
-      getPinComments,
-      state.setShowPinDetailModal,
-      state.setSelectedPin,
-    ]
-  );
-
-  const handleEditComment = useCallback(
-    async (
-      commentId: string,
-      newText: string,
-      photoUrl?: string | null,
-      photoMetadata?: Record<string, unknown>
-    ): Promise<boolean> => {
-      if (!state.selectedPin) return false;
-
-      try {
-        const success = await editComment(
-          commentId,
-          newText,
-          photoUrl,
-          photoMetadata
-        );
-        if (success) {
-          const updatedComments = await getPinComments(
-            state.selectedPin.pinId,
-            true
-          );
-          if (updatedComments) {
-            if (updatedComments.length === 0) {
-              state.setShowPinDetailModal(false);
-              state.setSelectedPin(null);
-              return success;
-            }
-
-            state.setSelectedPin((prev) =>
-              prev ? { ...prev, comments: updatedComments } : null
-            );
-          }
-        }
-        return success;
-      } catch (error) {
-        console.error("Yorum düzenleme hatası:", error);
-        return false;
-      }
-    },
-    [
-      state.selectedPin,
-      editComment,
-      getPinComments,
-      state.setShowPinDetailModal,
-      state.setSelectedPin,
-    ]
-  );
-
-  const handleDeleteComment = useCallback(
-    async (commentId: string): Promise<boolean> => {
-      if (!state.selectedPin) return false;
-
-      try {
-        const success = await deleteComment(commentId);
-        console.log("handleDeleteComment success:", success);
-        if (success) {
-          console.log("Updating selectedPin, removing commentId:", commentId);
-          state.setSelectedPin((prev) => {
-            if (!prev) return null;
-            const filteredComments = prev.comments.filter(
-              (comment) => comment.id !== commentId
-            );
-            if (filteredComments.length === 0) {
-              state.setShowPinDetailModal(false);
-              state.setSelectedPin(null);
-              return null;
-            }
-            return { ...prev, comments: filteredComments };
-          });
-        }
-        return success;
-      } catch (error) {
-        console.error("Yorum silme hatası:", error);
-        return false;
-      }
-    },
-    [
-      state.selectedPin,
-      deleteComment,
-      state.setShowPinDetailModal,
-      state.setSelectedPin,
-    ]
-  );
-
-  const handleVoteComment = useCallback(
-    async (
-      commentId: string,
-      value: number,
-      pinId: string
-    ): Promise<boolean> => {
-      if (!state.selectedPin) return false;
-
-      try {
-        const success = await voteComment(commentId, value, pinId);
-        if (success) {
-          const updatedComments = await getPinComments(pinId, true);
-          if (updatedComments) {
-            state.setSelectedPin((prev) =>
-              prev ? { ...prev, comments: updatedComments } : null
-            );
-          }
-        }
-        return success;
-      } catch (error) {
-        console.error("Yorum oylama hatası:", error);
-        return false;
-      }
-    },
-    [
-      state.selectedPin,
-      voteComment,
-      state.setShowPinDetailModal,
-      state.setSelectedPin,
-    ]
-  );
+  }, [pinOps.loadingTimeoutRef, mapCore.userMarker, mapCore.map]);
 
   return {
     // Refs
-    mapContainer: state.mapContainer,
-    map: state.map,
+    mapContainer: mapCore.mapContainer,
+    map: mapCore.map,
 
     // Map state
-    currentStyle: state.currentStyle,
-    locationPermission: state.locationPermission,
-    userLocation: state.userLocation,
+    currentStyle: mapCore.currentStyle,
+    locationPermission: mapCore.locationPermission,
+    userLocation: mapCore.userLocation,
     mapStyles: {}, // Will be imported in components
 
     // Pin modal state
-    showPinModal: state.showPinModal,
-    setShowPinModal: state.setShowPinModal,
-    showPinDetailModal: state.showPinDetailModal,
-    setShowPinDetailModal: state.setShowPinDetailModal,
-    selectedPin: state.selectedPin,
-    setSelectedPin: state.setSelectedPin,
+    showPinModal: mapCore.showPinModal,
+    setShowPinModal: mapCore.setShowPinModal,
+    showPinDetailModal: mapCore.showPinDetailModal,
+    setShowPinDetailModal: mapCore.setShowPinDetailModal,
+    selectedPin: mapCore.selectedPin,
+    setSelectedPin: mapCore.setSelectedPin,
 
     // Loading states
-    pinsLoading,
-    isRefreshing: state.isRefreshing,
+    pinsLoading: pinOps.loading,
+    isRefreshing: mapCore.isRefreshing,
 
     // User
-    user: state.user,
+    user: mapCore.user,
 
     // Pins
-    mapPins,
-    handlePinClick: comments.handlePinClick,
+    mapPins: pinOps.pins,
+    handlePinClick: commentOps.handlePinClick,
 
     // Actions
-    getUserLocation: location.getUserLocation,
-    changeMapStyle: interactions.changeMapStyle,
-    goToUserLocation: location.goToUserLocation,
-    initializeMap: interactions.initializeMap,
-    createPin: pinOperations.createPin,
+    getUserLocation: mapCore.getUserLocation,
+    changeMapStyle: (styleName: string) =>
+      mapCore.changeMapStyle(styleName, loadPinsFromMapWithCache),
+    goToUserLocation: mapCore.goToUserLocation,
+    initializeMap: () => mapCore.initializeMap(loadPinsFromMapWithCache),
+    createPin: pinOps.createPin,
     longPressBind,
-    handleAddComment,
-    handleEditComment,
-    handleDeleteComment,
-    handleVoteComment,
-    showPinPopup: pinOperations.showPinPopup,
-    refreshPins: pinOperations.refreshPins,
-    invalidatePinCommentsCache: comments.invalidatePinCommentsCache,
-    getPinComments,
-    getBatchComments,
-    currentZoom: state.currentZoom,
-    batchComments: state.batchComments,
-    setBatchComments: state.setBatchComments,
-    commentsLoading: state.commentsLoading,
-    loadVisiblePinsComments: comments.loadVisiblePinsComments,
-    hasUserCommented,
+    handleAddComment: commentOps.handleAddComment,
+    handleEditComment: commentOps.handleEditComment,
+    handleDeleteComment: commentOps.handleDeleteComment,
+    handleVoteComment: commentOps.handleVoteComment,
+    showPinPopup: pinOps.showPinPopup,
+    refreshPins: pinOps.refreshPins,
+    invalidatePinCommentsCache: commentOps.invalidatePinCommentsCache,
+    getPinComments: pinOps.getPinComments,
+    getBatchComments: pinOps.getBatchComments,
+    currentZoom: mapCore.currentZoom,
+    batchComments: mapCore.batchComments,
+    setBatchComments: mapCore.setBatchComments,
+    commentsLoading: mapCore.commentsLoading,
+    loadVisiblePinsComments: commentOps.loadVisiblePinsComments,
+    hasUserCommented: async (pinId: string) => {
+      // This functionality is now handled locally in PinDetailModal
+      return { hasCommented: false, commentId: undefined };
+    },
   };
 };

@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 
 // Dynamically import AuthForm to reduce initial bundle size
 // This prevents auth-related components from being loaded until needed
-const AuthForm = dynamic(() => import("./auth/AuthForm"), {
+const AuthForm = dynamic(() => import("./AuthForm"), {
   loading: () => (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="flex items-center gap-2">

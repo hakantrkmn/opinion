@@ -90,83 +90,168 @@ export default function Map({ initialCoordinates }: MapProps) {
         </div>
       )}
 
-      {/* Map Controls - Style Toggle, Theme Toggle and Location Button */}
-      <div className="absolute bottom-4 right-4 z-50 flex flex-row items-end gap-2">
-        {/* Map Style Toggle Buttons */}
-        <div className="bg-background rounded-lg shadow-lg border flex">
+      {/* Desktop Controls */}
+      <div className="hidden sm:block">
+        {/* Map Style Toggle Buttons - Bottom Right */}
+        <div className="absolute bottom-4 right-4 z-50">
+          <div className="bg-background rounded-lg shadow-lg border flex">
+            <Button
+              onClick={() => changeMapStyle("light")}
+              variant={currentStyle === "light" ? "default" : "ghost"}
+              size="sm"
+              title="Light Map Style"
+              className="text-xs px-2 py-1 h-8 rounded-r-none border-r"
+            >
+              Light
+            </Button>
+
+            <Button
+              onClick={() => changeMapStyle("dark")}
+              variant={currentStyle === "dark" ? "default" : "ghost"}
+              size="sm"
+              title="Dark Map Style"
+              className="text-xs px-2 py-1 h-8 rounded-none border-r"
+            >
+              Dark
+            </Button>
+
+            <Button
+              onClick={() => changeMapStyle("voyager")}
+              variant={currentStyle === "voyager" ? "default" : "ghost"}
+              size="sm"
+              title="Voyager Map Style"
+              className="text-xs px-2 py-1 h-8 rounded-l-none"
+            >
+              Voyager
+            </Button>
+          </div>
+        </div>
+
+        {/* Theme and Location Buttons - Top Right */}
+        <div className="absolute top-4 right-4 z-50 flex flex-row gap-2">
           <Button
-            onClick={() => changeMapStyle("light")}
-            variant={currentStyle === "light" ? "default" : "ghost"}
-            size="sm"
-            title="Light Map Style"
-            className="text-xs px-2 py-1 h-8 rounded-r-none border-r"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            variant="outline"
+            size="icon"
+            className="shadow-lg h-8 w-8 flex-shrink-0 !bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 hover:scale-105"
+            title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Theme`}
           >
-            Light
+            <span className="transition-transform duration-300">
+              {theme === "dark" ? "☀️" : "🌙"}
+            </span>
           </Button>
 
           <Button
-            onClick={() => changeMapStyle("dark")}
-            variant={currentStyle === "dark" ? "default" : "ghost"}
-            size="sm"
-            title="Dark Map Style"
-            className="text-xs px-2 py-1 h-8 rounded-none border-r"
+            onClick={userLocation ? goToUserLocation : getUserLocation}
+            variant="outline"
+            size="icon"
+            className="shadow-lg h-8 w-8 flex-shrink-0 !bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:hover:bg-background transition-all duration-200 hover:scale-105 disabled:hover:scale-100"
+            title={
+              userLocation
+                ? "Go to My Location"
+                : locationPermission === "denied"
+                ? "Get Location Permission"
+                : locationPermission === "loading"
+                ? "Getting Location..."
+                : "Allow Location Access"
+            }
+            disabled={locationPermission === "loading"}
           >
-            Dark
+            {locationPermission === "loading" ? (
+              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+            ) : (
+              <span className="transition-transform duration-200">
+                {userLocation
+                  ? "📍"
+                  : locationPermission === "denied"
+                  ? "🔒"
+                  : "🎯"}
+              </span>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* Mobile Controls */}
+      <div className="sm:hidden">
+        {/* Theme and Location Buttons - Top Right */}
+        <div className="absolute top-4 right-4 z-50 flex flex-row gap-2">
+          <Button
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            variant="outline"
+            size="icon"
+            className="shadow-lg flex-shrink-0 !bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
+            title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Theme`}
+          >
+            <span className="text-base">
+              {theme === "dark" ? "☀️" : "🌙"}
+            </span>
           </Button>
 
           <Button
-            onClick={() => changeMapStyle("voyager")}
-            variant={currentStyle === "voyager" ? "default" : "ghost"}
-            size="sm"
-            title="Voyager Map Style"
-            className="text-xs px-2 py-1 h-8 rounded-l-none"
+            onClick={userLocation ? goToUserLocation : getUserLocation}
+            variant="outline"
+            size="icon"
+            className="shadow-lg flex-shrink-0 !bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:hover:bg-background transition-all duration-200"
+            title={
+              userLocation
+                ? "Go to My Location"
+                : locationPermission === "denied"
+                ? "Get Location Permission"
+                : locationPermission === "loading"
+                ? "Getting Location..."
+                : "Allow Location Access"
+            }
+            disabled={locationPermission === "loading"}
           >
-            Voyager
+            {locationPermission === "loading" ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+            ) : (
+              <span className="text-base">
+                {userLocation
+                  ? "📍"
+                  : locationPermission === "denied"
+                  ? "🔒"
+                  : "🎯"}
+              </span>
+            )}
           </Button>
         </div>
 
-        {/* Theme Toggle Button */}
-        <Button
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          variant="outline"
-          size="icon"
-          className="shadow-lg h-8 w-8 flex-shrink-0 !bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 hover:scale-105"
-          title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Theme`}
-        >
-          <span className="transition-transform duration-300">
-            {theme === "dark" ? "☀️" : "🌙"}
-          </span>
-        </Button>
+        {/* Map Style Toggle - Bottom Right with Safari URL bar safe margin */}
+        <div className="absolute bottom-20 right-4 z-50">
+          <div className="bg-background rounded-lg shadow-lg border flex">
+            <Button
+              onClick={() => changeMapStyle("light")}
+              variant={currentStyle === "light" ? "default" : "ghost"}
+              size="sm"
+              title="Light Map Style"
+              className="text-xs px-3 py-2 h-9 min-w-[40px] rounded-r-none border-r font-medium"
+            >
+              L
+            </Button>
 
-        {/* Location Button */}
-        <Button
-          onClick={userLocation ? goToUserLocation : getUserLocation}
-          variant="outline"
-          size="icon"
-          className="shadow-lg h-8 w-8 flex-shrink-0 !bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:hover:bg-background transition-all duration-200 hover:scale-105 disabled:hover:scale-100"
-          title={
-            userLocation
-              ? "Go to My Location"
-              : locationPermission === "denied"
-              ? "Get Location Permission"
-              : locationPermission === "loading"
-              ? "Getting Location..."
-              : "Allow Location Access"
-          }
-          disabled={locationPermission === "loading"}
-        >
-          {locationPermission === "loading" ? (
-            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
-          ) : (
-            <span className="transition-transform duration-200">
-              {userLocation
-                ? "📍"
-                : locationPermission === "denied"
-                ? "🔒"
-                : "🎯"}
-            </span>
-          )}
-        </Button>
+            <Button
+              onClick={() => changeMapStyle("dark")}
+              variant={currentStyle === "dark" ? "default" : "ghost"}
+              size="sm"
+              title="Dark Map Style"
+              className="text-xs px-3 py-2 h-9 min-w-[40px] rounded-none border-r font-medium"
+            >
+              D
+            </Button>
+
+            <Button
+              onClick={() => changeMapStyle("voyager")}
+              variant={currentStyle === "voyager" ? "default" : "ghost"}
+              size="sm"
+              title="Voyager Map Style"
+              className="text-xs px-3 py-2 h-9 min-w-[40px] rounded-l-none font-medium"
+            >
+              V
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Pin Creation Modal */}
