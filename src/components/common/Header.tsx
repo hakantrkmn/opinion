@@ -1,8 +1,8 @@
 "use client";
 
+import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar } from "@/components/ui/Avatar";
 import { useSession } from "@/hooks/useSession";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { LogOut, Search, Shield, User } from "lucide-react";
@@ -17,11 +17,11 @@ export default function Header() {
     user: user?.id,
     profile,
     isLoading,
-    avatarUrl: profile?.avatar_url
+    avatarUrl: profile?.avatar_url,
   });
 
   return (
-    <header className="bg-background border-b border-border shadow-sm relative z-20">
+    <header className="bg-background border-b border-border shadow-sm sticky top-0 z-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <Link

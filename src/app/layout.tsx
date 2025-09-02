@@ -24,10 +24,13 @@ const geistMono = Geist_Mono({
 
 export function generateViewport() {
   return {
-    width: 'device-width',
+    width: "device-width",
     initialScale: 1,
-    viewportFit: 'cover',
-  }
+    viewportFit: "cover",
+    userScalable: "no",
+    maximumScale: 1,
+    minimumScale: 1,
+  };
 }
 
 export const metadata: Metadata = {

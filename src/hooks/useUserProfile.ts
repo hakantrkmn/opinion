@@ -97,9 +97,13 @@ export function useUserProfile() {
 
     return updatedProfile;
   };
-  const getProfileFromDB = async (): Promise<UserStats> => {
+  const getProfileFromDB = async (): Promise<{
+    stats: UserStats;
+    success: boolean;
+  }> => {
     if (!user?.id) throw new Error("User ID is required");
-    return await userService.getUserStatsWithPerformanceInfo(user.id);
+    const result = await userService.getUserStatsWithPerformanceInfo(user.id);
+    return { stats: result, success: result.error === null };
   };
 
   return {

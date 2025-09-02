@@ -15,7 +15,16 @@ interface MapProps {
 
 export default function Map({ initialCoordinates }: MapProps) {
   const { theme, setTheme } = useTheme();
-
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("opinion-theme");
+    if (savedTheme) {
+      setTheme(savedTheme);
+    }
+  }, []);
+  const changeTheme = (theme: string) => {
+    setTheme(theme);
+    localStorage.setItem("opinion-theme", theme);
+  };
   const {
     mapContainer,
     currentStyle,
@@ -127,9 +136,9 @@ export default function Map({ initialCoordinates }: MapProps) {
         </div>
 
         {/* Theme and Location Buttons - Top Right */}
-        <div className="absolute top-4 right-4 z-50 flex flex-row gap-2">
+        <div className="fixed top-20 right-4 z-50 flex flex-row gap-2">
           <Button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            onClick={() => changeTheme(theme === "dark" ? "light" : "dark")}
             variant="outline"
             size="icon"
             className="shadow-lg h-8 w-8 flex-shrink-0 !bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 hover:scale-105"
@@ -174,7 +183,7 @@ export default function Map({ initialCoordinates }: MapProps) {
       {/* Mobile Controls */}
       <div className="sm:hidden">
         {/* Theme and Location Buttons - Top Right */}
-        <div className="absolute top-4 right-4 z-50 flex flex-row gap-2">
+        <div className="fixed top-20 right-4 z-50 flex flex-row gap-2">
           <Button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             variant="outline"
@@ -189,7 +198,7 @@ export default function Map({ initialCoordinates }: MapProps) {
             onClick={userLocation ? goToUserLocation : getUserLocation}
             variant="outline"
             size="icon"
-            className="shadow-lg flex-shrink-0 !bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:hover:bg-background transition-all duration-200"
+            className="shadow-lg flex-shrink-0 !bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
             title={
               userLocation
                 ? "Go to My Location"
@@ -216,7 +225,7 @@ export default function Map({ initialCoordinates }: MapProps) {
         </div>
 
         {/* Map Style Toggle - Bottom Right with Safari URL bar safe margin */}
-        <div className="absolute bottom-20 right-4 z-50">
+        <div className="absolute bottom-15 right-4 z-50">
           <div className="bg-background rounded-lg shadow-lg border flex">
             <Button
               onClick={() => changeMapStyle("light")}

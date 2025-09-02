@@ -15,7 +15,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { userService } from "@/lib/supabase/userService";
-import type { Comment, Pin } from "@/types";
+import type { Comment, Pin, UserStats } from "@/types";
 import type { User } from "@supabase/supabase-js";
 import {
   Calendar,
@@ -27,58 +27,25 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 type TabType = "stats" | "pins" | "comments";
 
 interface ProfileClientProps {
   user: User;
+  userStats: UserStats;
 }
 
-export function ProfileClient({ user }: ProfileClientProps) {
+export function ProfileClient({ user, userStats }: ProfileClientProps) {
   const { profile, updateProfile, getProfileFromDB } = useUserProfile();
   const [activeTab, setActiveTab] = useState<TabType>("stats");
-  const [stats, setStats] = useState<{
-    totalPins: number;
-    totalComments: number;
-    totalLikes: number;
-    totalDislikes: number;
-    totalVotesGiven?: number;
-    lastActivityAt?: string;
-  } | null>(null);
+  const [stats, setStats] = useState<UserStats>(userStats);
   const [pins, setPins] = useState<Pin[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showEditProfile, setShowEditProfile] = useState(false);
-
-  // Load statistics with performance tracking
-  useEffect(() => {
-    const loadStats = async () => {
-      setLoading(true);
-
-      const { stats: userStats, error } = await getProfileFromDB();
-
-      if (error) {
-        setError(error);
-      } else {
-        setStats(
-          userStats as {
-            totalPins: number;
-            totalComments: number;
-            totalLikes: number;
-            totalDislikes: number;
-            totalVotesGiven?: number;
-            lastActivityAt?: string;
-          } | null
-        );
-      }
-      setLoading(false);
-    };
-
-    loadStats();
-  }, [user.id]);
 
   // Load data when tab changes
   const handleTabChange = async (tab: TabType) => {
@@ -253,7 +220,7 @@ export function ProfileClient({ user }: ProfileClientProps) {
                               Total Pins
                             </p>
                             <p className="text-2xl font-bold text-foreground">
-                              {stats.totalPins}
+                              {stats.stats?.totalPins || 0}
                             </p>
                           </div>
                         </div>
@@ -272,7 +239,7 @@ export function ProfileClient({ user }: ProfileClientProps) {
                               Comments
                             </p>
                             <p className="text-2xl font-bold text-foreground">
-                              {stats.totalComments}
+                              {stats.stats?.totalComments || 0}
                             </p>
                           </div>
                         </div>
@@ -291,7 +258,7 @@ export function ProfileClient({ user }: ProfileClientProps) {
                               Likes Received
                             </p>
                             <p className="text-2xl font-bold text-foreground">
-                              {stats.totalLikes}
+                              {stats.stats?.totalLikes || 0}
                             </p>
                           </div>
                         </div>
@@ -310,7 +277,7 @@ export function ProfileClient({ user }: ProfileClientProps) {
                               Dislikes Received
                             </p>
                             <p className="text-2xl font-bold text-foreground">
-                              {stats.totalDislikes}
+                              {stats.stats?.totalDislikes || 0}
                             </p>
                           </div>
                         </div>
@@ -339,7 +306,7 @@ export function ProfileClient({ user }: ProfileClientProps) {
                               Votes Given
                             </p>
                             <p className="text-2xl font-bold text-foreground">
-                              {stats.totalVotesGiven || 0}
+                              {stats.stats?.totalVotesGiven || 0}
                             </p>
                           </div>
                         </div>
@@ -347,7 +314,7 @@ export function ProfileClient({ user }: ProfileClientProps) {
                     </Card>
 
                     {/* Last Activity */}
-                    {stats.lastActivityAt && (
+                    {stats.stats?.lastActivityAt && (
                       <Card className="hover:shadow-md transition-shadow">
                         <CardContent className="p-4 sm:p-5">
                           <div className="flex items-center space-x-3">
@@ -360,7 +327,7 @@ export function ProfileClient({ user }: ProfileClientProps) {
                               </p>
                               <p className="text-sm font-medium text-foreground">
                                 {new Date(
-                                  stats.lastActivityAt
+                                  stats.stats?.lastActivityAt
                                 ).toLocaleDateString("en-US", {
                                   day: "numeric",
                                   month: "short",

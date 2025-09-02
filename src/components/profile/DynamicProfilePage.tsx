@@ -1,6 +1,7 @@
 "use client";
 
 import Header from "@/components/common/Header";
+import { UserStats } from "@/types";
 import type { User } from "@supabase/supabase-js";
 import { Loader2 } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -28,14 +29,18 @@ const ProfileClient = dynamic(
 
 interface DynamicProfilePageProps {
   user: User;
+  userStats: UserStats;
 }
 
-export default function DynamicProfilePage({ user }: DynamicProfilePageProps) {
+export default function DynamicProfilePage({
+  user,
+  userStats,
+}: DynamicProfilePageProps) {
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <main>
-        <ProfileClient user={user} />
+        <ProfileClient user={user} userStats={userStats} />
       </main>
     </div>
   );
