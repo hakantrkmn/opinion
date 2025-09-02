@@ -1,3 +1,4 @@
+import { EnhancedComment } from "@/types";
 import { useCallback, useEffect } from "react";
 import { LongPressEventType, useLongPress } from "use-long-press";
 import { useMapComments } from "./useMapComments";
@@ -10,7 +11,7 @@ import { usePinsWithHybridCache } from "./usePinsWithHybridCache";
 export const useMap = (initialCoordinates?: [number, number] | null) => {
   // State management
   const state = useMapState(initialCoordinates);
-
+  state.currentStyle = localStorage.getItem("mapStyle") || "voyager";
   // Pin operations
   const {
     pins: pinData,
@@ -49,7 +50,12 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
     loadPinsFromDB,
     getPinComments,
     state.setSelectedPin,
-    state.setShowPinDetailModal
+    state.setShowPinDetailModal,
+    state.selectedPin as {
+      pinId: string;
+      pinName: string;
+      comments: EnhancedComment[];
+    } | null
   );
 
   // Comments management
@@ -81,7 +87,6 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
     pinOperations.loadPinsFromMapWithCache,
     initialCoordinates
   );
-
   // Long press hook
   const longPressBind = useLongPress(pinOperations.onLongPress, {
     onCancel: () => {
@@ -235,7 +240,9 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
 
       try {
         const success = await deleteComment(commentId);
+        console.log("handleDeleteComment success:", success);
         if (success) {
+          console.log("Updating selectedPin, removing commentId:", commentId);
           state.setSelectedPin((prev) => {
             if (!prev) return null;
             const filteredComments = prev.comments.filter(
@@ -264,30 +271,23 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
   );
 
   const handleVoteComment = useCallback(
-    async (commentId: string, value: number): Promise<boolean> => {
+    async (
+      commentId: string,
+      value: number,
+      pinId: string
+    ): Promise<boolean> => {
       if (!state.selectedPin) return false;
 
       try {
-        const success = await voteComment(commentId, value);
-
+        const success = await voteComment(commentId, value, pinId);
         if (success) {
-          const updatedComments = await getPinComments(
-            state.selectedPin.pinId,
-            false
-          );
+          const updatedComments = await getPinComments(pinId, true);
           if (updatedComments) {
-            if (updatedComments.length === 0) {
-              state.setShowPinDetailModal(false);
-              state.setSelectedPin(null);
-              return success;
-            }
-
             state.setSelectedPin((prev) =>
               prev ? { ...prev, comments: updatedComments } : null
             );
           }
         }
-
         return success;
       } catch (error) {
         console.error("Yorum oylama hatası:", error);

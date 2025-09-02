@@ -5,7 +5,7 @@ import type { Pin } from "@/types"; // Pin tipini import et
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { toast } from "sonner";
-import { pinQueryKeys } from "./usePinQueries";
+import { pinQueryKeys } from "../constants/mapConstants";
 
 export const useCommentMutations = () => {
   const { user } = useSession();
@@ -106,6 +106,11 @@ export const useCommentMutations = () => {
       return result;
     },
     onSuccess: ({ success, pinDeleted, pinId }) => {
+      console.log("deleteComment onSuccess called:", {
+        success,
+        pinDeleted,
+        pinId,
+      });
       if (success && pinId) {
         if (pinDeleted) {
           hybridCache.deletePin(pinId);
@@ -119,21 +124,14 @@ export const useCommentMutations = () => {
           );
           toast.success("Pin deleted after removing last comment");
         } else {
-          hybridCache.updateCommentCountInCache(pinId, -1);
-          // ✅ any yerine Pin[] kullan
+          // Pin'in comment_count'unu cache'de güncelle
           queryClient.setQueriesData(
             { queryKey: ["pins"] },
             (oldData: Pin[] | undefined) => {
               const existingPins = Array.isArray(oldData) ? oldData : [];
               return existingPins.map((pin: Pin) =>
                 pin.id === pinId
-                  ? {
-                      ...pin,
-                      comments_count: Math.max(
-                        0,
-                        (pin.comments_count || 1) - 1
-                      ),
-                    }
+                  ? { ...pin, comments_count: Math.max(0, (pin.comments_count || 1) - 1) }
                   : pin
               );
             }
@@ -143,9 +141,16 @@ export const useCommentMutations = () => {
         queryClient.invalidateQueries({
           queryKey: pinQueryKeys.comments(pinId),
         });
+        // HybridCache'den de pin comments'i temizle
+        hybridCache.invalidatePinComments(pinId);
+        // Pin'leri de refresh et ki map'te güncel count görünsün
+        queryClient.invalidateQueries({
+          queryKey: ["pins"],
+        });
       }
     },
-    onError: (error) => {
+    onError: (error, pinId) => {
+      console.log("deleteCommentMutation", error);
       toast.error("Failed to delete comment", { description: error.message });
     },
   });

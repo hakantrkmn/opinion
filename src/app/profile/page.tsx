@@ -1,6 +1,6 @@
+import DynamicProfilePage from "@/components/profile/DynamicProfilePage";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import DynamicProfilePage from "@/components/DynamicProfilePage";
 
 export default async function ProfilePage() {
   const supabase = await createClient();

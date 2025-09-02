@@ -1,4 +1,4 @@
-import type { Comment, Pin } from "@/types";
+import type { Comment, Pin, UserStats } from "@/types";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "./client";
 
@@ -482,22 +482,7 @@ export const userService = {
   },
 
   // Get user statistics with performance comparison
-  async getUserStatsWithPerformanceInfo(userId: string): Promise<{
-    stats: {
-      totalPins: number;
-      totalComments: number;
-      totalLikes: number;
-      totalDislikes: number;
-      totalVotesGiven?: number;
-      lastActivityAt?: string;
-    } | null;
-    performanceInfo: {
-      queryTime: number;
-      method: string;
-      improvement?: string;
-    };
-    error: string | null;
-  }> {
+  async getUserStatsWithPerformanceInfo(userId: string): Promise<UserStats> {
     const startTime = performance.now();
     const result = await this.getUserStats(userId);
     const endTime = performance.now();
@@ -510,15 +495,17 @@ export const userService = {
       ((estimatedOldTime - queryTime) / estimatedOldTime) *
       100
     ).toFixed(1);
-
+    const stats = result.stats;
+    const error = result.error;
+    const performanceInfo = {
+      queryTime: parseFloat(queryTime.toFixed(2)),
+      method: "denormalized",
+      improvement: `~${improvement}% faster than aggregate queries`,
+    };
     return {
-      stats: result.stats,
-      performanceInfo: {
-        queryTime: parseFloat(queryTime.toFixed(2)),
-        method: "denormalized",
-        improvement: `~${improvement}% faster than aggregate queries`,
-      },
-      error: result.error,
+      stats: stats,
+      performanceInfo: performanceInfo,
+      error: error,
     };
   },
 

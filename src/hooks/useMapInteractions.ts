@@ -21,7 +21,7 @@ export const useMapInteractions = (
       const style = mapStyles[styleName as keyof typeof mapStyles];
       const currentCenter = map.current.getCenter();
       const currentZoom = map.current.getZoom();
-
+      localStorage.setItem("mapStyle", styleName);
       map.current.setStyle({
         version: 8,
         sources: {
@@ -81,7 +81,7 @@ export const useMapInteractions = (
       zoom: defaultZoom,
       fromURL: !!initialCoordinates,
     });
-
+    const mapStyle = localStorage.getItem("mapStyle") || "voyager";
     map.current = new maplibregl.Map({
       container: mapContainer.current!,
       style: {
@@ -89,9 +89,10 @@ export const useMapInteractions = (
         sources: {
           cartodb: {
             type: "raster",
-            tiles: mapStyles.voyager.tiles,
+            tiles: mapStyles[mapStyle as keyof typeof mapStyles].tiles,
             tileSize: 256,
-            attribution: mapStyles.voyager.attribution,
+            attribution:
+              mapStyles[mapStyle as keyof typeof mapStyles].attribution,
           },
         },
         layers: [

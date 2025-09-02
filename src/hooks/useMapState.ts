@@ -1,17 +1,16 @@
-import { createClient } from "@/lib/supabase/client";
-import type { Comment, EnhancedComment } from "@/types";
+import type {
+  Comment,
+  EnhancedComment,
+  LocationPermissionState,
+} from "@/types";
 import maplibregl from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
+import { useSession } from "./useSession";
 import { useUserProfile } from "./useUserProfile";
-type LocationPermissionState =
-  | "granted"
-  | "denied"
-  | "prompt"
-  | "loading"
-  | null;
 
 export const useMapState = (initialCoordinates?: [number, number] | null) => {
   // Map refs
+  const { session, user: userSession } = useSession();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const userMarker = useRef<maplibregl.Marker | null>(null);
@@ -48,25 +47,15 @@ export const useMapState = (initialCoordinates?: [number, number] | null) => {
   // Get user profile
   const { profile } = useUserProfile();
 
-  // Get user information
-  const getUser = async () => {
-    const supabase = createClient();
-    const {
-      data: { session: sessionData },
-    } = await supabase.auth.getSession();
-    if (sessionData?.user) {
-      setUser({
-        id: sessionData.user.id,
-        email: sessionData.user.email || "",
-      });
-    } else {
-      setUser(null);
-    }
-  };
-
   useEffect(() => {
-    getUser();
-  }, []);
+    if (userSession) {
+      const user = {
+        id: userSession.id,
+        email: userSession.email || "",
+      };
+      setUser(user);
+    }
+  }, [userSession]);
 
   return {
     // Refs
@@ -109,6 +98,6 @@ export const useMapState = (initialCoordinates?: [number, number] | null) => {
     profile,
 
     // Actions
-    getUser,
+    getUser: userSession,
   };
 };

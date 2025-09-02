@@ -1,7 +1,8 @@
-import { MapBounds, Pin } from "@/types";
+import { EnhancedComment, MapBounds, Pin } from "@/types";
+import { getBoundsKey } from "@/utils";
 import { Session, User } from "@supabase/supabase-js";
 import { QueryClient } from "@tanstack/react-query";
-
+import { pinService } from "./supabase/database";
 interface SpatialIndex {
   [key: string]: Set<string>; // tile -> pin IDs
 }
@@ -13,7 +14,13 @@ interface CacheStats {
   memoryUsage: number;
   sessionCacheHits: number;
 }
-
+export const pinQueryKeys = {
+  all: ["pins"] as const,
+  bounds: (bounds: MapBounds, zoom: number) =>
+    [...pinQueryKeys.all, "bounds", bounds, zoom] as const,
+  comments: (pinId: string) =>
+    [...pinQueryKeys.all, "comments", pinId] as const,
+};
 export class HybridCacheManager {
   private queryClient: QueryClient;
   private spatialIndex: SpatialIndex = {}; // tile -> pin IDs
@@ -56,6 +63,174 @@ export class HybridCacheManager {
   clearSession(): void {
     this.queryClient.removeQueries({ queryKey: ["session"] });
     this.queryClient.removeQueries({ queryKey: ["user"] });
+  }
+
+  // Load pins with hybrid cache strategy
+  async loadPins(
+    bounds: MapBounds,
+    zoom: number,
+    forceRefresh = false
+  ): Promise<Pin[]> {
+    const boundsKey = getBoundsKey(bounds, zoom);
+
+    try {
+      const fetchedPins = await this.queryClient.fetchQuery({
+        queryKey: [["pins"], "bounds", bounds, zoom, boundsKey],
+        queryFn: async () => {
+          if (!forceRefresh) {
+            const cachedPins = this.getPinsForBounds(bounds, zoom);
+            if (cachedPins) {
+              console.log("🎯 Hybrid cache hit:", cachedPins.length, "pins");
+              return cachedPins;
+            }
+          }
+
+          console.log("💾 Cache miss - fetching from API");
+          const { pins, error } = await pinService.getPins(bounds);
+          if (error) throw new Error(error);
+
+          const fetchedPins = pins || [];
+          console.log("📡 Fetched from API:", fetchedPins.length, "pins");
+          this.cachePinsFromBounds(bounds, zoom, fetchedPins);
+          return fetchedPins;
+        },
+        staleTime: forceRefresh ? 0 : 10 * 60 * 1000,
+      });
+
+      // Update main pins cache
+      this.queryClient.setQueryData(["pins"], (oldData: Pin[] | undefined) => {
+        const existingPins = Array.isArray(oldData) ? oldData : [];
+        if (existingPins.length === 0) return fetchedPins;
+
+        const existingIds = new Set(existingPins.map((pin) => pin.id));
+        const newPins = fetchedPins.filter((pin) => !existingIds.has(pin.id));
+        return [...existingPins, ...newPins];
+      });
+
+      console.log("✅ Pins loaded and cached:", fetchedPins.length);
+      return fetchedPins;
+    } catch (error) {
+      console.error("❌ Failed to load pins:", error);
+      throw error;
+    }
+  }
+
+  async getPinComments(
+    pinId: string,
+    forceRefresh = false,
+    user: User | null
+  ): Promise<EnhancedComment[] | null> {
+    try {
+      if (!forceRefresh) {
+        const cachedData = this.queryClient.getQueryData([
+          ["pins"] as const,
+          "comments",
+          pinId,
+        ] as const);
+
+        if (cachedData) {
+          console.log("🎯 Cache hit for pin comments:", pinId);
+          return cachedData as EnhancedComment[];
+        }
+      }
+      const data = await this.queryClient.fetchQuery({
+        queryKey: [["pins"] as const, "comments", pinId] as const,
+        queryFn: async () => {
+          const { comments, error } = await pinService.getPinComments(
+            pinId,
+            user || undefined
+          );
+
+          if (error === "PIN_AUTO_DELETED") {
+            this.deletePin(pinId);
+            this.queryClient.setQueriesData(
+              { queryKey: pinQueryKeys.all },
+              (oldData: Pin[] | undefined) => {
+                const existingPins = Array.isArray(oldData) ? oldData : [];
+                return existingPins.filter((pin) => pin.id !== pinId);
+              }
+            );
+            this.queryClient.invalidateQueries({
+              queryKey: ["pins", "bounds"],
+            });
+            this.clearAll();
+            return [];
+          }
+
+          if (error) throw new Error(error);
+          return comments || [];
+        },
+        staleTime: forceRefresh ? 0 : 10 * 60 * 1000,
+      });
+
+      return data.map((comment) => ({
+        ...comment,
+        netScore:
+          (comment.comment_votes?.filter((v) => v.value === 1).length || 0) -
+          (comment.comment_votes?.filter((v) => v.value === -1).length || 0),
+        likeCount:
+          comment.comment_votes?.filter((v) => v.value === 1).length || 0,
+        dislikeCount:
+          comment.comment_votes?.filter((v) => v.value === -1).length || 0,
+        user_vote:
+          comment.comment_votes?.find((v) => v.user_id === user?.id)?.value ||
+          0,
+      }));
+    } catch (error) {
+      console.error("Failed to get pin comments:", error);
+      return null;
+    }
+  }
+  async getBatchComments(
+    pinIds: string[],
+    forceRefresh = false,
+    user: User | null
+  ): Promise<{ [pinId: string]: EnhancedComment[] } | null> {
+    try {
+      if (pinIds.length === 0) return {};
+
+      const batchKey = `batch_${pinIds.sort().join("_")}`;
+      const data = await this.queryClient.fetchQuery({
+        queryKey: [...pinQueryKeys.all, "batch_comments", batchKey],
+        queryFn: async () => {
+          console.log("🔄 Fetching batch comments for pins:", pinIds);
+          const { comments, error } = await pinService.getBatchComments(
+            pinIds,
+            user || undefined
+          );
+          if (error) throw new Error(error);
+          return comments || {};
+        },
+        staleTime: forceRefresh ? 0 : 10 * 60 * 1000,
+      });
+
+      const enhancedComments: { [pinId: string]: EnhancedComment[] } = {};
+      Object.keys(data).forEach((pinId) => {
+        enhancedComments[pinId] = (data[pinId] || []).map((comment) => ({
+          ...comment,
+          netScore:
+            (comment.comment_votes?.filter((v) => v.value === 1).length || 0) -
+            (comment.comment_votes?.filter((v) => v.value === -1).length || 0),
+          likeCount:
+            comment.comment_votes?.filter((v) => v.value === 1).length || 0,
+          dislikeCount:
+            comment.comment_votes?.filter((v) => v.value === -1).length || 0,
+          user_vote:
+            comment.comment_votes?.find((v) => v.user_id === user?.id)?.value ||
+            0,
+        }));
+      });
+
+      console.log(
+        "✅ Batch comments loaded for",
+        Object.keys(enhancedComments).length,
+        "pins"
+      );
+      return enhancedComments;
+    } catch (error) {
+      console.error("Failed to get batch comments:", error);
+      return null;
+    }
   }
 
   // Update session in cache
@@ -323,6 +498,29 @@ export class HybridCacheManager {
   // Alias for clear
   clearAll(): void {
     this.clear();
+  }
+
+  // Invalidate pin comments cache
+  invalidatePinComments(pinId: string): void {
+    console.log("🧹 Invalidating pin comments cache for:", pinId);
+    // Invalidate both the specific pin comments cache and related batch caches
+    this.queryClient.removeQueries({ 
+      queryKey: [["pins"] as const, "comments", pinId] as const 
+    });
+    
+    // Also invalidate batch comments that might contain this pin
+    this.queryClient.removeQueries({ 
+      queryKey: [...pinQueryKeys.all, "batch_comments"],
+      predicate: (query) => {
+        // Check if this pin is part of any batch query
+        const queryKey = query.queryKey;
+        if (queryKey.length >= 3 && queryKey[2] === "batch_comments") {
+          const batchKey = queryKey[3] as string;
+          return batchKey.includes(pinId);
+        }
+        return false;
+      }
+    });
   }
 
   // Get cache stats

@@ -1,5 +1,5 @@
 "use client";
-import DynamicHomeContent from "@/components/DynamicHomeContent";
+import DynamicHomeContent from "@/components/map/DynamicHomeContent";
 import { useSession } from "@/hooks/useSession";
 import { Loader2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";

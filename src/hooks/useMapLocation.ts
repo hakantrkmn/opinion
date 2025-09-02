@@ -1,8 +1,6 @@
-import { generateUserMarkerHTML } from "@/components/UserMarker";
-import {
-  locationService,
-  type LocationPermissionState,
-} from "@/services/locationService";
+import { generateUserMarkerHTML } from "@/components/map/UserMarker";
+import { locationService } from "@/services/locationService";
+import { LocationPermissionState } from "@/types";
 import maplibregl from "maplibre-gl";
 import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
@@ -25,15 +23,6 @@ export const useMapLocation = (
         userMarker.current.remove();
       }
 
-      console.log("UserMarker Debug:", {
-        avatarUrl: profile?.avatar_url,
-        displayName: profile?.display_name,
-        hasProfile: !!profile,
-        avatarUrlValid: profile?.avatar_url
-          ? profile.avatar_url.includes("supabase")
-          : false,
-      });
-
       const markerElement = document.createElement("div");
       markerElement.className = "user-marker";
       const generatedHTML = generateUserMarkerHTML(
@@ -41,10 +30,6 @@ export const useMapLocation = (
         profile?.display_name
       );
 
-      console.log(
-        "Generated UserMarker HTML:",
-        generatedHTML.substring(0, 200) + "..."
-      );
       markerElement.innerHTML = generatedHTML;
 
       userMarker.current = new maplibregl.Marker({
@@ -53,8 +38,6 @@ export const useMapLocation = (
       })
         .setLngLat([lng, lat])
         .addTo(map.current);
-
-      console.log("UserMarker added to map at:", [lng, lat]);
     },
     [map, userMarker, profile]
   );

@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 
 // Use normal header always
-const Header = dynamic(() => import("./Header"), {
+const Header = dynamic(() => import("../common/Header"), {
   loading: () => (
     <div className="h-16 bg-background border-b flex items-center justify-center">
       <Loader2 className="h-4 w-4 animate-spin" />
@@ -13,7 +13,7 @@ const Header = dynamic(() => import("./Header"), {
   ),
 });
 
-const WelcomeScreen = dynamic(() => import("./WelcomeScreen"), {
+const WelcomeScreen = dynamic(() => import("../common/WelcomeScreen"), {
   loading: () => (
     <div className="h-[calc(100vh-64px)] bg-background flex items-center justify-center">
       <Loader2 className="h-6 w-6 animate-spin" />
@@ -40,10 +40,13 @@ const ClientMapWrapper = dynamic(() => import("./ClientMapWrapper"), {
 
 // Lazy load MapLibre CSS only when map is loaded
 const loadMapLibreCSS = () => {
-  if (typeof window !== "undefined" && !document.querySelector('link[href*="maplibre-gl.css"]')) {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css';
+  if (
+    typeof window !== "undefined" &&
+    !document.querySelector('link[href*="maplibre-gl.css"]')
+  ) {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css";
     document.head.appendChild(link);
   }
 };
@@ -60,8 +63,8 @@ export default function DynamicHomeContent({
 
   // Check localStorage on mount to see if user has already loaded map
   useEffect(() => {
-    const hasLoadedMap = localStorage.getItem('opinion-has-loaded-map');
-    if (hasLoadedMap === 'true') {
+    const hasLoadedMap = localStorage.getItem("opinion-has-loaded-map");
+    if (hasLoadedMap === "true") {
       // User has loaded map before, skip welcome screen
       loadMapLibreCSS();
       setShowMap(true);
@@ -71,7 +74,7 @@ export default function DynamicHomeContent({
 
   const handleLoadMap = () => {
     // Save preference to localStorage
-    localStorage.setItem('opinion-has-loaded-map', 'true');
+    localStorage.setItem("opinion-has-loaded-map", "true");
 
     // Load MapLibre CSS when map is requested
     loadMapLibreCSS();

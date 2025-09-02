@@ -1,3 +1,4 @@
+import { pinQueryKeys } from "@/constants";
 import { useSession } from "@/hooks/useSession";
 import { HybridCacheManager } from "@/lib/hybrid-cache-manager";
 import { pinService } from "@/lib/supabase/database";
@@ -6,7 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import { useCommentMutations } from "./useCommentMutations";
 import { usePinMutations } from "./usePinMutations";
-import { pinQueryKeys, usePinQueries } from "./usePinQueries";
+import { usePinQueries } from "./usePinQueries";
 
 export interface UsePinsWithHybridCacheReturn {
   // State
@@ -41,7 +42,11 @@ export interface UsePinsWithHybridCacheReturn {
     photoMetadata?: Record<string, unknown>
   ) => Promise<boolean>;
   deleteComment: (commentId: string) => Promise<boolean>;
-  voteComment: (commentId: string, value: number) => Promise<boolean>;
+  voteComment: (
+    commentId: string,
+    value: number,
+    pinId: string
+  ) => Promise<boolean>;
   hasUserCommented: (pinId: string) => Promise<{
     hasCommented: boolean;
     commentId?: string;
@@ -103,7 +108,7 @@ export const usePinsWithHybridCache = (): UsePinsWithHybridCacheReturn => {
   return {
     // State
     pins: pinQueries.pins,
-    loading: pinMutations.loading || commentMutations.loading,
+    loading: pinMutations.loading,
     error: null,
 
     // Actions

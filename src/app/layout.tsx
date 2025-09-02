@@ -1,7 +1,7 @@
+import { ThemeProvider } from "@/components/common/theme-provider";
 import { LazyAnalytics } from "@/components/LazyAnalytics";
 import { LazyToaster } from "@/components/LazyToaster";
 import { QueryProvider } from "@/components/providers/QueryProvider";
-import { ThemeProvider } from "@/components/theme-provider";
 import {
   createJsonLdScript,
   generateOrganizationSchema,

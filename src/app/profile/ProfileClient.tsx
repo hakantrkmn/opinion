@@ -1,6 +1,6 @@
 "use client";
 
-import { EditProfile } from "@/components/EditProfile";
+import { EditProfile } from "@/components/profile/EditProfile";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/badge";
@@ -37,7 +37,7 @@ interface ProfileClientProps {
 }
 
 export function ProfileClient({ user }: ProfileClientProps) {
-  const { profile, updateProfile } = useUserProfile();
+  const { profile, updateProfile, getProfileFromDB } = useUserProfile();
   const [activeTab, setActiveTab] = useState<TabType>("stats");
   const [stats, setStats] = useState<{
     totalPins: number;
@@ -67,7 +67,7 @@ export function ProfileClient({ user }: ProfileClientProps) {
         stats: userStats,
         performanceInfo: perfInfo,
         error,
-      } = await userService.getUserStatsWithPerformanceInfo(user.id);
+      } = await getProfileFromDB();
 
       if (error) {
         setError(error);

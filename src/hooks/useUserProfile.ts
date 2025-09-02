@@ -1,6 +1,7 @@
 "use client";
 
 import { userService } from "@/lib/supabase/userService";
+import { UserStats } from "@/types";
 import { useQuery } from "@tanstack/react-query";
 import { useSession } from "./useSession";
 
@@ -96,8 +97,13 @@ export function useUserProfile() {
 
     return updatedProfile;
   };
+  const getProfileFromDB = async (): Promise<UserStats> => {
+    if (!user?.id) throw new Error("User ID is required");
+    return await userService.getUserStatsWithPerformanceInfo(user.id);
+  };
 
   return {
+    getProfileFromDB,
     profile,
     isLoading,
     error,

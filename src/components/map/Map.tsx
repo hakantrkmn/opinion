@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { useMap } from "@/hooks/useMap";
 import { useTheme } from "next-themes";
 import { useEffect } from "react";
-import PinDetailModal from "./PinDetailModal";
-import PinMarker from "./PinMarker";
-import PinModal from "./PinModal";
-import { RefreshButton } from "./RefreshButton";
+import { RefreshButton } from "../common/RefreshButton";
+import PinDetailModal from "../pin/PinDetailModal";
+import PinMarker from "../pin/PinMarker";
+import PinModal from "../pin/PinModal";
 
 interface MapProps {
   initialCoordinates?: [number, number] | null;
@@ -209,7 +209,6 @@ export default function Map({ initialCoordinates }: MapProps) {
               onVoteComment={handleVoteComment}
               currentUserId={user?.id || ""}
               loading={pinsLoading}
-              hasUserCommented={hasUserCommented}
               onRefresh={async () => {
                 // Refresh pin comments and update all related caches
                 if (selectedPin) {

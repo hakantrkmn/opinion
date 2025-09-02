@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 
 // Map bileşenini client-only olarak yükle
-const Map = dynamic(() => import("@/components/Map"), {
+const Map = dynamic(() => import("@/components/map/Map"), {
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center h-full">

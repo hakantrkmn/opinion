@@ -1,3 +1,4 @@
+import { LocationPermissionState } from "@/types";
 import {
   checkGeolocationSupport,
   checkIOSPermissionState,
@@ -7,14 +8,6 @@ import {
   isIOS,
 } from "@/utils/geolocation";
 import { toast } from "sonner";
-
-export type LocationPermissionState =
-  | "granted"
-  | "denied"
-  | "prompt"
-  | "loading"
-  | null;
-
 export interface LocationResult {
   success: boolean;
   coordinates?: [number, number]; // [longitude, latitude]

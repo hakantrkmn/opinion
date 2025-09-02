@@ -34,8 +34,8 @@ import {
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import CommentItem from "./CommentItem";
-import CommentSortDropdown from "./CommentSortDropdown";
+import CommentItem from "../map/CommentItem";
+import CommentSortDropdown from "../map/CommentSortDropdown";
 
 interface PinDetailModalProps {
   isOpen: boolean;
@@ -56,15 +56,14 @@ interface PinDetailModalProps {
     photoMetadata?: Record<string, unknown>
   ) => Promise<boolean>;
   onDeleteComment: (commentId: string) => Promise<boolean>;
-  onVoteComment: (commentId: string, value: number) => Promise<boolean>;
+  onVoteComment: (
+    commentId: string,
+    value: number,
+    pinId: string
+  ) => Promise<boolean>;
   currentUserId: string;
   loading?: boolean;
   onRefresh?: () => void;
-  hasUserCommented: (pinId: string) => Promise<{
-    hasCommented: boolean;
-    commentId?: string;
-    error: string | null;
-  }>;
 }
 
 export default function PinDetailModal({
@@ -81,7 +80,6 @@ export default function PinDetailModal({
   currentUserId,
   loading = false,
   onRefresh,
-  hasUserCommented,
 }: PinDetailModalProps) {
   const [newComment, setNewComment] = useState("");
   const [refreshing, setRefreshing] = useState(false);
@@ -91,11 +89,6 @@ export default function PinDetailModal({
   );
   const [isUploading, setIsUploading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [userAlreadyCommented, setUserAlreadyCommented] = useState(false);
-  const [existingCommentId, setExistingCommentId] = useState<
-    string | undefined
-  >();
-  const [checkingCommentStatus, setCheckingCommentStatus] = useState(false);
 
   // Auto-expand textarea
   useEffect(() => {
@@ -109,37 +102,22 @@ export default function PinDetailModal({
     }
   }, [newComment]);
 
-  // Check if user has already commented when modal opens
-  useEffect(() => {
-    const checkUserCommentStatus = async () => {
-      if (!isOpen || !currentUserId || !pinId) {
-        setUserAlreadyCommented(false);
-        setExistingCommentId(undefined);
-        return;
-      }
+  // User comment info - calculated from existing comments
+  const userCommentInfo = useMemo(() => {
+    if (!currentUserId || !comments) {
+      return { hasCommented: false, commentId: undefined };
+    }
 
-      setCheckingCommentStatus(true);
-      try {
-        const result = await hasUserCommented(pinId);
-        if (!result.error) {
-          setUserAlreadyCommented(result.hasCommented);
-          setExistingCommentId(result.commentId);
-        } else {
-          console.error("Error checking comment status:", result.error);
-          setUserAlreadyCommented(false);
-          setExistingCommentId(undefined);
-        }
-      } catch (error) {
-        console.error("Error checking if user has commented:", error);
-        setUserAlreadyCommented(false);
-        setExistingCommentId(undefined);
-      } finally {
-        setCheckingCommentStatus(false);
-      }
+    const userComment = comments.find(
+      (comment) => comment.user_id === currentUserId
+    );
+    return {
+      hasCommented: !!userComment,
+      commentId: userComment?.id,
     };
+  }, [currentUserId, comments]);
 
-    checkUserCommentStatus();
-  }, [isOpen, currentUserId, pinId, hasUserCommented]);
+  const userAlreadyCommented = userCommentInfo.hasCommented;
 
   // Sort comments based on selected criteria
   const sortedComments = useMemo(() => {
@@ -423,14 +401,7 @@ export default function PinDetailModal({
         {/* Add Comment */}
         <div className="border-t pt-3 sm:pt-4 flex-shrink-0">
           {currentUserId ? (
-            checkingCommentStatus ? (
-              <div className="flex items-center justify-center p-4">
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                <span className="text-sm text-muted-foreground">
-                  Checking comment status...
-                </span>
-              </div>
-            ) : userAlreadyCommented ? (
+            userAlreadyCommented ? (
               <div className="flex items-center justify-center p-4 bg-muted/50 rounded-lg border border-dashed">
                 <div className="text-center">
                   <MessageCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />

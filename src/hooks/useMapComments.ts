@@ -34,7 +34,11 @@ export const useMapComments = (
     photoMetadata?: Record<string, unknown>
   ) => Promise<boolean>,
   deleteComment: (commentId: string) => Promise<boolean>,
-  voteComment: (commentId: string, value: number) => Promise<boolean>,
+  voteComment: (
+    commentId: string,
+    value: number,
+    pinId: string
+  ) => Promise<boolean>,
   setSelectedPin: (pin: SelectedPin) => void,
   setShowPinDetailModal: (show: boolean) => void,
   invalidateCache: () => void
@@ -203,6 +207,13 @@ export const useMapComments = (
     photoUrl?: string | null,
     photoMetadata?: Record<string, unknown>
   ): Promise<boolean> => {
+    console.log(
+      "handleEditComment",
+      commentId,
+      newText,
+      photoUrl,
+      photoMetadata
+    );
     // This will be implemented in the main hook since it needs selectedPin
     return false;
   };

@@ -52,7 +52,7 @@ interface CommentItemProps {
     photoMetadata?: Record<string, unknown>
   ) => Promise<boolean>;
   onDelete: (commentId: string) => Promise<boolean>;
-  onVote: (commentId: string, value: number) => Promise<boolean>;
+  onVote: (commentId: string, value: number, pinId: string) => Promise<boolean>;
 }
 
 export default function CommentItem({
@@ -463,7 +463,7 @@ export default function CommentItem({
     }
 
     try {
-      const success = await onVote(comment.id, value);
+      const success = await onVote(comment.id, value, comment.pin_id);
       if (!success) {
         // Revert on failure
         setLocalVote(currentVote || 0);

@@ -1,7 +1,7 @@
 import {
   generatePinElementHTML,
   generatePinPopupHTML,
-} from "@/components/PinMarker";
+} from "@/components/pin/PinMarker";
 import type { CreatePinData, EnhancedComment, MapBounds, Pin } from "@/types";
 import { parseLocation } from "@/utils/mapUtils";
 import maplibregl from "maplibre-gl";
@@ -26,13 +26,17 @@ export const useMapPins = (
   setSelectedPin: (
     pin: { pinId: string; pinName: string; comments: EnhancedComment[] } | null
   ) => void,
-  setShowPinDetailModal: (show: boolean) => void
+  setShowPinDetailModal: (show: boolean) => void,
+  selectedPin: {
+    pinId: string;
+    pinName: string;
+    comments: EnhancedComment[];
+  } | null
 ) => {
   // Debounced loading to prevent too many requests
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastToastTimeRef = useRef<number>(0);
   const TOAST_THROTTLE_MS = 5000;
-
   // Long press callback
   const onLongPress = useCallback(
     (e: React.SyntheticEvent) => {
@@ -173,6 +177,9 @@ export const useMapPins = (
   const showPinPopup = useCallback(
     async (pin: Pin) => {
       if (!map.current) return;
+      // remove all popups
+      const popups = document.querySelectorAll(".maplibregl-popup");
+      popups.forEach((popup) => popup.remove());
 
       const [lng, lat] = parseLocation(pin.location);
       const popupContent = generatePinPopupHTML(pin);
@@ -206,6 +213,8 @@ export const useMapPins = (
                 pinName: pin.name,
                 comments,
               });
+              console.log("Showing pin popup:", selectedPin);
+
               setShowPinDetailModal(true);
               popup.remove();
             }
@@ -226,6 +235,7 @@ export const useMapPins = (
   // Add pin to map
   const addPinToMap = useCallback(
     (pin: Pin) => {
+      console.log("Adding pin to map:", pin.name);
       if (!map.current) return;
 
       const [lng, lat] = parseLocation(pin.location);
@@ -252,6 +262,7 @@ export const useMapPins = (
   // Add pins to map
   const addPinsToMap = useCallback(
     (pins: Pin[]) => {
+      console.log("Adding pins to map:", pins.length);
       if (!map.current) return;
 
       clearMapPins();

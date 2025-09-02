@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Database Types
+export * from "./mapTypes";
+export * from "./userTypes";
 export interface GeoJSONPoint {
   type: "Point";
   coordinates: [number, number]; // [longitude, latitude]
