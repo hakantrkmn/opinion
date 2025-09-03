@@ -1,6 +1,6 @@
 import { MapBounds } from "@/types";
 export const MIN_ZOOM_LEVEL = 12;
-
+export const USER_LOCATION_CIRCLE_RADIUS = 100;
 export const pinQueryKeys = {
   all: ["pins"] as const,
   bounds: (bounds: MapBounds, zoom: number) =>

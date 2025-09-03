@@ -3,4 +3,5 @@ export type LocationPermissionState =
   | "denied"
   | "prompt"
   | "loading"
+  | "unknown"
   | null;

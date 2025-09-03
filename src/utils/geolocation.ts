@@ -1,20 +1,22 @@
-// Geolocation utilities for better mobile support
+// Simplified geolocation utilities for better mobile support
 
 export interface GeolocationResult {
   success: boolean;
   position?: GeolocationPosition;
   error?: GeolocationPositionError;
-  permissionState?: PermissionState;
 }
 
+// Check if geolocation is supported by the browser
 export const checkGeolocationSupport = (): boolean => {
   return "geolocation" in navigator;
 };
 
+// Check if permissions API is supported
 export const checkPermissionAPI = (): boolean => {
   return "permissions" in navigator;
 };
 
+// Get current geolocation permission state
 export const getGeolocationPermission =
   async (): Promise<PermissionState | null> => {
     if (!checkPermissionAPI()) {
@@ -30,39 +32,40 @@ export const getGeolocationPermission =
     }
   };
 
+// Check if current protocol is HTTPS or localhost
 export const isHTTPS = (): boolean => {
   return location.protocol === "https:" || location.hostname === "localhost";
 };
 
-export const getMobileGeolocationOptions = (): PositionOptions => {
+// Get optimized geolocation options for mobile devices
+export const getGeolocationOptions = (): PositionOptions => {
   const isMobile =
     /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
       navigator.userAgent
     );
 
-  const isIOSDevice = isIOS();
-
   return {
     enableHighAccuracy: isMobile, // High accuracy for mobile devices
-    timeout: isIOSDevice ? 30000 : isMobile ? 15000 : 10000, // Much longer timeout for iOS
-    maximumAge: isIOSDevice ? 300000 : isMobile ? 60000 : 300000, // Longer cache for iOS
+    timeout: isMobile ? 20000 : 10000, // 20s for mobile, 10s for desktop
+    maximumAge: 0, // No cache - always get fresh location
   };
 };
 
-export const getGeolocationWithFallback = (): Promise<GeolocationResult> => {
+// Get current location with simple error handling
+export const getCurrentLocation = (): Promise<GeolocationResult> => {
   return new Promise((resolve) => {
     if (!checkGeolocationSupport()) {
       resolve({
         success: false,
         error: {
           code: 2,
-          message: "Geolocation not supported",
+          message: "Geolocation not supported by this browser",
         } as GeolocationPositionError,
       });
       return;
     }
 
-    const options = getMobileGeolocationOptions();
+    const options = getGeolocationOptions();
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -82,9 +85,8 @@ export const getGeolocationWithFallback = (): Promise<GeolocationResult> => {
   });
 };
 
-export const getDetailedErrorMessage = (
-  error: GeolocationPositionError
-): string => {
+// Get user-friendly error messages
+export const getErrorMessage = (error: GeolocationPositionError): string => {
   const isMobile =
     /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
       navigator.userAgent
@@ -93,15 +95,15 @@ export const getDetailedErrorMessage = (
   switch (error.code) {
     case error.PERMISSION_DENIED:
       if (isMobile) {
-        return "Location permission denied. Check device settings for location services and browser permissions.";
+        return "Location permission denied. Please enable location access in your device settings and browser.";
       }
       return "Location permission denied. Please enable location access in your browser settings.";
 
     case error.POSITION_UNAVAILABLE:
       if (isMobile) {
-        return "Location information unavailable. Make sure you're in an open area and GPS is enabled.";
+        return "Location unavailable. Make sure you're in an open area and GPS is enabled.";
       }
-      return "Location information unavailable. GPS signal may be weak.";
+      return "Location unavailable. GPS signal may be weak or unavailable.";
 
     case error.TIMEOUT:
       return "Location request timed out. Please try again.";
@@ -111,6 +113,7 @@ export const getDetailedErrorMessage = (
   }
 };
 
+// Device detection utilities
 export const isIOS = (): boolean => {
   return /iPhone|iPad|iPod/i.test(navigator.userAgent);
 };
@@ -125,20 +128,15 @@ export const isMobileDevice = (): boolean => {
   );
 };
 
-export const getIOSLocationPrompt = (): string => {
-  return "On iOS, location permission requires user interaction. Tap 'Allow Location' to enable location services.";
-};
-
-export const getMobileInstructions = (): string[] => {
-  const userAgent = navigator.userAgent;
-
-  if (/iPhone|iPad|iPod/i.test(userAgent)) {
+// Get device-specific location instructions
+export const getLocationInstructions = (): string[] => {
+  if (isIOS()) {
     return [
       "Settings → Privacy & Security → Location Services → On",
       "Settings → Safari → Location → Allow",
       "Refresh the page and try again",
     ];
-  } else if (/Android/i.test(userAgent)) {
+  } else if (isAndroid()) {
     return [
       "Settings → Location → On",
       "Settings → Apps → Browser → Permissions → Location → Allow",
@@ -152,6 +150,15 @@ export const getMobileInstructions = (): string[] => {
   }
 };
 
+// Legacy function names for backward compatibility
+export const getGeolocationWithFallback = getCurrentLocation;
+export const getDetailedErrorMessage = getErrorMessage;
+export const getMobileGeolocationOptions = getGeolocationOptions;
+export const getIOSLocationPrompt = () =>
+  "On iOS, location permission requires user interaction. Tap 'Allow Location' to enable location services.";
+export const getMobileInstructions = getLocationInstructions;
+
+// Simplified iOS-specific functions (no cache, no complex state management)
 export const checkIOSPermissionState = async (): Promise<
   "prompt" | "granted" | "denied" | "unknown"
 > => {
@@ -159,114 +166,21 @@ export const checkIOSPermissionState = async (): Promise<
     return "unknown";
   }
 
-  // iOS'ta localStorage'dan önceki izin durumunu kontrol et
   try {
-    const savedPermission = localStorage.getItem("ios-location-permission");
-    if (savedPermission === "granted") {
-      // Önceden izin verilmişse, hızlı bir test yap
-      return new Promise((resolve) => {
-        const testOptions: PositionOptions = {
-          enableHighAccuracy: false,
-          timeout: 3000,
-          maximumAge: 60000, // 1 dakika cache
-        };
-
-        navigator.geolocation.getCurrentPosition(
-          () => {
-            // Başarılı, izin hala geçerli
-            resolve("granted");
-          },
-          (error) => {
-            if (error.code === error.PERMISSION_DENIED) {
-              // İzin geri alınmış
-              localStorage.removeItem("ios-location-permission");
-              resolve("denied");
-            } else {
-              // Diğer hatalar, izin hala var ama konum alınamıyor
-              resolve("granted");
-            }
-          },
-          testOptions
-        );
-      });
-    } else if (savedPermission === "denied") {
+    const permission = await getGeolocationPermission();
+    if (permission === "granted") {
+      return "granted";
+    } else if (permission === "denied") {
       return "denied";
+    } else {
+      return "prompt";
     }
   } catch (error) {
-    console.log("localStorage check failed:", error);
+    return "unknown";
   }
-
-  // İlk kez veya bilinmeyen durum
-  return "prompt";
 };
 
-// iOS'a özel geolocation fonksiyonu
 export const getIOSGeolocation = (): Promise<GeolocationResult> => {
-  return new Promise((resolve) => {
-    if (!checkGeolocationSupport()) {
-      resolve({
-        success: false,
-        error: {
-          code: 2,
-          message: "Geolocation not supported",
-        } as GeolocationPositionError,
-      });
-      return;
-    }
-
-    // iOS'a özel options
-    const options: PositionOptions = {
-      enableHighAccuracy: true,
-      timeout: 30000, // 30 saniye timeout
-      maximumAge: 300000, // 5 dakika cache
-    };
-
-    console.log("iOS: Starting geolocation request with options:", options);
-
-    let resolved = false;
-
-    // Manual timeout handler
-    const handleTimeout = () => {
-      if (!resolved) {
-        resolved = true;
-        console.log("iOS: Manual timeout after 25 seconds");
-        resolve({
-          success: false,
-          error: {
-            code: 3,
-            message: "iOS location request timed out",
-          } as GeolocationPositionError,
-        });
-      }
-    };
-
-    // Set manual timeout (shorter than options.timeout)
-    const timeoutId = setTimeout(handleTimeout, 25000);
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        if (!resolved) {
-          resolved = true;
-          clearTimeout(timeoutId);
-          console.log("iOS: Location success:", position);
-          resolve({
-            success: true,
-            position,
-          });
-        }
-      },
-      (error) => {
-        if (!resolved) {
-          resolved = true;
-          clearTimeout(timeoutId);
-          console.log("iOS: Location error:", error);
-          resolve({
-            success: false,
-            error,
-          });
-        }
-      },
-      options
-    );
-  });
+  // iOS için özel bir şey yapmaya gerek yok, normal geolocation kullan
+  return getCurrentLocation();
 };

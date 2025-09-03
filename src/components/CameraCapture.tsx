@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { CameraCapture as CameraCaptureType } from "@/types";
+import { isMobileDevice } from "@/utils/geolocation";
 import { Camera, RotateCcw, X } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
@@ -30,10 +31,12 @@ export default function CameraCapture({
   const [isProcessing, setIsProcessing] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [showCameraModal, setShowCameraModal] = useState(false);
-  const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
+  const [facingMode, setFacingMode] = useState<"user" | "environment">(
+    "environment"
+  );
   const [isMobile, setIsMobile] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -41,12 +44,10 @@ export default function CameraCapture({
   // Detect mobile device
   useEffect(() => {
     const checkMobile = () => {
-      const userAgent = navigator.userAgent;
-      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
-      const isTouchDevice = 'ontouchstart' in window;
-      setIsMobile(isMobileDevice || isTouchDevice);
+      const isTouchDevice = "ontouchstart" in window;
+      setIsMobile(isMobileDevice() || isTouchDevice);
     };
-    
+
     checkMobile();
   }, []);
 
@@ -74,7 +75,9 @@ export default function CameraCapture({
   };
 
   // Handle photo capture from native camera
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -112,7 +115,7 @@ export default function CameraCapture({
       setIsProcessing(false);
       // Reset file input
       if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        fileInputRef.current.value = "";
       }
     }
   };
@@ -186,12 +189,12 @@ export default function CameraCapture({
         video: {
           facingMode: facingMode,
           width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
+          height: { ideal: 720 },
+        },
       });
-      
+
       setStream(mediaStream);
-      
+
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         videoRef.current.play();
@@ -207,7 +210,7 @@ export default function CameraCapture({
   // Stop camera stream
   const stopCamera = () => {
     if (stream) {
-      stream.getTracks().forEach(track => track.stop());
+      stream.getTracks().forEach((track) => track.stop());
       setStream(null);
     }
   };
@@ -221,7 +224,7 @@ export default function CameraCapture({
 
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext("2d");
 
       if (!ctx) return;
 
@@ -233,42 +236,46 @@ export default function CameraCapture({
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
       // Convert to blob
-      canvas.toBlob(async (blob) => {
-        if (!blob) return;
+      canvas.toBlob(
+        async (blob) => {
+          if (!blob) return;
 
-        // Create file from blob
-        const file = new File([blob], `camera-capture-${Date.now()}.jpg`, {
-          type: "image/jpeg",
-          lastModified: Date.now(),
-        });
+          // Create file from blob
+          const file = new File([blob], `camera-capture-${Date.now()}.jpg`, {
+            type: "image/jpeg",
+            lastModified: Date.now(),
+          });
 
-        // Validate the file
-        if (!validateFile(file)) {
-          setIsProcessing(false);
-          return;
-        }
+          // Validate the file
+          if (!validateFile(file)) {
+            setIsProcessing(false);
+            return;
+          }
 
-        // Create preview
-        const previewUrl = URL.createObjectURL(file);
-        setPreview(previewUrl);
+          // Create preview
+          const previewUrl = URL.createObjectURL(file);
+          setPreview(previewUrl);
 
-        // Create compressed version for better performance
-        const compressedFile = await compressImage(file);
+          // Create compressed version for better performance
+          const compressedFile = await compressImage(file);
 
-        // Create the capture object
-        const capture: CameraCaptureType = {
-          file: file,
-          compressed: compressedFile,
-          preview: previewUrl,
-        };
+          // Create the capture object
+          const capture: CameraCaptureType = {
+            file: file,
+            compressed: compressedFile,
+            preview: previewUrl,
+          };
 
-        // Pass to parent component
-        onPhotoCapture(capture);
+          // Pass to parent component
+          onPhotoCapture(capture);
 
-        // Close camera modal and stop stream
-        setShowCameraModal(false);
-        stopCamera();
-      }, 'image/jpeg', 0.8);
+          // Close camera modal and stop stream
+          setShowCameraModal(false);
+          stopCamera();
+        },
+        "image/jpeg",
+        0.8
+      );
     } catch (error) {
       console.error("Error capturing photo:", error);
       toast.error("Failed to capture photo", {
@@ -283,7 +290,7 @@ export default function CameraCapture({
   const switchCamera = () => {
     const newFacingMode = facingMode === "environment" ? "user" : "environment";
     setFacingMode(newFacingMode);
-    
+
     // Restart camera with new facing mode
     if (stream) {
       stopCamera();
@@ -308,7 +315,7 @@ export default function CameraCapture({
   const resetCamera = () => {
     setPreview(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
     onCancel?.();
   };
@@ -350,14 +357,11 @@ export default function CameraCapture({
         accept="image/*"
         capture="environment"
         onChange={handleFileSelect}
-        style={{ display: 'none' }}
+        style={{ display: "none" }}
       />
 
       {/* Hidden canvas for photo capture (desktop only) */}
-      <canvas
-        ref={canvasRef}
-        style={{ display: 'none' }}
-      />
+      <canvas ref={canvasRef} style={{ display: "none" }} />
 
       {/* Camera Modal (desktop only) */}
       <Dialog
@@ -447,7 +451,7 @@ export default function CameraCapture({
               height={256}
               className="w-full h-auto rounded-lg object-cover max-h-64"
               sizes="(max-width: 768px) 100vw, 400px"
-              style={{ width: '100%', height: 'auto', maxHeight: '16rem' }}
+              style={{ width: "100%", height: "auto", maxHeight: "16rem" }}
               loading="lazy"
             />
             <Button
@@ -473,7 +477,7 @@ export default function CameraCapture({
             className="w-full flex items-center justify-center gap-2"
           >
             <Camera className="h-5 w-5" />
-            <span>{isProcessing ? 'Processing...' : 'Take Photo'}</span>
+            <span>{isProcessing ? "Processing..." : "Take Photo"}</span>
           </Button>
         </div>
       )}

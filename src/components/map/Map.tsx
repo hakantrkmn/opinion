@@ -1,21 +1,23 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { USER_LOCATION_CIRCLE_RADIUS } from "@/constants/mapConstants";
 import { useMap } from "@/hooks/useMap";
-import { useTheme } from "next-themes";
+
 import { useEffect } from "react";
 import { RefreshButton } from "../common/RefreshButton";
 import PinDetailModal from "../pin/PinDetailModal";
 import PinMarker from "../pin/PinMarker";
 import PinModal from "../pin/PinModal";
+import { LocationButton } from "./LocationButton";
+import { MapStyleToggle } from "./MapStyleToggle";
+import { ThemeToggle } from "./ThemeToggle";
+import { UserLocationCircle } from "./UserLocationCircle";
 
 interface MapProps {
   initialCoordinates?: [number, number] | null;
 }
 
 export default function Map({ initialCoordinates }: MapProps) {
-  const { theme, setTheme } = useTheme();
-
   const {
     mapContainer,
     currentStyle,
@@ -60,6 +62,7 @@ export default function Map({ initialCoordinates }: MapProps) {
     initializeMap();
   }, []);
 
+
   // Type guard for location permission
   const isLoading = locationPermission === "loading";
 
@@ -69,6 +72,16 @@ export default function Map({ initialCoordinates }: MapProps) {
         ref={mapContainer}
         className="w-full h-full min-h-[600px]"
         {...longPressBind()}
+      />
+
+      {/* User Location Circle - 50 metre yarıçap */}
+      <UserLocationCircle
+        map={map.current}
+        coordinates={userLocation}
+        radius={USER_LOCATION_CIRCLE_RADIUS}
+        color="#3B82F6"
+        opacity={0.2}
+        outlineColor="#3B82F6"
       />
 
       {/* Loading Indicators */}
@@ -92,82 +105,22 @@ export default function Map({ initialCoordinates }: MapProps) {
       {/* Desktop Controls */}
       <div className="hidden sm:block">
         {/* Map Style Toggle Buttons - Bottom Right */}
-        <div className="absolute bottom-4 right-4 z-50">
-          <div className="bg-background rounded-lg shadow-lg border flex">
-            <Button
-              onClick={() => changeMapStyle("light")}
-              variant={currentStyle === "light" ? "default" : "ghost"}
-              size="sm"
-              title="Light Map Style"
-              className="text-xs px-2 py-1 h-8 rounded-r-none border-r"
-            >
-              Light
-            </Button>
-
-            <Button
-              onClick={() => changeMapStyle("dark")}
-              variant={currentStyle === "dark" ? "default" : "ghost"}
-              size="sm"
-              title="Dark Map Style"
-              className="text-xs px-2 py-1 h-8 rounded-none border-r"
-            >
-              Dark
-            </Button>
-
-            <Button
-              onClick={() => changeMapStyle("voyager")}
-              variant={currentStyle === "voyager" ? "default" : "ghost"}
-              size="sm"
-              title="Voyager Map Style"
-              className="text-xs px-2 py-1 h-8 rounded-l-none"
-            >
-              Voyager
-            </Button>
-          </div>
-        </div>
+        <MapStyleToggle
+          currentStyle={currentStyle}
+          onStyleChange={changeMapStyle}
+          isMobile={false}
+        />
 
         {/* Theme and Location Buttons - Top Right */}
         <div className="absolute top-4 right-4 z-50 flex flex-row gap-2">
-          <Button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            variant="outline"
-            size="icon"
-            className="shadow-lg h-8 w-8 flex-shrink-0 !bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 hover:scale-105"
-            title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Theme`}
-          >
-            <span className="transition-transform duration-300">
-              {theme === "dark" ? "☀️" : "🌙"}
-            </span>
-          </Button>
-
-          <Button
-            onClick={userLocation ? goToUserLocation : getUserLocation}
-            variant="outline"
-            size="icon"
-            className="shadow-lg h-8 w-8 flex-shrink-0 !bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:hover:bg-background transition-all duration-200 hover:scale-105 disabled:hover:scale-100"
-            title={
-              userLocation
-                ? "Go to My Location"
-                : locationPermission === "denied"
-                ? "Get Location Permission"
-                : locationPermission === "loading"
-                ? "Getting Location..."
-                : "Allow Location Access"
-            }
-            disabled={locationPermission === "loading"}
-          >
-            {locationPermission === "loading" ? (
-              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
-            ) : (
-              <span className="transition-transform duration-200">
-                {userLocation
-                  ? "📍"
-                  : locationPermission === "denied"
-                  ? "🔒"
-                  : "🎯"}
-              </span>
-            )}
-          </Button>
+          <ThemeToggle isMobile={false} />
+          <LocationButton
+            userLocation={userLocation}
+            locationPermission={locationPermission}
+            onGetLocation={getUserLocation}
+            onGoToLocation={goToUserLocation}
+            isMobile={false}
+          />
         </div>
       </div>
 
@@ -175,80 +128,22 @@ export default function Map({ initialCoordinates }: MapProps) {
       <div className="sm:hidden">
         {/* Theme and Location Buttons - Top Right */}
         <div className="absolute top-4 right-4 z-50 flex flex-row gap-2">
-          <Button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            variant="outline"
-            size="icon"
-            className="shadow-lg flex-shrink-0 !bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
-            title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Theme`}
-          >
-            <span className="text-base">{theme === "dark" ? "☀️" : "🌙"}</span>
-          </Button>
-
-          <Button
-            onClick={userLocation ? goToUserLocation : getUserLocation}
-            variant="outline"
-            size="icon"
-            className="shadow-lg flex-shrink-0 !bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:hover:bg-background transition-all duration-200"
-            title={
-              userLocation
-                ? "Go to My Location"
-                : locationPermission === "denied"
-                ? "Get Location Permission"
-                : locationPermission === "loading"
-                ? "Getting Location..."
-                : "Allow Location Access"
-            }
-            disabled={locationPermission === "loading"}
-          >
-            {locationPermission === "loading" ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-            ) : (
-              <span className="text-base">
-                {userLocation
-                  ? "📍"
-                  : locationPermission === "denied"
-                  ? "🔒"
-                  : "🎯"}
-              </span>
-            )}
-          </Button>
+          <ThemeToggle isMobile={true} />
+          <LocationButton
+            userLocation={userLocation}
+            locationPermission={locationPermission}
+            onGetLocation={getUserLocation}
+            onGoToLocation={goToUserLocation}
+            isMobile={true}
+          />
         </div>
 
         {/* Map Style Toggle - Bottom Right with Safari URL bar safe margin */}
-        <div className="absolute bottom-20 right-4 z-50">
-          <div className="bg-background rounded-lg shadow-lg border flex">
-            <Button
-              onClick={() => changeMapStyle("light")}
-              variant={currentStyle === "light" ? "default" : "ghost"}
-              size="sm"
-              title="Light Map Style"
-              className="text-xs px-3 py-2 h-9 min-w-[40px] rounded-r-none border-r font-medium"
-            >
-              L
-            </Button>
-
-            <Button
-              onClick={() => changeMapStyle("dark")}
-              variant={currentStyle === "dark" ? "default" : "ghost"}
-              size="sm"
-              title="Dark Map Style"
-              className="text-xs px-3 py-2 h-9 min-w-[40px] rounded-none border-r font-medium"
-            >
-              D
-            </Button>
-
-            <Button
-              onClick={() => changeMapStyle("voyager")}
-              variant={currentStyle === "voyager" ? "default" : "ghost"}
-              size="sm"
-              title="Voyager Map Style"
-              className="text-xs px-3 py-2 h-9 min-w-[40px] rounded-l-none font-medium"
-            >
-              V
-            </Button>
-          </div>
-        </div>
+        <MapStyleToggle
+          currentStyle={currentStyle}
+          onStyleChange={changeMapStyle}
+          isMobile={true}
+        />
       </div>
 
       {/* Pin Creation Modal */}
@@ -353,6 +248,17 @@ export default function Map({ initialCoordinates }: MapProps) {
         currentZoom={currentZoom}
         minZoomLevel={12} // Minimum zoom level 12
       />
+
+      {/* Buy Me a Coffee Button - Bottom Left */}
+      <div className="absolute bottom-4 left-4 z-50">
+        <a href="https://www.buymeacoffee.com/hakantrkmndev" target="_blank" rel="noopener noreferrer">
+          <img 
+            src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" 
+            alt="Buy Me A Coffee" 
+            style={{height: '30px', width: '108px'}}
+          />
+        </a>
+      </div>
     </div>
   );
 }
