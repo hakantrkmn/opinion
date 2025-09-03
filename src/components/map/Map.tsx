@@ -110,8 +110,8 @@ export default function Map({ initialCoordinates }: MapProps) {
           isMobile={false}
         />
 
-        {/* Theme and Location Buttons - Top Right */}
-        <div className="absolute top-4 right-4 z-50 flex flex-row gap-2">
+        {/* Theme and Location Buttons - Top Right (Fixed positioning like refresh button) */}
+        <div className="fixed top-20 right-4 z-30 flex flex-row gap-2">
           <ThemeToggle isMobile={false} />
           <LocationButton
             userLocation={userLocation}
@@ -125,8 +125,8 @@ export default function Map({ initialCoordinates }: MapProps) {
 
       {/* Mobile Controls */}
       <div className="sm:hidden">
-        {/* Theme and Location Buttons - Top Right */}
-        <div className="absolute top-4 right-4 z-50 flex flex-row gap-2">
+        {/* Theme and Location Buttons - Top Right (Fixed positioning like refresh button) */}
+        <div className="fixed top-20 right-4 z-30 flex flex-row gap-2">
           <ThemeToggle isMobile={true} />
           <LocationButton
             userLocation={userLocation}

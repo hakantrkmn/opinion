@@ -160,10 +160,7 @@ export const usePinOperations = ({
 
       const lngLat = map.current.unproject([x, y]);
 
-      const permissionState = await locationService.getPermissionState();
-      console.log("Location permission state:", permissionState);
-
-      if (permissionState === "granted") {
+      if (true) {
         console.log("Location permission is granted");
 
         // Check if the pin location is within the 50-meter circle
@@ -174,7 +171,9 @@ export const usePinOperations = ({
         console.log("Pin location in circle:", isInCircle);
 
         if (isInCircle === null) {
-          toast.error("User location not available");
+          toast.error(
+            "User location not available make sure you have location permission"
+          );
           return;
         }
 
