@@ -239,7 +239,7 @@ export const useMapCore = (initialCoordinates?: [number, number] | null) => {
   // Initialize location service
   useEffect(() => {
     locationService.setCallbacks({
-      onLocationUpdate: (coordinates) => {
+      onLocationUpdate: async (coordinates) => {
         setUserLocation(coordinates);
         if (map.current) {
           addUserMarker(coordinates[0], coordinates[1]);

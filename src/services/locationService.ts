@@ -1,11 +1,9 @@
+import { USER_LOCATION_CIRCLE_RADIUS } from "@/constants/mapConstants";
 import { LocationPermissionState } from "@/types";
 import {
   checkGeolocationSupport,
-  checkIOSPermissionState,
-  getDetailedErrorMessage,
-  getGeolocationWithFallback,
-  getIOSGeolocation,
-  isIOS,
+  getCurrentLocation,
+  getGeolocationPermission,
 } from "@/utils/geolocation";
 import { toast } from "sonner";
 export interface LocationResult {
@@ -22,8 +20,6 @@ export interface LocationServiceCallbacks {
 }
 
 export class LocationService {
-  private permissionState: LocationPermissionState = null;
-  private currentLocation: [number, number] | null = null;
   private callbacks: LocationServiceCallbacks | null = null;
 
   constructor(callbacks?: LocationServiceCallbacks) {
@@ -35,52 +31,60 @@ export class LocationService {
     this.callbacks = callbacks;
   }
 
-  // Get current permission state
-  getPermissionState(): LocationPermissionState {
-    return this.permissionState;
+  // Get current permission state directly from navigator
+  async getPermissionState(): Promise<LocationPermissionState> {
+    try {
+      const permission = await getGeolocationPermission();
+      if (permission === "granted") {
+        return "granted";
+      } else if (permission === "denied") {
+        return "denied";
+      } else {
+        return "prompt";
+      }
+    } catch (error) {
+      return "unknown";
+    }
   }
 
-  // Get current location if available
-  getCurrentLocation(): [number, number] | null {
-    return this.currentLocation;
+  // Get current location directly from navigator
+  async getCurrentLocation(): Promise<[number, number] | null> {
+    try {
+      const result = await getCurrentLocation();
+      if (result.success && result.position) {
+        const { latitude, longitude } = result.position.coords;
+        return [longitude, latitude];
+      }
+      return null;
+    } catch (error) {
+      return null;
+    }
   }
 
   // Check if location permission is granted
-  hasLocationPermission(): boolean {
-    return this.permissionState === "granted" && this.currentLocation !== null;
+  async hasLocationPermission(): Promise<boolean> {
+    const permission = await this.getPermissionState();
+    return permission === "granted";
   }
 
   // Initialize location service and check initial permission state
   async initialize(): Promise<void> {
     // Check geolocation support
     if (!checkGeolocationSupport()) {
-      this.updatePermissionState("denied");
       this.callbacks?.onError(
         "Location services not supported by your browser"
       );
       return;
     }
 
-    // Check initial permission state for iOS
-    if (isIOS()) {
-      const permissionState = await checkIOSPermissionState();
-      console.log("iOS permission state:", permissionState);
+    // Get initial permission state
+    const permissionState = await this.getPermissionState();
+    this.callbacks?.onPermissionChange(permissionState);
 
-      if (permissionState === "granted") {
-        // Permission already granted, get location
-        await this.requestLocation(false);
-      } else if (permissionState === "denied") {
-        // Permission denied, show denied state
-        this.updatePermissionState("denied");
-      } else {
-        // Permission prompt or unknown, show prompt state
-        this.updatePermissionState("prompt");
-      }
-      return;
+    if (permissionState === "granted") {
+      // Permission already granted, get location
+      await this.requestLocation(false);
     }
-
-    // For non-iOS devices, try to get location immediately
-    await this.requestLocation(false);
   }
 
   // Request location permission and get current location
@@ -88,7 +92,6 @@ export class LocationService {
     // Check geolocation support first
     if (!checkGeolocationSupport()) {
       const error = "Location services not supported";
-      this.updatePermissionState("denied");
       if (showToasts) {
         toast.error("Location Error", {
           description: error,
@@ -102,49 +105,12 @@ export class LocationService {
       };
     }
 
-    this.updatePermissionState("loading");
-
     try {
-      // iOS için özel geolocation fonksiyonu kullan
-      const result = isIOS()
-        ? await getIOSGeolocation()
-        : await getGeolocationWithFallback();
+      // Get current permission state
+      const permissionState = await this.getPermissionState();
 
-      if (result.success && result.position) {
-        const { latitude, longitude, accuracy } = result.position.coords;
-        console.log("Location accuracy:", accuracy, "meters");
-
-        const coordinates: [number, number] = [longitude, latitude];
-        this.currentLocation = coordinates;
-        this.updatePermissionState("granted");
-
-        // iOS'ta başarılı konum alımını localStorage'a kaydet
-        if (isIOS()) {
-          try {
-            localStorage.setItem("ios-location-permission", "granted");
-          } catch (error) {
-            console.log("Failed to save iOS permission state:", error);
-          }
-        }
-
-        this.callbacks?.onLocationUpdate(coordinates);
-
-        return {
-          success: true,
-          coordinates,
-          permissionState: "granted",
-        };
-      } else if (result.error) {
-        const errorMessage = getDetailedErrorMessage(result.error);
-        this.handleLocationError(result.error, showToasts);
-        return {
-          success: false,
-          error: errorMessage,
-          permissionState: this.permissionState,
-        };
-      } else {
-        const error = "Unknown location error";
-        this.updatePermissionState("denied");
+      if (permissionState === "denied") {
+        const error = "Location permission denied";
         if (showToasts) {
           toast.error("Location Error", {
             description: error,
@@ -157,33 +123,63 @@ export class LocationService {
           permissionState: "denied",
         };
       }
+
+      // Get location using simplified function
+      const result = await getCurrentLocation();
+
+      if (result.success && result.position) {
+        const { latitude, longitude, accuracy } = result.position.coords;
+        console.log("Location accuracy:", accuracy, "meters");
+
+        const coordinates: [number, number] = [longitude, latitude];
+
+        // Update permission state to granted
+        this.callbacks?.onPermissionChange("granted");
+        this.callbacks?.onLocationUpdate(coordinates);
+
+        return {
+          success: true,
+          coordinates,
+          permissionState: "granted",
+        };
+      } else if (result.error) {
+        const errorMessage = result.error.message || "Failed to get location";
+        this.handleLocationError(result.error, showToasts);
+        return {
+          success: false,
+          error: errorMessage,
+          permissionState: permissionState,
+        };
+      } else {
+        const error = "Unknown location error";
+        if (showToasts) {
+          toast.error("Location Error", {
+            description: error,
+          });
+        }
+        this.callbacks?.onError(error);
+        return {
+          success: false,
+          error,
+          permissionState: permissionState,
+        };
+      }
     } catch (error) {
       console.error("Location request failed:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Failed to get location";
 
-      // iOS'ta unexpected error durumunda da prompt state'e dön
-      if (isIOS()) {
-        this.updatePermissionState("prompt");
-        if (showToasts) {
-          toast.error("Location request failed", {
-            description: "Please try again by tapping 'Allow Location Access'",
-          });
-        }
-      } else {
-        this.updatePermissionState("denied");
-        if (showToasts) {
-          toast.error("Unexpected error", {
-            description: "An error occurred while getting location",
-          });
-        }
+      if (showToasts) {
+        toast.error("Location request failed", {
+          description: "Please try again",
+        });
       }
 
       this.callbacks?.onError(errorMessage);
       return {
         success: false,
         error: errorMessage,
-        permissionState: this.permissionState,
+        permissionState: "unknown",
       };
     }
   }
@@ -193,33 +189,27 @@ export class LocationService {
     error: GeolocationPositionError,
     showToasts: boolean = true
   ) {
-    const errorMessage = getDetailedErrorMessage(error);
+    let errorMessage: string;
+    let permissionState: LocationPermissionState = "unknown";
 
     switch (error.code) {
       case error.PERMISSION_DENIED:
-        this.updatePermissionState("denied");
-        // iOS'ta permission denied durumunda localStorage'ı temizle
-        if (isIOS()) {
-          try {
-            localStorage.removeItem("ios-location-permission");
-          } catch (e) {
-            console.log("Failed to clear iOS permission state:", e);
-          }
-        }
+        permissionState = "denied";
+        errorMessage =
+          "Location permission denied. Please enable location access in your browser settings.";
         break;
 
       case error.POSITION_UNAVAILABLE:
+        errorMessage =
+          "Location information unavailable. GPS signal may be weak or unavailable.";
+        break;
+
       case error.TIMEOUT:
-        // Keep current permission state for these errors
+        errorMessage = "Location request timed out. Please try again.";
         break;
 
       default:
-        // iOS'ta unexpected error durumunda prompt state'e dön
-        if (isIOS()) {
-          this.updatePermissionState("prompt");
-        } else {
-          this.updatePermissionState("denied");
-        }
+        errorMessage = `Location error: ${error.message}`;
         break;
     }
 
@@ -229,48 +219,39 @@ export class LocationService {
       });
     }
 
+    this.callbacks?.onPermissionChange(permissionState);
     this.callbacks?.onError(errorMessage);
-  }
-
-  // Update permission state and notify callbacks
-  private updatePermissionState(state: LocationPermissionState) {
-    this.permissionState = state;
-    this.callbacks?.onPermissionChange(state);
   }
 
   // Reset location service state
   reset() {
-    this.permissionState = null;
-    this.currentLocation = null;
+    // No state to reset
   }
 
   // Check if we should show permission prompt
-  shouldShowPermissionPrompt(): boolean {
-    return this.permissionState === "prompt" || this.permissionState === null;
+  async shouldShowPermissionPrompt(): Promise<boolean> {
+    const permission = await this.getPermissionState();
+    return permission === "prompt" || permission === "unknown";
   }
 
   // Check if permission is denied
-  isPermissionDenied(): boolean {
-    return this.permissionState === "denied";
-  }
-
-  // Check if location is loading
-  isLoading(): boolean {
-    return this.permissionState === "loading";
+  async isPermissionDenied(): Promise<boolean> {
+    const permission = await this.getPermissionState();
+    return permission === "denied";
   }
 
   // Get user-friendly permission status text
-  getPermissionStatusText(): string {
-    switch (this.permissionState) {
+  async getPermissionStatusText(): Promise<string> {
+    const permission = await this.getPermissionState();
+
+    switch (permission) {
       case "granted":
         return "Location access granted";
       case "denied":
         return "Location access denied";
       case "prompt":
         return "Location permission required";
-      case "loading":
-        return "Getting location...";
-      case null:
+      case "unknown":
         return "Location permission unknown";
       default:
         return "Location status unknown";
@@ -278,29 +259,92 @@ export class LocationService {
   }
 
   // Get appropriate button text based on state
-  getLocationButtonText(): string {
-    if (this.hasLocationPermission()) {
+  async getLocationButtonText(): Promise<string> {
+    const permission = await this.getPermissionState();
+
+    if (permission === "granted") {
       return "Go to My Location";
-    } else if (this.permissionState === "denied") {
+    } else if (permission === "denied") {
       return "Get Location Permission";
-    } else if (this.permissionState === "loading") {
-      return "Getting Location...";
     } else {
       return "Allow Location Access";
     }
   }
 
   // Get appropriate button icon based on state
-  getLocationButtonIcon(): string {
-    if (this.hasLocationPermission()) {
+  async getLocationButtonIcon(): Promise<string> {
+    const permission = await this.getPermissionState();
+
+    if (permission === "granted") {
       return "📍";
-    } else if (this.permissionState === "denied") {
+    } else if (permission === "denied") {
       return "🔒";
-    } else if (this.permissionState === "loading") {
-      return "⏳";
     } else {
       return "🎯";
     }
+  }
+
+  // Check if a location is within the 50-meter circle around user
+  async isLocationInCircle(
+    targetLat: number,
+    targetLng: number
+  ): Promise<boolean | null> {
+    const currentLocation = await this.getCurrentLocation();
+
+    if (!currentLocation) {
+      return null; // User location not available
+    }
+
+    const [userLng, userLat] = currentLocation;
+    const distance = this.calculateDistance(
+      userLat,
+      userLng,
+      targetLat,
+      targetLng
+    );
+
+    // 50 metre yarıçap
+    const circleRadius = USER_LOCATION_CIRCLE_RADIUS;
+    return distance <= circleRadius;
+  }
+
+  // Calculate distance between two points using Haversine formula
+  private calculateDistance(
+    lat1: number,
+    lng1: number,
+    lat2: number,
+    lng2: number
+  ): number {
+    const R = 6371000; // Earth's radius in meters
+    const dLat = this.degreesToRadians(lat2 - lat1);
+    const dLng = this.degreesToRadians(lng2 - lng1);
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.degreesToRadians(lat1)) *
+        Math.cos(this.degreesToRadians(lat2)) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c; // Distance in meters
+
+    return distance;
+  }
+
+  // Convert degrees to radians
+  private degreesToRadians(degrees: number): number {
+    return degrees * (Math.PI / 180);
+  }
+
+  // Get circle radius in meters
+  getCircleRadius(): number {
+    return USER_LOCATION_CIRCLE_RADIUS; // 50 metre yarıçap
+  }
+
+  // Get current circle center coordinates
+  async getCircleCenter(): Promise<[number, number] | null> {
+    return await this.getCurrentLocation();
   }
 }
 

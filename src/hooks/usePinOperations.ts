@@ -2,10 +2,15 @@ import {
   generatePinElementHTML,
   generatePinPopupHTML,
 } from "@/components/pin/PinMarker";
-import { MIN_ZOOM_LEVEL, pinQueryKeys } from "@/constants";
+import {
+  MIN_ZOOM_LEVEL,
+  pinQueryKeys,
+  USER_LOCATION_CIRCLE_RADIUS,
+} from "@/constants";
 import { useSession } from "@/hooks/useSession";
 import { HybridCacheManager } from "@/lib/hybrid-cache-manager";
 import { pinService } from "@/lib/supabase/database";
+import { locationService } from "@/services/locationService";
 import type {
   CreatePinData,
   EnhancedComment,
@@ -18,7 +23,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import maplibregl from "maplibre-gl";
 import { useCallback, useMemo, useRef } from "react";
 import { toast } from "sonner";
-
 interface UsePinOperationsProps {
   map: React.MutableRefObject<maplibregl.Map | null>;
   tempPin: [number, number] | null;
@@ -147,7 +151,7 @@ export const usePinOperations = ({
 
   // Long press callback
   const onLongPress = useCallback(
-    (e: React.SyntheticEvent) => {
+    async (e: React.SyntheticEvent) => {
       if (!map.current) return;
       const nativeEvent = e.nativeEvent as PointerEvent;
       const rect = map.current.getContainer().getBoundingClientRect();
@@ -156,8 +160,39 @@ export const usePinOperations = ({
 
       const lngLat = map.current.unproject([x, y]);
 
-      setTempPin([lngLat.lng, lngLat.lat]);
-      setShowPinModal(true);
+      const permissionState = await locationService.getPermissionState();
+      console.log("Location permission state:", permissionState);
+
+      if (permissionState === "granted") {
+        console.log("Location permission is granted");
+
+        // Check if the pin location is within the 50-meter circle
+        const isInCircle = await locationService.isLocationInCircle(
+          lngLat.lat,
+          lngLat.lng
+        );
+        console.log("Pin location in circle:", isInCircle);
+
+        if (isInCircle === null) {
+          toast.error("User location not available");
+          return;
+        }
+
+        if (isInCircle) {
+          setTempPin([lngLat.lng, lngLat.lat]);
+          setShowPinModal(true);
+        } else {
+          toast.error(
+            `Pin must be within ${USER_LOCATION_CIRCLE_RADIUS} meters of your location`,
+            {
+              description:
+                "Please move closer to your location or choose a different spot",
+            }
+          );
+        }
+      } else {
+        toast.error("Location permission is not granted");
+      }
     },
     [map, setTempPin, setShowPinModal]
   );
