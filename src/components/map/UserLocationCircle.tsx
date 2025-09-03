@@ -102,11 +102,15 @@ export const UserLocationCircle = ({
 
     const { sourceId, layerId } = circleRef.current;
 
-    if (map.getLayer(layerId)) {
-      map.removeLayer(layerId);
-    }
-    if (map.getSource(sourceId)) {
-      map.removeSource(sourceId);
+    try {
+      if (map.getLayer && map.getLayer(layerId)) {
+        map.removeLayer(layerId);
+      }
+      if (map.getSource && map.getSource(sourceId)) {
+        map.removeSource(sourceId);
+      }
+    } catch (error) {
+      console.warn("Error removing circle:", error);
     }
 
     circleRef.current = null;
@@ -134,7 +138,7 @@ export const UserLocationCircle = ({
     return () => {
       removeCircle();
     };
-  }, []);
+  }, [map]);
 
   // Bu component sadece logic yapıyor, UI render etmiyor
   return null;
