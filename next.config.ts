@@ -1,25 +1,84 @@
 import type { NextConfig } from "next";
 
-const withBundleAnalyzer = require("@next/bundle-analyzer")({
-  enabled: process.env.ANALYZE === "true",
-});
-
 const nextConfig: NextConfig = {
   images: {
+    // Allow images from all domains for maximum flexibility
+    unoptimized: true,
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'juuestllrnczytxmaxzm.supabase.co',
-        port: '',
-        pathname: '/storage/v1/object/public/**',
+        protocol: "https",
+        hostname: "juuestllrnczytxmaxzm.supabase.co",
+        port: "",
+        pathname: "/storage/v1/object/public/**",
       },
       // Generic Supabase storage pattern for any project
       {
-        protocol: 'https',
-        hostname: '*.supabase.co',
-        port: '',
-        pathname: '/storage/v1/object/public/**',
+        protocol: "https",
+        hostname: "*.supabase.co",
+        port: "",
+        pathname: "/storage/v1/object/public/**",
       },
+      // Buy Me a Coffee CDN
+      {
+        protocol: "https",
+        hostname: "cdn.buymeacoffee.com",
+        port: "",
+        pathname: "/**",
+      },
+      // Vercel CDN and deployment URLs
+      {
+        protocol: "https",
+        hostname: "*.vercel.app",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "vercel.com",
+        port: "",
+        pathname: "/**",
+      },
+      // Common CDN providers
+      {
+        protocol: "https",
+        hostname: "*.cloudinary.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.cdnbuymeacoffee.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.imgur.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.githubusercontent.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.gravatar.com",
+        port: "",
+        pathname: "/**",
+      },
+      // Allow all HTTPS domains as fallback (be careful with this)
+      {
+        protocol: "https",
+        hostname: "**",
+        port: "",
+        pathname: "/**",
+      },
+      // Allow all HTTP domains as fallback (only for development)
     ],
   },
   compiler: {
@@ -75,4 +134,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withBundleAnalyzer(nextConfig);
+export default nextConfig;

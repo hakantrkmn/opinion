@@ -3,6 +3,7 @@
 import { USER_LOCATION_CIRCLE_RADIUS } from "@/constants/mapConstants";
 import { useMap } from "@/hooks/useMap";
 
+import Image from "next/image";
 import { useEffect } from "react";
 import { RefreshButton } from "../common/RefreshButton";
 import PinDetailModal from "../pin/PinDetailModal";
@@ -249,15 +250,18 @@ export default function Map({ initialCoordinates }: MapProps) {
       />
 
       {/* Buy Me a Coffee Button - Bottom Left */}
-      <div className="absolute bottom-4 left-4 z-50">
+      <div className="fixed bottom-16 left-4 z-[9999] pb-safe">
         <a
           href="https://www.buymeacoffee.com/hakantrkmndev"
           target="_blank"
           rel="noopener noreferrer"
         >
-          <img
+          <Image
             src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png"
             alt="Buy Me A Coffee"
+            height={30}
+            width={108}
+            loading="lazy"
             style={{ height: "30px", width: "108px" }}
           />
         </a>

@@ -40,7 +40,6 @@ interface ProfileClientProps {
 export function ProfileClient({ user, userStats }: ProfileClientProps) {
   const { profile, updateProfile, getProfileFromDB } = useUserProfile();
   const [activeTab, setActiveTab] = useState<TabType>("stats");
-  const [stats, setStats] = useState<UserStats>(userStats);
   const [pins, setPins] = useState<Pin[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -204,7 +203,7 @@ export function ProfileClient({ user, userStats }: ProfileClientProps) {
             )}
 
             <TabsContent value="stats" className="mt-6">
-              {!loading && stats && (
+              {!loading && userStats.stats && (
                 <div className="space-y-6">
                   {/* Statistics Cards Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -220,7 +219,7 @@ export function ProfileClient({ user, userStats }: ProfileClientProps) {
                               Total Pins
                             </p>
                             <p className="text-2xl font-bold text-foreground">
-                              {stats.stats?.totalPins || 0}
+                              {userStats.stats?.totalPins || 0}
                             </p>
                           </div>
                         </div>
@@ -239,7 +238,7 @@ export function ProfileClient({ user, userStats }: ProfileClientProps) {
                               Comments
                             </p>
                             <p className="text-2xl font-bold text-foreground">
-                              {stats.stats?.totalComments || 0}
+                              {userStats.stats?.totalComments || 0}
                             </p>
                           </div>
                         </div>
@@ -258,7 +257,7 @@ export function ProfileClient({ user, userStats }: ProfileClientProps) {
                               Likes Received
                             </p>
                             <p className="text-2xl font-bold text-foreground">
-                              {stats.stats?.totalLikes || 0}
+                              {userStats.stats?.totalLikes || 0}
                             </p>
                           </div>
                         </div>
@@ -277,7 +276,7 @@ export function ProfileClient({ user, userStats }: ProfileClientProps) {
                               Dislikes Received
                             </p>
                             <p className="text-2xl font-bold text-foreground">
-                              {stats.stats?.totalDislikes || 0}
+                              {userStats.stats?.totalDislikes || 0}
                             </p>
                           </div>
                         </div>
@@ -306,7 +305,7 @@ export function ProfileClient({ user, userStats }: ProfileClientProps) {
                               Votes Given
                             </p>
                             <p className="text-2xl font-bold text-foreground">
-                              {stats.stats?.totalVotesGiven || 0}
+                              {userStats.stats?.totalVotesGiven || 0}
                             </p>
                           </div>
                         </div>
@@ -314,7 +313,7 @@ export function ProfileClient({ user, userStats }: ProfileClientProps) {
                     </Card>
 
                     {/* Last Activity */}
-                    {stats.stats?.lastActivityAt && (
+                    {userStats.stats?.lastActivityAt && (
                       <Card className="hover:shadow-md transition-shadow">
                         <CardContent className="p-4 sm:p-5">
                           <div className="flex items-center space-x-3">
@@ -327,7 +326,7 @@ export function ProfileClient({ user, userStats }: ProfileClientProps) {
                               </p>
                               <p className="text-sm font-medium text-foreground">
                                 {new Date(
-                                  stats.stats?.lastActivityAt
+                                  userStats.stats?.lastActivityAt
                                 ).toLocaleDateString("en-US", {
                                   day: "numeric",
                                   month: "short",

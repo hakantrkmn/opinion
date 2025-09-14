@@ -13,8 +13,8 @@ export const MapStyleToggle = ({
 }: MapStyleToggleProps) => {
   if (isMobile) {
     return (
-      <div className="absolute bottom-10 right-4 z-50">
-        <div className="bg-background rounded-lg shadow-lg border flex">
+      <div className="fixed bottom-16 right-4 z-[9999] pb-safe">
+        <div className="bg-background rounded-lg shadow-lg border flex backdrop-blur-sm">
           <Button
             onClick={() => onStyleChange("light")}
             variant={currentStyle === "light" ? "default" : "ghost"}

@@ -17,10 +17,18 @@ export default async function ProfilePage() {
     redirect("/auth");
   }
   const { stats, error: statsError } = await userService.getUserStats(user.id);
+  const statsobj: UserStats = {
+    stats: stats,
+    error: statsError,
+    performanceInfo: {
+      queryTime: 0,
+      method: "",
+      improvement: "",
+    },
+  };
+  console.log(stats);
   if (statsError) {
     redirect("/404");
   }
-  return (
-    <DynamicProfilePage user={user} userStats={stats as unknown as UserStats} />
-  );
+  return <DynamicProfilePage user={user} userStats={statsobj} />;
 }
