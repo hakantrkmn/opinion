@@ -5,48 +5,97 @@ import { getPinColor } from "@/utils/mapUtils";
 
 // HTML String Generator - useMap.ts için
 export function generatePinElementHTML(pin: Pin, zoomLevel?: number): string {
-  const pinColor = getPinColor(pin.comments_count);
+  const commentCount = pin.comments_count || 0;
+  const isActive = commentCount > 0;
+  const isPopular = commentCount > 3;
+  const isHot = commentCount > 10;
+
+  // Get avatar URL from pin's user data
+  const avatarUrl =
+    pin.user?.avatar_url ||
+    pin.profiles?.avatar_url ||
+    (Array.isArray(pin.users) ? pin.users[0]?.avatar_url : pin.users?.avatar_url) ||
+    null;
 
   // Zoom seviyesi 14 ve üzerinde pin adını göster
   const showPinName = zoomLevel && zoomLevel >= 14;
 
-  // Pin adını kısalt (max 20 karakter)
-  const MAX_NAME_LENGTH = 20;
+  // Pin adını kısalt (max 18 karakter)
+  const MAX_NAME_LENGTH = 18;
   const truncatedName =
     pin.name.length > MAX_NAME_LENGTH
-      ? pin.name.slice(0, MAX_NAME_LENGTH) + "..."
+      ? pin.name.slice(0, MAX_NAME_LENGTH) + "…"
       : pin.name;
 
+  // Dynamic color based on activity
+  const markerBg = isHot
+    ? "background: linear-gradient(135deg, #f59e0b, #ef4444)"
+    : isPopular
+    ? "background: linear-gradient(135deg, #8b5cf6, #6366f1)"
+    : isActive
+    ? "background: linear-gradient(135deg, #6366f1, #3b82f6)"
+    : "background: linear-gradient(135deg, #64748b, #94a3b8)";
+
+  const pulseColor = isHot
+    ? "rgba(239, 68, 68, 0.3)"
+    : isPopular
+    ? "rgba(99, 102, 241, 0.3)"
+    : isActive
+    ? "rgba(59, 130, 246, 0.3)"
+    : "rgba(148, 163, 184, 0.2)";
+
+  const shadowColor = isHot
+    ? "rgba(239, 68, 68, 0.4)"
+    : isPopular
+    ? "rgba(99, 102, 241, 0.35)"
+    : isActive
+    ? "rgba(59, 130, 246, 0.3)"
+    : "rgba(100, 116, 139, 0.25)";
+
   return `
-    <div class="relative flex flex-col items-center">
+    <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer; filter: drop-shadow(0 2px 6px ${shadowColor});">
       ${
         showPinName
           ? `
-        <div class="mb-1 px-2 py-1 bg-background border rounded-md shadow-md text-xs font-medium text-foreground whitespace-nowrap max-w-32 truncate">
+        <div style="margin-bottom: 6px; padding: 3px 10px; background: var(--background); border: 1px solid var(--border); border-radius: 8px; font-size: 11px; font-weight: 600; color: var(--foreground); white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis; backdrop-filter: blur(8px); box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
           ${truncatedName}
         </div>
       `
           : ""
       }
-      <div class="w-6 h-6 ${pinColor} rounded-full border-2 border-background shadow-lg flex items-center justify-center cursor-pointer transition-colors">
-        <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-          <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
-        </svg>
+      <div style="position: relative; width: 36px; height: 36px; border-radius: 50% 50% 50% 4px; ${markerBg}; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; border: 2.5px solid var(--background); box-shadow: 0 3px 12px ${shadowColor}; transition: transform 0.2s ease;">
+        <div style="transform: rotate(45deg); display: flex; align-items: center; justify-content: center;">
+          ${avatarUrl
+            ? `<img src="${avatarUrl}" alt="" style="width: 22px; height: 22px; border-radius: 50%; object-fit: cover;" />`
+            : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>`
+          }
+        </div>
         ${
-          pin.comments_count && pin.comments_count > 0
+          commentCount > 0
             ? `
-          <div class="absolute -top-1 -right-1 bg-background text-foreground text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold shadow-sm border z-10">
-            ${pin.comments_count > 99 ? "99+" : pin.comments_count}
+          <div style="position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px; ${markerBg}; border-radius: 9px; border: 2px solid var(--background); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: white; z-index: 10; box-shadow: 0 1px 4px rgba(0,0,0,0.15); transform: rotate(45deg);">
+            ${commentCount > 99 ? "99+" : commentCount}
           </div>
         `
             : ""
         }
       </div>
-      <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-3 border-r-3 border-t-3 border-transparent ${
-        pin.comments_count && pin.comments_count > 0
-          ? "border-t-blue-500 dark:border-t-blue-600"
-          : "border-t-red-500 dark:border-t-red-600"
-      }"></div>
+      ${
+        isActive
+          ? `
+        <div style="position: absolute; bottom: 0; left: 50%; width: 36px; height: 36px; margin-left: -18px; border-radius: 50%; background: ${pulseColor}; animation: pin-pulse 2s ease-out infinite; z-index: -1;"></div>
+      `
+          : ""
+      }
     </div>
+    <style>
+      @keyframes pin-pulse {
+        0% { transform: scale(1); opacity: 0.6; }
+        100% { transform: scale(2.2); opacity: 0; }
+      }
+    </style>
   `;
 }

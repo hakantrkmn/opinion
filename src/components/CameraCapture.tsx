@@ -11,15 +11,96 @@ import {
 import type { CameraCapture as CameraCaptureType } from "@/types";
 import { isMobileDevice } from "@/utils/geolocation";
 import { Camera, RotateCcw, X } from "lucide-react";
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import PhotoPreview from "./camera/PhotoPreview";
 
 interface CameraCaptureProps {
   onPhotoCapture: (capture: CameraCaptureType) => void;
   onCancel?: () => void;
   disabled?: boolean;
   className?: string;
+}
+
+const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_DIMENSION = 1200;
+const JPEG_QUALITY = 0.8;
+
+function validateFile(file: File): boolean {
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    toast.error("Invalid file type", {
+      description: "Please capture a valid photo (JPEG, PNG, or WebP)",
+    });
+    return false;
+  }
+  if (file.size > MAX_FILE_SIZE) {
+    toast.error("File too large", {
+      description: "Photo must be smaller than 5MB",
+    });
+    return false;
+  }
+  return true;
+}
+
+function compressImage(file: File): Promise<File> {
+  return new Promise((resolve) => {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      resolve(file);
+      return;
+    }
+
+    const img = new window.Image();
+    img.onload = () => {
+      let { width, height } = img;
+
+      if (width > height) {
+        if (width > MAX_DIMENSION) {
+          height = (height * MAX_DIMENSION) / width;
+          width = MAX_DIMENSION;
+        }
+      } else {
+        if (height > MAX_DIMENSION) {
+          width = (width * MAX_DIMENSION) / height;
+          height = MAX_DIMENSION;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve(
+              new File([blob], `compressed-${file.name}`, {
+                type: "image/jpeg",
+                lastModified: Date.now(),
+              })
+            );
+          } else {
+            resolve(file);
+          }
+        },
+        "image/jpeg",
+        JPEG_QUALITY
+      );
+    };
+
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+async function processFile(file: File): Promise<CameraCaptureType | null> {
+  if (!validateFile(file)) return null;
+
+  const previewUrl = URL.createObjectURL(file);
+  const compressed = await compressImage(file);
+
+  return { file, compressed, preview: previewUrl };
 }
 
 export default function CameraCapture({
@@ -43,158 +124,21 @@ export default function CameraCapture({
 
   // Detect mobile device
   useEffect(() => {
-    const checkMobile = () => {
-      const isTouchDevice = "ontouchstart" in window;
-      setIsMobile(isMobileDevice() || isTouchDevice);
-    };
-
-    checkMobile();
+    const isTouchDevice = "ontouchstart" in window;
+    setIsMobile(isMobileDevice() || isTouchDevice);
   }, []);
-
-  // Validate file before processing
-  const validateFile = (file: File): boolean => {
-    // Check file type
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-    if (!allowedTypes.includes(file.type)) {
-      toast.error("Invalid file type", {
-        description: "Please capture a valid photo (JPEG, PNG, or WebP)",
-      });
-      return false;
-    }
-
-    // Check file size (5MB limit)
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      toast.error("File too large", {
-        description: "Photo must be smaller than 5MB",
-      });
-      return false;
-    }
-
-    return true;
-  };
-
-  // Handle photo capture from native camera
-  const handleFileSelect = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      setIsProcessing(true);
-
-      // Validate the file
-      if (!validateFile(file)) {
-        setIsProcessing(false);
-        return;
-      }
-
-      // Create preview
-      const previewUrl = URL.createObjectURL(file);
-      setPreview(previewUrl);
-
-      // Create compressed version for better performance
-      const compressedFile = await compressImage(file);
-
-      // Create the capture object
-      const capture: CameraCaptureType = {
-        file: file,
-        compressed: compressedFile,
-        preview: previewUrl,
-      };
-
-      // Pass to parent component
-      onPhotoCapture(capture);
-    } catch (error) {
-      console.error("Error processing captured photo:", error);
-      toast.error("Failed to process photo", {
-        description: "Please try again",
-      });
-    } finally {
-      setIsProcessing(false);
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    }
-  };
-
-  // Compress image for better performance
-  const compressImage = (file: File): Promise<File> => {
-    return new Promise((resolve) => {
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        resolve(file);
-        return;
-      }
-
-      const img = new window.Image();
-      img.onload = () => {
-        // Calculate new dimensions (max 1200px on longest side)
-        let { width, height } = img;
-        const maxWidth = 1200;
-        const maxHeight = 1200;
-
-        if (width > height) {
-          if (width > maxWidth) {
-            height = (height * maxWidth) / width;
-            width = maxWidth;
-          }
-        } else {
-          if (height > maxHeight) {
-            width = (width * maxHeight) / height;
-            height = maxHeight;
-          }
-        }
-
-        // Set canvas dimensions
-        canvas.width = width;
-        canvas.height = height;
-
-        // Draw image on canvas
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // Convert to blob with compression
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              const compressedFile = new File(
-                [blob],
-                `compressed-${file.name}`,
-                {
-                  type: "image/jpeg",
-                  lastModified: Date.now(),
-                }
-              );
-              resolve(compressedFile);
-            } else {
-              resolve(file);
-            }
-          },
-          "image/jpeg",
-          0.8 // 80% quality
-        );
-      };
-
-      img.src = URL.createObjectURL(file);
-    });
-  };
 
   // Start camera stream (for desktop)
   const startCamera = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: facingMode,
+          facingMode,
           width: { ideal: 1280 },
           height: { ideal: 720 },
         },
       });
-
       setStream(mediaStream);
-
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         videoRef.current.play();
@@ -215,66 +159,67 @@ export default function CameraCapture({
     }
   };
 
+  // Handle photo capture from native camera / file input
+  const handleFileSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsProcessing(true);
+      const capture = await processFile(file);
+      if (capture) {
+        setPreview(capture.preview);
+        onPhotoCapture(capture);
+      }
+    } catch (error) {
+      console.error("Error processing captured photo:", error);
+      toast.error("Failed to process photo", {
+        description: "Please try again",
+      });
+    } finally {
+      setIsProcessing(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   // Capture photo from video stream (for desktop)
   const capturePhoto = async () => {
     if (!videoRef.current || !canvasRef.current) return;
 
     try {
       setIsProcessing(true);
-
       const video = videoRef.current;
       const canvas = canvasRef.current;
       const ctx = canvas.getContext("2d");
-
       if (!ctx) return;
 
-      // Set canvas dimensions to match video
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-
-      // Draw the current frame
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Convert to blob
       canvas.toBlob(
         async (blob) => {
           if (!blob) return;
 
-          // Create file from blob
-          const file = new File([blob], `camera-capture-${Date.now()}.jpg`, {
-            type: "image/jpeg",
-            lastModified: Date.now(),
-          });
+          const file = new File(
+            [blob],
+            `camera-capture-${Date.now()}.jpg`,
+            { type: "image/jpeg", lastModified: Date.now() }
+          );
 
-          // Validate the file
-          if (!validateFile(file)) {
-            setIsProcessing(false);
-            return;
+          const capture = await processFile(file);
+          if (capture) {
+            setPreview(capture.preview);
+            onPhotoCapture(capture);
           }
 
-          // Create preview
-          const previewUrl = URL.createObjectURL(file);
-          setPreview(previewUrl);
-
-          // Create compressed version for better performance
-          const compressedFile = await compressImage(file);
-
-          // Create the capture object
-          const capture: CameraCaptureType = {
-            file: file,
-            compressed: compressedFile,
-            preview: previewUrl,
-          };
-
-          // Pass to parent component
-          onPhotoCapture(capture);
-
-          // Close camera modal and stop stream
           setShowCameraModal(false);
           stopCamera();
         },
         "image/jpeg",
-        0.8
+        JPEG_QUALITY
       );
     } catch (error) {
       console.error("Error capturing photo:", error);
@@ -288,10 +233,7 @@ export default function CameraCapture({
 
   // Switch between front and back camera
   const switchCamera = () => {
-    const newFacingMode = facingMode === "environment" ? "user" : "environment";
-    setFacingMode(newFacingMode);
-
-    // Restart camera with new facing mode
+    setFacingMode((prev) => (prev === "environment" ? "user" : "environment"));
     if (stream) {
       stopCamera();
       setTimeout(() => startCamera(), 100);
@@ -301,12 +243,8 @@ export default function CameraCapture({
   // Open camera (mobile: native, desktop: modal)
   const openCamera = () => {
     if (isMobile) {
-      // Mobile: use native camera
-      if (fileInputRef.current) {
-        fileInputRef.current.click();
-      }
+      fileInputRef.current?.click();
     } else {
-      // Desktop: open camera modal
       setShowCameraModal(true);
     }
   };
@@ -314,37 +252,27 @@ export default function CameraCapture({
   // Reset camera state
   const resetCamera = () => {
     setPreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
     onCancel?.();
   };
 
-  // Start camera when modal opens (for desktop)
+  // Start camera when modal opens (desktop)
   useEffect(() => {
-    if (showCameraModal && !isMobile) {
-      startCamera();
-    }
+    if (showCameraModal && !isMobile) startCamera();
     return () => {
-      if (!isMobile) {
-        stopCamera();
-      }
+      if (!isMobile) stopCamera();
     };
   }, [showCameraModal, isMobile]);
 
   // Clean up camera stream on unmount
   useEffect(() => {
-    return () => {
-      stopCamera();
-    };
+    return () => stopCamera();
   }, []);
 
   // Clean up object URLs
   useEffect(() => {
     return () => {
-      if (preview) {
-        URL.revokeObjectURL(preview);
-      }
+      if (preview) URL.revokeObjectURL(preview);
     };
   }, [preview]);
 
@@ -402,7 +330,7 @@ export default function CameraCapture({
                   variant="secondary"
                   onClick={() => setShowCameraModal(false)}
                   disabled={isProcessing}
-                  className="bg-black/70 hover:bg-black text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg border-2 border-white/30"
+                  className="bg-foreground/70 hover:bg-foreground text-background rounded-full w-12 h-12 flex items-center justify-center shadow-lg border-2 border-background/30"
                 >
                   <X className="h-5 w-5" />
                 </Button>
@@ -412,7 +340,7 @@ export default function CameraCapture({
                   variant="secondary"
                   onClick={capturePhoto}
                   disabled={isProcessing}
-                  className="bg-white hover:bg-gray-100 text-black rounded-full w-16 h-16 flex items-center justify-center shadow-lg border-2 border-white/30"
+                  className="bg-background hover:bg-muted text-foreground rounded-full w-16 h-16 flex items-center justify-center shadow-lg border-2 border-background/30"
                 >
                   <Camera className="h-6 w-6" />
                 </Button>
@@ -422,7 +350,7 @@ export default function CameraCapture({
                   variant="secondary"
                   onClick={switchCamera}
                   disabled={isProcessing}
-                  className="bg-black/70 hover:bg-black text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg border-2 border-white/30"
+                  className="bg-foreground/70 hover:bg-foreground text-background rounded-full w-12 h-12 flex items-center justify-center shadow-lg border-2 border-background/30"
                 >
                   <RotateCcw className="h-5 w-5" />
                 </Button>
@@ -430,8 +358,8 @@ export default function CameraCapture({
 
               {/* Processing overlay */}
               {isProcessing && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
-                  <div className="text-white">Processing...</div>
+                <div className="absolute inset-0 bg-foreground/50 flex items-center justify-center rounded-lg">
+                  <div className="text-background">Processing...</div>
                 </div>
               )}
             </div>
@@ -441,33 +369,12 @@ export default function CameraCapture({
 
       {/* Preview or Take Photo Button */}
       {preview ? (
-        // Preview state
-        <div className="space-y-4">
-          <div className="relative">
-            <Image
-              src={preview}
-              alt="Preview"
-              width={400}
-              height={256}
-              className="w-full h-auto rounded-lg object-cover max-h-64"
-              sizes="(max-width: 768px) 100vw, 400px"
-              style={{ width: "100%", height: "auto", maxHeight: "16rem" }}
-              loading="lazy"
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              size="icon"
-              onClick={resetCamera}
-              disabled={isProcessing}
-              className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white rounded-full w-8 h-8"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+        <PhotoPreview
+          previewUrl={preview}
+          onRemove={resetCamera}
+          disabled={isProcessing}
+        />
       ) : (
-        // Take Photo Button
         <div className="space-y-4">
           <Button
             type="button"

@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgis/postgis:17-3.4
+    container_name: opinion-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: opinion
+      POSTGRES_PASSWORD: opinion
+      POSTGRES_DB: opinion
+    volumes:
+      - opinion-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U opinion -d opinion"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  opinion-pgdata:

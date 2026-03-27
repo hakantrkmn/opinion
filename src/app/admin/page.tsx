@@ -1,28 +1,23 @@
-import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
-import DynamicAdminDashboard from '@/components/DynamicAdminDashboard';
+import { getServerSession } from "@/lib/auth-server";
+import { redirect } from "next/navigation";
+import DynamicAdminDashboard from "@/components/DynamicAdminDashboard";
 
-// Admin email - sadece bu email admin sayfasına erişebilir
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
 export default async function AdminPage() {
-    const supabase = createClient();
+  const session = await getServerSession();
 
-    // Check if user is authenticated
-    const { data: { session } } = await (await supabase).auth.getSession();
+  if (!session) {
+    redirect("/");
+  }
 
-    if (!session) {
-        redirect('/');
-    }
+  if (session.user.email !== ADMIN_EMAIL) {
+    redirect("/");
+  }
 
-    // Check if user is admin
-    if (session.user.email !== ADMIN_EMAIL) {
-        redirect('/');
-    }
-
-    return (
-        <div className="min-h-screen bg-gray-50">
-            <DynamicAdminDashboard />
-        </div>
-    );
+  return (
+    <div className="min-h-screen bg-background">
+      <DynamicAdminDashboard />
+    </div>
+  );
 }

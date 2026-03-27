@@ -2,7 +2,6 @@
 
 import { cn } from "@/lib/utils";
 import { User } from "lucide-react";
-import Image from "next/image";
 import { useState } from "react";
 
 interface AvatarProps {
@@ -85,7 +84,7 @@ export function Avatar({
     >
       {/* Image */}
       {src && !imageError && (
-        <Image
+        <img
           src={src}
           alt={alt}
           width={sizePixels[size]}
@@ -97,7 +96,7 @@ export function Avatar({
             shouldShowImage ? "opacity-100" : "opacity-0"
           )}
           loading="lazy"
-          placeholder="empty"
+          decoding="async"
         />
       )}
 

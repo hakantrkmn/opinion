@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import { RefreshCcw } from "lucide-react";
 import { useState } from "react";
 
@@ -13,7 +12,7 @@ export const RefreshButton = ({
   onRefresh,
   isRefreshing,
   currentZoom,
-  minZoomLevel = 12, // Default minimum zoom level
+  minZoomLevel = 12,
 }: RefreshButtonProps) => {
   const isZoomSufficient = currentZoom >= minZoomLevel;
   const [justClicked, setJustClicked] = useState(false);
@@ -22,19 +21,19 @@ export const RefreshButton = ({
     if (!isRefreshing && isZoomSufficient) {
       setJustClicked(true);
       onRefresh();
-      // Reset animation after it completes
       setTimeout(() => setJustClicked(false), 300);
     }
   };
 
   return (
-    <Button
+    <button
       onClick={handleClick}
       disabled={isRefreshing || !isZoomSufficient}
-      variant="outline"
-      size="icon"
-      className={`fixed top-20 left-4 z-30 rounded-full shadow-lg !bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 hover:scale-105 disabled:hover:scale-100 ${!isZoomSufficient ? "opacity-50" : "opacity-100 animate-pulse"
-        }`}
+      className={`fixed top-20 left-4 z-30 h-9 w-9 rounded-xl backdrop-blur-md border border-border/50 shadow-lg flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-xl hover:border-border active:scale-95 disabled:cursor-not-allowed disabled:hover:scale-100 ${
+        !isZoomSufficient
+          ? "opacity-40 bg-background/70"
+          : "opacity-100 bg-background/90"
+      } ${isZoomSufficient && !isRefreshing ? "animate-pulse" : ""}`}
       title={
         !isZoomSufficient
           ? `Zoom in to level ${minZoomLevel} or higher to refresh pins`
@@ -42,14 +41,14 @@ export const RefreshButton = ({
       }
     >
       <RefreshCcw
-        className={`h-4 w-4 sm:h-4 sm:w-4 transition-transform duration-300 ${
-          isRefreshing 
-            ? "animate-spin" 
-            : justClicked 
-            ? "rotate-180" 
+        className={`h-4 w-4 text-foreground transition-transform duration-300 ${
+          isRefreshing
+            ? "animate-spin"
+            : justClicked
+            ? "rotate-180"
             : ""
         }`}
       />
-    </Button>
+    </button>
   );
 };

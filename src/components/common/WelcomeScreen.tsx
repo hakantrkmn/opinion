@@ -1,7 +1,7 @@
 "use client";
 
 // Remove Button import to reduce bundle size
-import { MapPin, MessageCircle, Navigation, Users } from "lucide-react";
+import { Globe, MapPin, MessageCircle, Navigation, Rocket, Users, Wrench } from "lucide-react";
 
 interface WelcomeScreenProps {
     onLoadMap: () => void;
@@ -61,7 +61,7 @@ export default function WelcomeScreen({ onLoadMap }: WelcomeScreenProps) {
                 <div className="space-y-4">
                     <button
                         onClick={onLoadMap}
-                        className="inline-flex items-center px-8 py-6 text-lg font-semibold text-primary-foreground bg-primary rounded-lg shadow-lg hover:shadow-xl hover:bg-primary/90 transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                        className="inline-flex items-center px-8 py-6 text-lg font-semibold text-primary-foreground bg-primary rounded-lg shadow-lg hover:shadow-xl hover:bg-primary/90 transition-all duration-300 motion-safe:hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 cursor-pointer"
                     >
                         <MapPin className="h-5 w-5 mr-2" />
                         Load Interactive Map
@@ -74,17 +74,17 @@ export default function WelcomeScreen({ onLoadMap }: WelcomeScreenProps) {
                 {/* Stats or additional info */}
                 <div className="pt-8 border-t border-border/50">
                     <div className="grid grid-cols-3 gap-4 text-center">
-                        <div>
-                            <div className="text-2xl font-bold text-primary">🌍</div>
-                            <div className="text-sm text-muted-foreground">Global</div>
+                        <div className="flex flex-col items-center">
+                            <Globe className="h-7 w-7 text-primary" />
+                            <div className="text-sm text-muted-foreground mt-1">Global</div>
                         </div>
-                        <div>
-                            <div className="text-2xl font-bold text-primary">💬</div>
-                            <div className="text-sm text-muted-foreground">Interactive</div>
+                        <div className="flex flex-col items-center">
+                            <MessageCircle className="h-7 w-7 text-primary" />
+                            <div className="text-sm text-muted-foreground mt-1">Interactive</div>
                         </div>
-                        <div>
-                            <div className="text-2xl font-bold text-primary">🚀</div>
-                            <div className="text-sm text-muted-foreground">Fast</div>
+                        <div className="flex flex-col items-center">
+                            <Rocket className="h-7 w-7 text-primary" />
+                            <div className="text-sm text-muted-foreground mt-1">Fast</div>
                         </div>
                     </div>
                 </div>
@@ -97,9 +97,10 @@ export default function WelcomeScreen({ onLoadMap }: WelcomeScreenProps) {
                                 localStorage.removeItem('opinion-has-loaded-map');
                                 window.location.reload();
                             }}
-                            className="text-xs text-muted-foreground hover:text-foreground transition-colors underline"
+                            className="text-xs text-muted-foreground hover:text-foreground transition-colors underline inline-flex items-center gap-1"
                         >
-                            🔧 Reset Welcome Screen (Dev Only)
+                            <Wrench className="h-3 w-3" />
+                            Reset Welcome Screen (Dev Only)
                         </button>
                     </div>
                 )}

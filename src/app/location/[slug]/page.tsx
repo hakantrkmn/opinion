@@ -8,11 +8,13 @@ import {
   generateBreadcrumbSchema,
   generateLocationSchema,
 } from "@/lib/structured-data";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/db";
+import { pins } from "@/db/schema/app";
+import { user } from "@/db/schema/auth";
+import { eq, ilike, desc } from "drizzle-orm";
 import { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
-// Dinamik metadata oluştur
+
 export async function generateMetadata({
   params,
 }: {
@@ -26,7 +28,6 @@ export async function generateMetadata({
   const title = `Opinions in ${locationName} | oPINion`;
   const description = `Discover what people think about ${locationName}. Read ${locationName} opinions, reviews, and community thoughts about locations, restaurants, attractions and more.`;
 
-  // Generate enhanced Open Graph metadata
   const ogMetadata = generateOGMetadata({
     title,
     description,
@@ -35,7 +36,6 @@ export async function generateMetadata({
     baseUrl,
   });
 
-  // Generate Twitter metadata
   const twitterMetadata = generateTwitterMetadata({
     title,
     description,
@@ -44,7 +44,6 @@ export async function generateMetadata({
     baseUrl,
   });
 
-  // Generate location-specific keywords
   const locationKeywords = generateLocationKeywords(locationName);
 
   return {
@@ -83,32 +82,36 @@ export default async function LocationPage({
 }) {
   const { slug } = await params;
   const locationName = decodeURIComponent(slug);
-  const supabase = await createClient();
   const baseUrl =
     process.env.NEXT_PUBLIC_SITE_URL || "https://opinion-xi.vercel.app";
 
-  // Bu location'daki pin'leri çek
-  const { data: pins, error } = await supabase
-    .from("pins")
-    .select(
-      `
-      *,
-      users:user_id(display_name, avatar_url)
-    `
-    )
-    .ilike("location", `%${locationName}%`)
-    .eq("is_deleted", false)
-    .order("created_at", { ascending: false })
+  // Search pins by name containing the location
+  const locationPins = await db
+    .select({
+      id: pins.id,
+      name: pins.name,
+      location: pins.location,
+      createdAt: pins.createdAt,
+      userId: pins.userId,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+    })
+    .from(pins)
+    .leftJoin(user, eq(pins.userId, user.id))
+    .where(ilike(pins.name, `%${locationName}%`))
+    .orderBy(desc(pins.createdAt))
     .limit(50);
 
-  if (error) {
-    console.error("Location page error:", error);
-  }
-
-  // Generate structured data
-  const locationSchema = generateLocationSchema(locationName, pins || [], {
-    baseUrl,
-  });
+  const locationSchema = generateLocationSchema(
+    locationName,
+    locationPins.map((p) => ({
+      id: p.id,
+      name: p.name,
+      location: p.location,
+      created_at: p.createdAt.toISOString(),
+    })),
+    { baseUrl }
+  );
   const breadcrumbSchema = generateBreadcrumbSchema(
     [
       { name: "Home", url: "/" },
@@ -121,12 +124,11 @@ export default async function LocationPage({
     { baseUrl }
   );
 
-  const totalPins = pins?.length || 0;
+  const totalPins = locationPins.length;
   const hasContent = totalPins > 0;
 
   return (
     <>
-      {/* Structured Data */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={createJsonLdScript(locationSchema)}
@@ -138,135 +140,75 @@ export default async function LocationPage({
 
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
-          {/* Breadcrumb Navigation */}
-          <nav className="mb-6 text-sm text-gray-600">
-            <Link href="/" className="hover:text-blue-600">
+          <nav className="mb-6 text-sm text-muted-foreground">
+            <Link href="/" className="hover:text-primary">
               Home
-            </Link>
-            <span className="mx-2">/</span>
-            <Link href="/locations" className="hover:text-blue-600">
-              Locations
             </Link>
             <span className="mx-2">/</span>
             <span>{locationName}</span>
           </nav>
 
           <header className="mb-8">
-            <h1 className="text-4xl font-bold mb-4 flex items-center gap-3">
-              📍 Opinions in {locationName}
+            <h1 className="text-4xl font-bold mb-4">
+              Opinions in {locationName}
             </h1>
-
-            <div className="bg-gradient-to-r from-blue-50 to-green-50 p-6 rounded-lg">
-              <p className="text-gray-700 text-lg mb-4">
-                Discover what people think about locations in {locationName}.
-                Read community opinions, reviews, and experiences shared by real
-                visitors.
-              </p>
-
-              <div className="flex flex-wrap gap-4 text-sm">
-                <div className="bg-white px-3 py-1 rounded-full shadow-sm">
-                  📊 {totalPins} {totalPins === 1 ? "opinion" : "opinions"}{" "}
-                  shared
-                </div>
-                {hasContent && (
-                  <div className="bg-white px-3 py-1 rounded-full shadow-sm">
-                    🌟 Community insights available
-                  </div>
-                )}
-              </div>
-            </div>
+            <p className="text-muted-foreground text-lg">
+              Discover what people think about locations in {locationName}.
+            </p>
           </header>
 
           {hasContent ? (
-            <>
-              <div className="mb-6">
-                <h2 className="text-2xl font-semibold mb-4">
-                  Recent Opinions ({totalPins})
-                </h2>
-              </div>
-
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {pins!.map((pin) => (
-                  <article
-                    key={pin.id}
-                    className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
-                  >
-                    <header className="mb-3">
-                      <h3 className="text-xl font-semibold mb-2">
-                        <a
-                          href={`/pin/${pin.id}`}
-                          className="hover:text-blue-600 transition-colors"
-                        >
-                          {pin.title || "Untitled Pin"}
-                        </a>
-                      </h3>
-                    </header>
-
-                    {pin.description && (
-                      <p className="text-gray-600 mb-4 line-clamp-3">
-                        {pin.description}
-                      </p>
-                    )}
-
-                    <div className="text-sm text-gray-500 mb-4 flex items-center gap-1">
-                      📍 {pin.location}
-                    </div>
-
-                    <footer className="flex justify-between items-center text-sm">
-                      {pin.users && (
-                        <div className="flex items-center gap-2 text-gray-600">
-                          {pin.users.avatar_url && (
-                            <Image
-                              src={pin.users.avatar_url}
-                              alt={pin.users.display_name}
-                              className="w-6 h-6 rounded-full"
-                            />
-                          )}
-                          <span>By {pin.users.display_name}</span>
-                        </div>
-                      )}
-
-                      <time className="text-gray-400">
-                        {new Date(pin.created_at).toLocaleDateString()}
-                      </time>
-                    </footer>
-                  </article>
-                ))}
-              </div>
-
-              {/* Call to Action */}
-              <div className="mt-12 text-center bg-gray-50 p-8 rounded-lg">
-                <h3 className="text-xl font-semibold mb-4">
-                  Share Your Experience in {locationName}
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  Have you visited {locationName}? Share your thoughts and help
-                  others discover great places!
-                </p>
-                <Link
-                  href="/"
-                  className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {locationPins.map((pin) => (
+                <article
+                  key={pin.id}
+                  className="bg-card rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow border"
                 >
-                  Add Your Opinion
-                </Link>
-              </div>
-            </>
+                  <h3 className="text-xl font-semibold mb-2">
+                    <Link
+                      href={`/pin/${pin.id}`}
+                      className="hover:text-primary transition-colors"
+                    >
+                      {pin.name}
+                    </Link>
+                  </h3>
+                  <footer className="flex justify-between items-center text-sm mt-4">
+                    {pin.displayName && (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        {pin.avatarUrl && (
+                          <img
+                            src={pin.avatarUrl}
+                            alt={pin.displayName}
+                            width={24}
+                            height={24}
+                            className="w-6 h-6 rounded-full"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        )}
+                        <span>By {pin.displayName}</span>
+                      </div>
+                    )}
+                    <time className="text-muted-foreground">
+                      {new Date(pin.createdAt).toLocaleDateString()}
+                    </time>
+                  </footer>
+                </article>
+              ))}
+            </div>
           ) : (
             <div className="text-center py-12">
-              <div className="text-6xl mb-4">🗺️</div>
               <h2 className="text-2xl font-semibold mb-4">
                 No opinions yet in {locationName}
               </h2>
-              <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                Be the first to share your thoughts about locations in{" "}
-                {locationName}! Your opinion could help others discover amazing
-                places.
+              <p className="text-muted-foreground mb-8">
+                Be the first to share your thoughts!
               </p>
               <Link
                 href="/"
-                className="inline-block bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors"
+                className="inline-block bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors"
               >
-                🌟 Be the First to Share
+                Share Your Opinion
               </Link>
             </div>
           )}

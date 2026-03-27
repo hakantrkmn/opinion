@@ -1,33 +1,19 @@
-import { adminService } from "@/lib/supabase/admin";
+import { adminService } from "@/lib/services/adminService";
+import { checkAdminAuth } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
-
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
-
-async function checkAdminAuth(request: Request) {
-  try {
-    const userEmail = request.headers.get("x-user-email");
-    return userEmail === ADMIN_EMAIL;
-  } catch {
-    return false;
-  }
-}
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const isAdmin = await checkAdminAuth(request);
+    const isAdmin = await checkAdminAuth();
     if (!isAdmin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
-    const { error } = await adminService.deleteComment(id);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    await adminService.deleteComment(id);
 
     return NextResponse.json({ success: true });
   } catch (error) {

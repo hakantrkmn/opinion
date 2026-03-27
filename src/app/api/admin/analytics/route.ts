@@ -1,27 +1,10 @@
-import { adminService } from "@/lib/supabase/admin";
-import { NextRequest, NextResponse } from "next/server";
+import { adminService } from "@/lib/services/adminService";
+import { checkAdminAuth } from "@/lib/admin-auth";
+import { NextResponse } from "next/server";
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
-
-async function checkAdminAuth(request: NextRequest) {
+export async function GET() {
   try {
-    // Get email from request headers (sent by client)
-    const userEmail = request.headers.get("x-user-email");
-
-    if (!userEmail || userEmail !== ADMIN_EMAIL) {
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error("Auth check error:", error);
-    return false;
-  }
-}
-
-export async function GET(request: NextRequest) {
-  try {
-    const isAdmin = await checkAdminAuth(request);
+    const isAdmin = await checkAdminAuth();
     if (!isAdmin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

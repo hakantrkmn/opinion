@@ -33,29 +33,49 @@
 
 /* MapLibre Popup Customization */
 .maplibregl-popup {
-  border-radius: 12px !important;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.15),
+    0 8px 16px -4px rgba(0, 0, 0, 0.06) !important;
   border: none !important;
   overflow: hidden !important;
 }
 
 .maplibregl-popup-content {
   padding: 0 !important;
-  border-radius: 12px !important;
+  border-radius: 16px !important;
   box-shadow: none !important;
   border: none !important;
+  background: var(--background) !important;
+  color: var(--foreground) !important;
 }
 
 .maplibregl-popup-tip {
-  border-top-color: white !important;
-  border-width: 8px !important;
+  border-top-color: var(--background) !important;
+  border-width: 10px !important;
+}
+
+.maplibregl-popup-close-button {
+  display: none !important;
 }
 
 /* Custom popup class */
 .custom-popup .maplibregl-popup-content {
   background: transparent !important;
   box-shadow: none !important;
+}
+
+/* Pin pulse animation */
+@keyframes pin-pulse {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* Pin marker hover effect */
+.maplibregl-marker:hover {
+  z-index: 10 !important;
+}
+.maplibregl-marker:hover > div > div:first-child {
+  filter: brightness(1.1);
 }
 
 :root {
@@ -66,18 +86,18 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --primary: oklch(0.546 0.245 262.881);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  --muted-foreground: oklch(0.443 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: oklch(0.546 0.245 262.881);
 }
 
 .dark {
@@ -87,18 +107,18 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --primary: oklch(0.685 0.169 262.881);
+  --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
+  --muted-foreground: oklch(0.746 0 0);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: oklch(0.685 0.169 262.881);
 }
 
 @layer base {
@@ -126,6 +146,18 @@
 
   .pr-safe {
     padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

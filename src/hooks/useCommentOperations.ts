@@ -1,584 +1,190 @@
-import { pinQueryKeys } from "@/constants";
+import { queryKeys } from "@/lib/api/query-keys";
+import { useMapStore } from "@/store/map-store";
+import {
+  useAddComment,
+  useEditComment,
+  useDeleteComment,
+  useVoteComment,
+} from "@/hooks/mutations/use-comment-mutations";
+import type { Comment, EnhancedComment, Pin } from "@/types";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "@/hooks/useSession";
-import { HybridCacheManager } from "@/lib/hybrid-cache-manager";
-import { pinService } from "@/lib/supabase/database";
-import type { Comment, EnhancedComment, Pin, SelectedPin } from "@/types";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import React, { useCallback, useEffect, useMemo } from "react";
-import { toast } from "sonner";
+import { useCallback } from "react";
 
 interface UseCommentOperationsProps {
-  mapPins: Pin[];
-  commentsLoading: boolean;
-  setCommentsLoading: (loading: boolean) => void;
-  batchComments: { [pinId: string]: EnhancedComment[] };
-  setBatchComments: React.Dispatch<
-    React.SetStateAction<{ [pinId: string]: EnhancedComment[] }>
-  >;
-  selectedPin: SelectedPin;
-  setSelectedPin: React.Dispatch<React.SetStateAction<SelectedPin>>;
-  setShowPinDetailModal: (show: boolean) => void;
-  getPinComments: (
-    pinId: string,
-    forceRefresh?: boolean
-  ) => Promise<EnhancedComment[] | null>;
-  getBatchComments: (
-    pinIds: string[],
-    forceRefresh?: boolean
-  ) => Promise<{ [pinId: string]: EnhancedComment[] } | null>;
+  getPinComments: (pinId: string, forceRefresh?: boolean) => Promise<EnhancedComment[] | null>;
 }
 
 export const useCommentOperations = ({
-  mapPins,
-  commentsLoading,
-  setCommentsLoading,
-  batchComments,
-  setBatchComments,
-  selectedPin,
-  setSelectedPin,
-  setShowPinDetailModal,
   getPinComments,
-  getBatchComments,
 }: UseCommentOperationsProps) => {
-  const { user } = useSession();
   const queryClient = useQueryClient();
-  const hybridCache = useMemo(
-    () => new HybridCacheManager(queryClient),
+  const { user } = useSession();
+  const store = useMapStore();
+
+  const addMutation = useAddComment();
+  const editMutation = useEditComment();
+  const deleteMutation = useDeleteComment();
+  const voteMutation = useVoteComment();
+
+  const invalidatePinCommentsCache = useCallback(
+    (pinId: string) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.pins.comments(pinId) });
+    },
     [queryClient]
   );
 
-  // Comment mutations
-  const addCommentMutation = useMutation({
-    mutationFn: async ({
-      pinId,
-      text,
-      photoUrl,
-      photoMetadata,
-    }: {
-      pinId: string;
-      text: string;
-      photoUrl?: string;
-      photoMetadata?: Record<string, unknown>;
-    }) => {
-      const { comment, error } = await pinService.addComment(
-        pinId,
-        text,
-        user || undefined,
-        photoUrl,
-        photoMetadata
-      );
-      if (error) throw new Error(error);
-      return { comment, pinId };
-    },
-    onSuccess: ({ comment, pinId }) => {
-      if (comment) {
-        hybridCache.updateCommentCountInCache(pinId, 1);
-        queryClient.invalidateQueries({
-          queryKey: pinQueryKeys.comments(pinId),
-        });
-        queryClient.setQueriesData(
-          { queryKey: ["pins"] },
-          (oldData: Pin[] | undefined) => {
-            const existingPins = Array.isArray(oldData) ? oldData : [];
-            return existingPins.map((pin: Pin) =>
-              pin.id === pinId
-                ? { ...pin, comments_count: (pin.comments_count || 0) + 1 }
-                : pin
-            );
-          }
-        );
-        toast.success("Comment added successfully!");
-      }
-    },
-    onError: (error) => {
-      toast.error("Failed to add comment", { description: error.message });
-    },
-  });
-
-  const editCommentMutation = useMutation({
-    mutationFn: async ({
-      commentId,
-      newText,
-      photoUrl,
-      photoMetadata,
-    }: {
-      commentId: string;
-      newText: string;
-      photoUrl?: string | null;
-      photoMetadata?: Record<string, unknown>;
-    }) => {
-      const { success, error } = await pinService.updateComment(
-        commentId,
-        newText,
-        user || undefined,
-        photoUrl,
-        photoMetadata
-      );
-      if (error) throw new Error(error);
-      return success;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [...pinQueryKeys.all, "comments"],
-      });
-      toast.success("Comment updated successfully!");
-    },
-    onError: (error) => {
-      toast.error("Failed to update comment", { description: error.message });
-    },
-  });
-
-  const deleteCommentMutation = useMutation({
-    mutationFn: async (commentId: string) => {
-      const result = await pinService.deleteCommentWithCleanup(
-        commentId,
-        user || undefined
-      );
-      if (result.error) throw new Error(result.error);
-      return result;
-    },
-    onSuccess: ({ success, pinDeleted, pinId }) => {
-      console.log("deleteComment onSuccess called:", {
-        success,
-        pinDeleted,
-        pinId,
-      });
-      if (success && pinId) {
-        if (pinDeleted) {
-          hybridCache.deletePin(pinId);
-          queryClient.setQueriesData(
-            { queryKey: ["pins"] },
-            (oldData: Pin[] | undefined) => {
-              const existingPins = Array.isArray(oldData) ? oldData : [];
-              return existingPins.filter((pin: Pin) => pin.id !== pinId);
-            }
-          );
-          toast.success("Pin deleted after removing last comment");
-        } else {
-          queryClient.setQueriesData(
-            { queryKey: ["pins"] },
-            (oldData: Pin[] | undefined) => {
-              const existingPins = Array.isArray(oldData) ? oldData : [];
-              return existingPins.map((pin: Pin) =>
-                pin.id === pinId
-                  ? {
-                      ...pin,
-                      comments_count: Math.max(
-                        0,
-                        (pin.comments_count || 1) - 1
-                      ),
-                    }
-                  : pin
-              );
-            }
-          );
-          toast.success("Comment deleted successfully!");
-        }
-        queryClient.invalidateQueries({
-          queryKey: pinQueryKeys.comments(pinId),
-        });
-        hybridCache.invalidatePinComments(pinId);
-        queryClient.invalidateQueries({
-          queryKey: ["pins"],
-        });
-      }
-    },
-    onError: (error) => {
-      console.log("deleteCommentMutation", error);
-      toast.error("Failed to delete comment", { description: error.message });
-    },
-  });
-
-  const voteCommentMutation = useMutation({
-    mutationFn: async ({
-      commentId,
-      value,
-    }: {
-      commentId: string;
-      value: number;
-    }) => {
-      const { success, error } = await pinService.voteComment(
-        commentId,
-        value,
-        user || undefined
-      );
-      if (error) throw new Error(error);
-      return success;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [...pinQueryKeys.all, "comments"],
-      });
-    },
-    onError: (error) => {
-      toast.error("Failed to vote on comment", { description: error.message });
-    },
-  });
-
-  // Load comments for all visible pins using batch loading
-  const loadVisiblePinsComments = useCallback(
-    async (pinList?: Pin[]) => {
-      const pinsToLoad = pinList || mapPins;
-
-      if (pinsToLoad.length === 0) {
-        setBatchComments({});
-        return;
-      }
-
-      if (!getBatchComments) {
-        console.warn("getBatchComments not available, skipping batch loading");
-        return;
-      }
-
-      setCommentsLoading(true);
-
-      try {
-        console.log(
-          "🔄 Loading comments for",
-          pinsToLoad.length,
-          "visible pins using batch loading"
-        );
-
-        const pinIds = pinsToLoad.map((pin) => pin.id);
-        const comments = await getBatchComments(pinIds);
-
-        if (comments) {
-          setBatchComments(comments);
-          console.log(
-            "✅ Batch comments loaded successfully for",
-            Object.keys(comments).length,
-            "pins"
-          );
-        }
-      } catch (error) {
-        console.error("❌ Failed to load batch comments:", error);
-      } finally {
-        setCommentsLoading(false);
-      }
-    },
-    [mapPins, getBatchComments, setBatchComments, setCommentsLoading]
-  );
-
-  // Auto-load comments when pins change
-  useEffect(() => {
-    if (mapPins.length > 0 && !commentsLoading) {
-      const timeoutId = setTimeout(async () => {
-        console.log(
-          "🎆 Auto-loading batch comments for",
-          mapPins.length,
-          "visible pins"
-        );
-        const startTime = performance.now();
-
-        try {
-          await loadVisiblePinsComments();
-          const endTime = performance.now();
-          const duration = endTime - startTime;
-          console.log(
-            "✅ Batch comment loading completed in",
-            duration.toFixed(2),
-            "ms"
-          );
-
-          const individualEstimate = mapPins.length * 50;
-          const improvement = (
-            ((individualEstimate - duration) / individualEstimate) *
-            100
-          ).toFixed(1);
-          console.log(
-            "📊 Performance improvement: ~" +
-              improvement +
-              "% faster than individual loading"
-          );
-        } catch (error) {
-          console.error("❌ Error in batch comment loading:", error);
-        }
-      }, 500);
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [mapPins, loadVisiblePinsComments, getBatchComments, commentsLoading]);
-
-  // Invalidate pin comments cache function
-  const invalidatePinCommentsCache = useCallback(
-    async (pinId: string) => {
-      try {
-        queryClient.invalidateQueries({ queryKey: ["pins"] });
-
-        setBatchComments((prev) => {
-          const updated = { ...prev };
-          delete updated[pinId];
-          return updated;
-        });
-
-        console.log("✅ Pin comments cache invalidated for pin:", pinId);
-      } catch (error) {
-        console.error("❌ Failed to invalidate pin comments cache:", error);
-      }
-    },
-    [queryClient, setBatchComments]
-  );
-
-  // Pin click handler (using batch comments)
   const handlePinClick = useCallback(
     async (pin: Pin) => {
+      // Show modal immediately with empty comments, then load
+      store.setSelectedPin({ pinId: pin.id, pinName: pin.name, comments: [] });
+      store.setShowPinDetailModal(true);
+      store.setCommentsLoading(true);
       try {
-        console.log("Pin clicked:", pin.name);
-
-        let commentsToShow = batchComments[pin.id] || [];
-
-        if (commentsToShow.length === 0 && getPinComments) {
-          console.log(
-            "No batch comments available, loading individually for pin:",
-            pin.id
-          );
-          const individualComments = await getPinComments(pin.id);
-          commentsToShow = individualComments || [];
-        } else if (commentsToShow.length > 0) {
-          console.log(
-            "Using batch-loaded comments for pin:",
-            pin.id,
-            commentsToShow.length,
-            "comments"
-          );
-        }
-
-        setSelectedPin({
-          pinId: pin.id,
-          pinName: pin.name,
-          comments: commentsToShow,
-        });
-        setShowPinDetailModal(true);
-      } catch (error) {
-        console.error("Error in handlePinClick:", error);
-        setSelectedPin({
-          pinId: pin.id,
-          pinName: pin.name,
-          comments: [],
-        });
-        setShowPinDetailModal(true);
+        const comments = (await getPinComments(pin.id)) || [];
+        store.setSelectedPin({ pinId: pin.id, pinName: pin.name, comments });
+      } finally {
+        store.setCommentsLoading(false);
       }
     },
-    [getPinComments, batchComments, setSelectedPin, setShowPinDetailModal]
+    [getPinComments, store]
   );
 
-  // Comment handlers that need selectedPin
+  // --- Mutation Handlers (work with selectedPin from store) ---
+
+  // Add comment: API call then single refetch to get server-generated fields (id, timestamps, etc.)
   const handleAddComment = useCallback(
-    async (
-      text: string,
-      photoUrl?: string,
-      photoMetadata?: Record<string, unknown>
-    ): Promise<boolean> => {
-      if (!selectedPin) return false;
-
+    async (text: string, photoUrl?: string, photoMetadata?: Record<string, unknown>): Promise<boolean> => {
+      const sp = store.selectedPin;
+      if (!sp) return false;
       try {
-        await addCommentMutation.mutateAsync({
-          pinId: selectedPin.pinId,
-          text,
-          photoUrl,
-          photoMetadata,
-        });
-
-        const updatedComments = await getPinComments(selectedPin.pinId, true);
-        if (updatedComments) {
-          if (updatedComments.length === 0) {
-            setShowPinDetailModal(false);
-            setSelectedPin(null);
-            return true;
-          }
-
-          setSelectedPin((prev: SelectedPin) =>
-            prev ? { ...prev, comments: updatedComments } : null
-          );
+        await addMutation.mutateAsync({ pinId: sp.pinId, text, photoUrl, photoMetadata });
+        // Single refetch needed — server generates id, timestamps, profile data
+        const updated = await getPinComments(sp.pinId, true);
+        if (updated) {
+          if (!updated.length) { store.setShowPinDetailModal(false); store.setSelectedPin(null); }
+          else store.setSelectedPin({ ...sp, comments: updated });
         }
-
         return true;
-      } catch (error) {
-        console.error("Yorum ekleme hatası:", error);
-        return false;
-      }
+      } catch { return false; }
     },
-    [
-      selectedPin,
-      addCommentMutation,
-      getPinComments,
-      setShowPinDetailModal,
-      setSelectedPin,
-    ]
+    [store, addMutation, getPinComments]
   );
 
+  // Edit comment: API call then local state update (we know what changed)
   const handleEditComment = useCallback(
-    async (
-      commentId: string,
-      newText: string,
-      photoUrl?: string | null,
-      photoMetadata?: Record<string, unknown>
-    ): Promise<boolean> => {
-      if (!selectedPin) return false;
-
+    async (commentId: string, newText: string, photoUrl?: string | null, photoMetadata?: Record<string, unknown>): Promise<boolean> => {
+      const sp = store.selectedPin;
+      if (!sp) return false;
       try {
-        await editCommentMutation.mutateAsync({
-          commentId,
-          newText,
-          photoUrl,
-          photoMetadata,
-        });
-
-        const updatedComments = await getPinComments(selectedPin.pinId, true);
-        if (updatedComments) {
-          if (updatedComments.length === 0) {
-            setShowPinDetailModal(false);
-            setSelectedPin(null);
-            return true;
-          }
-
-          setSelectedPin((prev: SelectedPin) =>
-            prev ? { ...prev, comments: updatedComments } : null
-          );
-        }
+        await editMutation.mutateAsync({ commentId, text: newText, pinId: sp.pinId, photoUrl, photoMetadata });
+        // Local update — only text and photo changed, no need to refetch
+        const updatedComments = sp.comments.map((c) =>
+          c.id === commentId
+            ? { ...c, text: newText, photo_url: photoUrl === null ? undefined : (photoUrl ?? c.photo_url) }
+            : c
+        );
+        store.setSelectedPin({ ...sp, comments: updatedComments });
         return true;
-      } catch (error) {
-        console.error("Yorum düzenleme hatası:", error);
-        return false;
-      }
+      } catch { return false; }
     },
-    [
-      selectedPin,
-      editCommentMutation,
-      getPinComments,
-      setShowPinDetailModal,
-      setSelectedPin,
-    ]
+    [store, editMutation]
   );
 
+  // Delete comment: API call then local state removal
   const handleDeleteComment = useCallback(
     async (commentId: string): Promise<boolean> => {
-      if (!selectedPin) return false;
-
+      const sp = store.selectedPin;
+      if (!sp) return false;
       try {
-        await deleteCommentMutation.mutateAsync(commentId);
-        console.log("handleDeleteComment success");
-
-        console.log("Updating selectedPin, removing commentId:", commentId);
-        setSelectedPin((prev: SelectedPin) => {
-          if (!prev) return null;
-          const filteredComments = prev.comments.filter(
-            (comment: Comment | EnhancedComment) => comment.id !== commentId
+        const result = await deleteMutation.mutateAsync({ commentId, pinId: sp.pinId });
+        if (result.pinDeleted) {
+          // Pin was auto-deleted, remove from pins cache
+          queryClient.setQueryData(queryKeys.pins.all, (old: Pin[] | undefined) =>
+            (old || []).filter((p) => p.id !== sp.pinId)
           );
-          if (filteredComments.length === 0) {
-            setShowPinDetailModal(false);
-            setSelectedPin(null);
-            return null;
-          }
-          return { ...prev, comments: filteredComments };
-        });
-
-        return true;
-      } catch (error) {
-        console.error("Yorum silme hatası:", error);
-        return false;
-      }
-    },
-    [selectedPin, deleteCommentMutation, setShowPinDetailModal, setSelectedPin]
-  );
-
-  const handleVoteComment = useCallback(
-    async (
-      commentId: string,
-      value: number,
-      pinId: string
-    ): Promise<boolean> => {
-      if (!selectedPin) return false;
-
-      try {
-        await voteCommentMutation.mutateAsync({ commentId, value });
-
-        const updatedComments = await getPinComments(pinId, true);
-        if (updatedComments) {
-          setSelectedPin((prev: SelectedPin) =>
-            prev ? { ...prev, comments: updatedComments } : null
-          );
+          store.setShowPinDetailModal(false);
+          store.setSelectedPin(null);
+        } else {
+          const filtered = sp.comments.filter((c: Comment | EnhancedComment) => c.id !== commentId);
+          if (!filtered.length) { store.setShowPinDetailModal(false); store.setSelectedPin(null); }
+          else store.setSelectedPin({ ...sp, comments: filtered });
         }
         return true;
-      } catch (error) {
-        console.error("Yorum oylama hatası:", error);
+      } catch { return false; }
+    },
+    [store, deleteMutation, queryClient]
+  );
+
+  // Vote comment: optimistic local update, no refetch
+  const handleVoteComment = useCallback(
+    async (commentId: string, value: number, pinId: string): Promise<boolean> => {
+      const sp = store.selectedPin;
+      if (!sp) return false;
+
+      const userId = user?.id;
+
+      // Save previous state for rollback
+      const previousComments = sp.comments;
+
+      // Optimistic update
+      const optimisticComments = sp.comments.map((c) => {
+        if (c.id !== commentId) return c;
+        const ec = c as EnhancedComment;
+
+        const oldVote = ec.user_vote || 0;
+        // Toggle: if same vote, remove it; otherwise set new value
+        const newVote = oldVote === value ? 0 : value;
+
+        // Calculate score delta
+        let likeDelta = 0;
+        let dislikeDelta = 0;
+
+        // Remove old vote effect
+        if (oldVote === 1) likeDelta--;
+        if (oldVote === -1) dislikeDelta--;
+
+        // Add new vote effect
+        if (newVote === 1) likeDelta++;
+        if (newVote === -1) dislikeDelta++;
+
+        // Update comment_votes array
+        const votes = (ec.comment_votes || []).filter((v) => v.user_id !== userId);
+        if (newVote !== 0 && userId) {
+          votes.push({ value: newVote, user_id: userId });
+        }
+
+        return {
+          ...ec,
+          user_vote: newVote,
+          likeCount: ec.likeCount + likeDelta,
+          dislikeCount: ec.dislikeCount + dislikeDelta,
+          netScore: ec.netScore + likeDelta - dislikeDelta,
+          comment_votes: votes,
+        };
+      });
+
+      store.setSelectedPin({ ...sp, comments: optimisticComments });
+
+      try {
+        await voteMutation.mutateAsync({ commentId, value, pinId });
+        return true;
+      } catch {
+        // Rollback on failure
+        store.setSelectedPin({ ...sp, comments: previousComments });
         return false;
       }
     },
-    [selectedPin, voteCommentMutation, getPinComments, setSelectedPin]
+    [store, voteMutation, user?.id]
   );
 
   return {
-    // Comment operations
-    addComment: async (
-      pinId: string,
-      text: string,
-      photoUrl?: string,
-      photoMetadata?: Record<string, unknown>
-    ) => {
-      try {
-        await addCommentMutation.mutateAsync({
-          pinId,
-          text,
-          photoUrl,
-          photoMetadata,
-        });
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    editComment: async (
-      commentId: string,
-      newText: string,
-      photoUrl?: string | null,
-      photoMetadata?: Record<string, unknown>
-    ) => {
-      try {
-        await editCommentMutation.mutateAsync({
-          commentId,
-          newText,
-          photoUrl,
-          photoMetadata,
-        });
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    deleteComment: async (commentId: string) => {
-      try {
-        await deleteCommentMutation.mutateAsync(commentId);
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    voteComment: async (commentId: string, value: number) => {
-      try {
-        await voteCommentMutation.mutateAsync({ commentId, value });
-        return true;
-      } catch {
-        return false;
-      }
-    },
-
-    // Batch operations
-    loadVisiblePinsComments,
     invalidatePinCommentsCache,
     handlePinClick,
-
-    // Handlers with selectedPin context
     handleAddComment,
     handleEditComment,
     handleDeleteComment,
     handleVoteComment,
-
-    // Loading states
-    loading:
-      addCommentMutation.isPending ||
-      editCommentMutation.isPending ||
-      deleteCommentMutation.isPending ||
-      voteCommentMutation.isPending,
+    loading: addMutation.isPending || editMutation.isPending || deleteMutation.isPending || voteMutation.isPending,
   };
 };

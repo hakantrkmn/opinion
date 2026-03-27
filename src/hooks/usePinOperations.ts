@@ -1,452 +1,231 @@
-import {
-  generatePinElementHTML,
-  generatePinPopupHTML,
-} from "@/components/pin/PinMarker";
-import {
-  MIN_ZOOM_LEVEL,
-  pinQueryKeys,
-  USER_LOCATION_CIRCLE_RADIUS,
-} from "@/constants";
+import { MIN_ZOOM_LEVEL, USER_LOCATION_CIRCLE_RADIUS } from "@/constants";
 import { useSession } from "@/hooks/useSession";
-import { HybridCacheManager } from "@/lib/hybrid-cache-manager";
-import { pinService } from "@/lib/supabase/database";
+import { useCreatePin, useDeletePin } from "@/hooks/mutations/use-pin-mutations";
+import { apiClient } from "@/lib/api/client";
+import { queryKeys } from "@/lib/api/query-keys";
+import { useMapStore } from "@/store/map-store";
 import { locationService } from "@/services/locationService";
-import type {
-  CreatePinData,
-  EnhancedComment,
-  MapBounds,
-  Pin,
-  SelectedPin,
-} from "@/types";
-import { parseLocation } from "@/utils/mapUtils";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import maplibregl from "maplibre-gl";
-import { useCallback, useMemo, useRef } from "react";
+import type { Comment, CreatePinData, EnhancedComment, MapBounds, Pin } from "@/types";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type maplibregl from "maplibre-gl";
+import { useCallback, useRef } from "react";
 import { toast } from "sonner";
+
 interface UsePinOperationsProps {
   map: React.MutableRefObject<maplibregl.Map | null>;
-  tempPin: [number, number] | null;
-  setTempPin: (pin: [number, number] | null) => void;
-  setShowPinModal: (show: boolean) => void;
-  setSelectedPin: React.Dispatch<React.SetStateAction<SelectedPin>>;
-  setShowPinDetailModal: (show: boolean) => void;
-  selectedPin: SelectedPin;
 }
 
-export const usePinOperations = ({
-  map,
-  tempPin,
-  setTempPin,
-  setShowPinModal,
-  setSelectedPin,
-  setShowPinDetailModal,
-  selectedPin,
-}: UsePinOperationsProps) => {
+// Shared enrichment utility
+function enrichComments(comments: Comment[], userId?: string): EnhancedComment[] {
+  return comments.map((c) => ({
+    ...c,
+    netScore:
+      (c.comment_votes?.filter((v) => v.value === 1).length || 0) -
+      (c.comment_votes?.filter((v) => v.value === -1).length || 0),
+    likeCount: c.comment_votes?.filter((v) => v.value === 1).length || 0,
+    dislikeCount: c.comment_votes?.filter((v) => v.value === -1).length || 0,
+    user_vote: c.comment_votes?.find((v) => v.user_id === userId)?.value || 0,
+  }));
+}
+
+export const usePinOperations = ({ map }: UsePinOperationsProps) => {
   const { user } = useSession();
   const queryClient = useQueryClient();
-  const hybridCache = useMemo(
-    () => new HybridCacheManager(queryClient),
+  const createPinMutation = useCreatePin();
+  const deletePinMutation = useDeletePin();
+  const store = useMapStore();
+
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastToastTimeRef = useRef<number>(0);
+
+  // Reactive pins cache
+  const { data: allPins = [] } = useQuery({
+    queryKey: queryKeys.pins.all,
+    queryFn: () => [] as Pin[],
+    initialData: [] as Pin[],
+    staleTime: Infinity,
+  });
+
+  // --- Pin Loading ---
+  const loadPins = useCallback(
+    async (bounds: MapBounds, zoom: number, forceRefresh = false) => {
+      const params = new URLSearchParams({
+        minLat: String(bounds.minLat),
+        maxLat: String(bounds.maxLat),
+        minLng: String(bounds.minLng),
+        maxLng: String(bounds.maxLng),
+      });
+      const data = await queryClient.fetchQuery({
+        queryKey: queryKeys.pins.bounds(bounds, zoom),
+        queryFn: () => apiClient<{ pins: Pin[] }>(`/api/pins?${params}`),
+        staleTime: forceRefresh ? 0 : 5 * 60 * 1000,
+      });
+      const pins = data.pins || [];
+      queryClient.setQueryData(queryKeys.pins.all, (old: Pin[] | undefined) => {
+        const existing = Array.isArray(old) ? old : [];
+        const ids = new Set(existing.map((p) => p.id));
+        return [...existing, ...pins.filter((p) => !ids.has(p.id))];
+      });
+      return pins;
+    },
     [queryClient]
   );
 
-  // Debounced loading to prevent too many requests
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastToastTimeRef = useRef<number>(0);
-  const TOAST_THROTTLE_MS = 5000;
-
-  // Get pins from main cache
-  const { data: allPins = [] } = useQuery({
-    queryKey: pinQueryKeys.all,
-    queryFn: () => [] as Pin[],
-    enabled: false,
-  });
-
-  // Pin creation mutation
-  const createPinMutation = useMutation({
-    mutationFn: async (data: CreatePinData) => {
-      const { pin, error } = await pinService.createPin(
-        data,
-        user || undefined
-      );
-      if (error) throw new Error(error);
-      return pin;
-    },
-    onSuccess: (newPin) => {
-      if (newPin) {
-        const pinWithCorrectCount = { ...newPin, comment_count: 1 };
-        hybridCache.cachePin(pinWithCorrectCount);
-
-        queryClient.setQueriesData(
-          { queryKey: ["pins"] },
-          (oldData: Pin[] | undefined) => {
-            const existingPins = Array.isArray(oldData) ? oldData : [];
-            return [pinWithCorrectCount, ...existingPins];
-          }
-        );
-
-        queryClient.invalidateQueries({ queryKey: ["pins", "bounds"] });
-        toast.success("Pin created successfully!");
-      }
-    },
-    onError: (error) => {
-      toast.error("Failed to create pin", { description: error.message });
-    },
-  });
-
-  // Pin deletion mutation
-  const deletePinMutation = useMutation({
-    mutationFn: async (pinId: string) => {
-      const { success, error } = await pinService.deletePin(
-        pinId,
-        user || undefined
-      );
-      if (error) throw new Error(error);
-      return success;
-    },
-    onSuccess: (_, pinId) => {
-      hybridCache.deletePin(pinId);
-      queryClient.setQueriesData(
-        { queryKey: ["pins"] },
-        (oldData: Pin[] | undefined) => {
-          const existingPins = Array.isArray(oldData) ? oldData : [];
-          return existingPins.filter((pin) => pin.id !== pinId);
-        }
-      );
-      toast.success("Pin deleted successfully!");
-    },
-    onError: (error) => {
-      toast.error("Failed to delete pin", { description: error.message });
-    },
-  });
-
-  // Load pins with hybrid cache strategy
-  const loadPins = useCallback(
-    async (bounds: MapBounds, zoom: number, forceRefresh = false) => {
-      return await hybridCache.loadPins(bounds, zoom, forceRefresh);
-    },
-    [hybridCache]
-  );
-
-  // Get pin comments
-  const getPinComments = useCallback(
-    async (
-      pinId: string,
-      forceRefresh = false
-    ): Promise<EnhancedComment[] | null> => {
-      return await hybridCache.getPinComments(pinId, forceRefresh, user);
-    },
-    [user, hybridCache]
-  );
-
-  // Get batch comments for multiple pins
-  const getBatchComments = useCallback(
-    async (
-      pinIds: string[],
-      forceRefresh = false
-    ): Promise<{ [pinId: string]: EnhancedComment[] } | null> => {
-      return await hybridCache.getBatchComments(pinIds, forceRefresh, user);
-    },
-    [user, hybridCache]
-  );
-
-  // Long press callback
-  const onLongPress = useCallback(
-    async (e: React.SyntheticEvent) => {
-      if (!map.current) return;
-      const nativeEvent = e.nativeEvent as PointerEvent;
-      const rect = map.current.getContainer().getBoundingClientRect();
-      const x = nativeEvent.clientX - rect.left;
-      const y = nativeEvent.clientY - rect.top;
-
-      const lngLat = map.current.unproject([x, y]);
-
-      if (true) {
-        console.log("Location permission is granted");
-
-        // Check if the pin location is within the 50-meter circle
-        const isInCircle = await locationService.isLocationInCircle(
-          lngLat.lat,
-          lngLat.lng
-        );
-        console.log("Pin location in circle:", isInCircle);
-
-        if (isInCircle === null) {
-          toast.error(
-            "User location not available make sure you have location permission"
-          );
-          return;
-        }
-
-        if (isInCircle) {
-          setTempPin([lngLat.lng, lngLat.lat]);
-          setShowPinModal(true);
-        } else {
-          toast.error(
-            `Pin must be within ${USER_LOCATION_CIRCLE_RADIUS} meters of your location`,
-            {
-              description:
-                "Please move closer to your location or choose a different spot",
-            }
-          );
-        }
-      } else {
-        toast.error("Location permission is not granted");
-      }
-    },
-    [map, setTempPin, setShowPinModal]
-  );
-
-  // Create pin
-  const createPin = useCallback(
-    async (data: {
-      pinName: string;
-      comment: string;
-      photo?: File;
-      photoMetadata?: {
-        file_size: number;
-        width?: number;
-        height?: number;
-        format: string;
-      };
-    }) => {
-      if (!tempPin) {
-        console.error("Temp pin not found");
-        return;
-      }
-
-      try {
-        const createPinData: CreatePinData = {
-          lat: tempPin[1],
-          lng: tempPin[0],
-          pinName: data.pinName,
-          comment: data.comment,
-          photo: data.photo,
-          photoMetadata: data.photoMetadata,
-        };
-
-        await createPinMutation.mutateAsync(createPinData);
-        setShowPinModal(false);
-        setTempPin(null);
-        loadPinsFromMapWithCache(true);
-        console.log("Pin ve ilk yorum başarıyla oluşturuldu!");
-      } catch (error) {
-        console.error("Pin oluşturma hatası:", error);
-      }
-    },
-    [tempPin, createPinMutation, setShowPinModal, setTempPin]
-  );
-
-  // Load pins from map with cache
   const loadPinsFromMapWithCache = useCallback(
     (forceRefresh = false) => {
       if (!map.current) return;
+      if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
 
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
+      loadingTimeoutRef.current = setTimeout(
+        async () => {
+          if (!map.current) return;
+          const bounds = map.current.getBounds();
+          const zoom = Math.floor(map.current.getZoom());
 
-      const delay = forceRefresh ? 0 : 300;
-
-      loadingTimeoutRef.current = setTimeout(async () => {
-        if (!map.current) return;
-
-        const bounds = map.current.getBounds();
-        const zoom = Math.floor(map.current.getZoom());
-
-        if (zoom < MIN_ZOOM_LEVEL && !forceRefresh) {
-          console.log(
-            `Zoom level ${zoom} is below minimum ${MIN_ZOOM_LEVEL}, skipping pin fetch`
-          );
-
-          const now = Date.now();
-          if (now - lastToastTimeRef.current > TOAST_THROTTLE_MS) {
-            toast.info("Zoom in closer to see pins", {
-              description: `Zoom to level ${MIN_ZOOM_LEVEL} or higher to load pins`,
-              duration: 3000,
-            });
-            lastToastTimeRef.current = now;
+          if (zoom < MIN_ZOOM_LEVEL && !forceRefresh) {
+            const now = Date.now();
+            if (now - lastToastTimeRef.current > 5000) {
+              toast.info(`Zoom to level ${MIN_ZOOM_LEVEL} or higher to load pins`, { duration: 3000 });
+              lastToastTimeRef.current = now;
+            }
+            return;
           }
-          return;
-        }
 
-        const latDiff = bounds.getNorth() - bounds.getSouth();
-        const lngDiff = bounds.getEast() - bounds.getWest();
-        const expansion = 0.2;
-
-        const mapBounds: MapBounds = {
-          minLat: bounds.getSouth() - latDiff * expansion,
-          maxLat: bounds.getNorth() + latDiff * expansion,
-          minLng: bounds.getWest() - lngDiff * expansion,
-          maxLng: bounds.getEast() + lngDiff * expansion,
-        };
-
-        console.log("Loading pins for bounds:", mapBounds, "zoom:", zoom);
-        await loadPins(mapBounds, zoom, forceRefresh);
-      }, delay);
+          const latD = bounds.getNorth() - bounds.getSouth();
+          const lngD = bounds.getEast() - bounds.getWest();
+          await loadPins(
+            {
+              minLat: bounds.getSouth() - latD * 0.2,
+              maxLat: bounds.getNorth() + latD * 0.2,
+              minLng: bounds.getWest() - lngD * 0.2,
+              maxLng: bounds.getEast() + lngD * 0.2,
+            },
+            zoom,
+            forceRefresh
+          );
+        },
+        forceRefresh ? 0 : 300
+      );
     },
     [map, loadPins]
   );
 
-  // Refresh pins
-  const refreshPins = useCallback(() => {
-    loadPinsFromMapWithCache(true);
-  }, [loadPinsFromMapWithCache]);
-
-  // Clear map pins
-  const clearMapPins = useCallback(() => {
-    if (!map.current) return;
-
-    const markers = document.querySelectorAll(".pin-marker");
-    markers.forEach((marker) => {
-      const parent = marker.closest(".maplibregl-marker");
-      if (parent) {
-        parent.remove();
-      }
-    });
-  }, [map]);
-
-  // Show pin popup
-  const showPinPopup = useCallback(
-    async (pin: Pin) => {
-      if (!map.current) return;
-      // remove all popups
-      const popups = document.querySelectorAll(".maplibregl-popup");
-      popups.forEach((popup) => popup.remove());
-
-      const [lng, lat] = parseLocation(pin.location);
-      const popupContent = generatePinPopupHTML(pin);
-
-      const popup = new maplibregl.Popup({
-        closeButton: false,
-        closeOnClick: false,
-        maxWidth: "350px",
-        className: "custom-popup",
-      })
-        .setLngLat([lng, lat])
-        .setHTML(popupContent)
-        .addTo(map.current);
-
-      setTimeout(() => {
-        const popupElement = document.getElementById("pin-popup");
-        if (popupElement) {
-          popupElement.addEventListener("click", async (e) => {
-            e.stopPropagation();
-
-            const comments = await getPinComments(pin.id);
-
-            if (comments) {
-              if (comments.length === 0) {
-                popup.remove();
-                return;
-              }
-
-              setSelectedPin({
-                pinId: pin.id,
-                pinName: pin.name,
-                comments,
-              });
-              console.log("Showing pin popup:", selectedPin);
-
-              setShowPinDetailModal(true);
-              popup.remove();
-            }
-          });
+  // --- Comment Fetching ---
+  const getPinComments = useCallback(
+    async (pinId: string, forceRefresh = false): Promise<EnhancedComment[] | null> => {
+      try {
+        const data = await queryClient.fetchQuery({
+          queryKey: queryKeys.pins.comments(pinId),
+          queryFn: () => apiClient<{ comments: Comment[]; error?: string }>(`/api/pins/${pinId}/comments`),
+          staleTime: forceRefresh ? 0 : 2 * 60 * 1000,
+        });
+        if (data.error === "PIN_AUTO_DELETED") {
+          queryClient.invalidateQueries({ queryKey: queryKeys.pins.all });
+          return [];
         }
-      }, 100);
-
-      const handleMapClick = () => {
-        popup.remove();
-        map.current?.off("click", handleMapClick);
-      };
-
-      map.current.on("click", handleMapClick);
+        return enrichComments(data.comments || [], user?.id);
+      } catch {
+        return null;
+      }
     },
-    [map, getPinComments, setSelectedPin, setShowPinDetailModal]
+    [queryClient, user?.id]
   );
 
-  // Add pin to map
-  const addPinToMap = useCallback(
-    (pin: Pin) => {
-      console.log("Adding pin to map:", pin.name);
-      if (!map.current) return;
-
-      const [lng, lat] = parseLocation(pin.location);
-
-      const pinElement = document.createElement("div");
-      pinElement.className = "pin-marker";
-      pinElement.innerHTML = generatePinElementHTML(pin);
-
-      new maplibregl.Marker({
-        element: pinElement,
-        anchor: "bottom",
-      })
-        .setLngLat([lng, lat])
-        .addTo(map.current);
-
-      pinElement.addEventListener("click", (e) => {
-        e.stopPropagation();
-        showPinPopup(pin);
-      });
+  const getBatchComments = useCallback(
+    async (pinIds: string[], forceRefresh = false): Promise<{ [pinId: string]: EnhancedComment[] } | null> => {
+      if (!pinIds.length) return {};
+      try {
+        const data = await queryClient.fetchQuery({
+          queryKey: queryKeys.pins.batchComments(pinIds),
+          queryFn: () =>
+            apiClient<{ comments: { [id: string]: Comment[] } }>("/api/pins/comments/batch", {
+              method: "POST",
+              body: JSON.stringify({ pinIds }),
+            }),
+          staleTime: forceRefresh ? 0 : 2 * 60 * 1000,
+        });
+        const result: { [id: string]: EnhancedComment[] } = {};
+        for (const [pid, cmts] of Object.entries(data.comments || {})) {
+          result[pid] = enrichComments(cmts, user?.id);
+        }
+        return result;
+      } catch {
+        return null;
+      }
     },
-    [map, showPinPopup]
+    [queryClient, user?.id]
   );
 
-  // Add pins to map
-  const addPinsToMap = useCallback(
-    (pins: Pin[]) => {
-      console.log("Adding pins to map:", pins.length);
-      if (!map.current) return;
+  // --- Map Rendering ---
+  const clearMapPins = useCallback(() => {
+    document.querySelectorAll(".pin-marker").forEach((m) => {
+      m.closest(".maplibregl-marker")?.remove();
+    });
+  }, []);
 
-      clearMapPins();
-      pins.forEach((pin) => {
-        addPinToMap(pin);
-      });
+
+  // --- Pin Creation ---
+  const onLongPress = useCallback(
+    async (e: React.SyntheticEvent) => {
+      if (!map.current) return;
+      const ne = e.nativeEvent as PointerEvent;
+      const rect = map.current.getContainer().getBoundingClientRect();
+      const lngLat = map.current.unproject([ne.clientX - rect.left, ne.clientY - rect.top]);
+
+      const inCircle = await locationService.isLocationInCircle(lngLat.lat, lngLat.lng);
+      if (inCircle === null) { toast.error("User location not available"); return; }
+      if (!inCircle) {
+        toast.error(`Pin must be within ${USER_LOCATION_CIRCLE_RADIUS}m of your location`);
+        return;
+      }
+      store.setTempPin([lngLat.lng, lngLat.lat]);
+      store.setShowPinModal(true);
     },
-    [map, clearMapPins, addPinToMap]
+    [map, store]
+  );
+
+  const createPin = useCallback(
+    async (data: { pinName: string; comment: string; photo?: File; photoMetadata?: { file_size: number; width?: number; height?: number; format: string } }) => {
+      const tp = store.tempPin;
+      if (!tp) return;
+      try {
+        await createPinMutation.mutateAsync({ lat: tp[1], lng: tp[0], pinName: data.pinName, comment: data.comment, photo: data.photo, photoMetadata: data.photoMetadata });
+        store.setShowPinModal(false);
+        store.setTempPin(null);
+        loadPinsFromMapWithCache(true);
+      } catch (err) {
+        console.error("Pin creation error:", err);
+      }
+    },
+    [store, createPinMutation, loadPinsFromMapWithCache]
   );
 
   return {
-    // State
     pins: allPins,
     loading: createPinMutation.isPending || deletePinMutation.isPending,
-
-    // Pin operations
     onLongPress,
     createPin,
     createPinFromData: async (data: CreatePinData) => {
       try {
-        await createPinMutation.mutateAsync(data);
+        const pin = await createPinMutation.mutateAsync(data);
+        queryClient.setQueryData(queryKeys.pins.all, (old: Pin[] | undefined) => [...(old || []), pin]);
         return true;
-      } catch {
-        return false;
-      }
+      } catch { return false; }
     },
     deletePin: async (pinId: string) => {
       try {
         await deletePinMutation.mutateAsync(pinId);
+        queryClient.setQueryData(queryKeys.pins.all, (old: Pin[] | undefined) => (old || []).filter((p) => p.id !== pinId));
         return true;
-      } catch {
-        return false;
-      }
+      } catch { return false; }
     },
     loadPins,
     loadPinsFromMapWithCache,
-    refreshPins,
+    refreshPins: () => loadPinsFromMapWithCache(true),
     clearMapPins,
-    showPinPopup,
-    addPinToMap,
-    addPinsToMap,
-
-    // Comments
     getPinComments,
     getBatchComments,
-
-    // Cache management
-    invalidateCache: () => {
-      queryClient.invalidateQueries({ queryKey: ["pins"] });
-    },
-
-    // Refs and helpers
+    invalidateCache: () => queryClient.invalidateQueries({ queryKey: queryKeys.pins.all }),
     loadingTimeoutRef,
   };
 };

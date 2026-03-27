@@ -3,7 +3,6 @@
 import { USER_LOCATION_CIRCLE_RADIUS } from "@/constants/mapConstants";
 import { useMap } from "@/hooks/useMap";
 
-import Image from "next/image";
 import { useEffect } from "react";
 import { RefreshButton } from "../common/RefreshButton";
 import PinDetailModal from "../pin/PinDetailModal";
@@ -46,16 +45,13 @@ export default function Map({ initialCoordinates }: MapProps) {
     user, // User'ı ekleyelim
     map,
     mapPins,
-    showPinPopup, // Add showPinPopup for popup flow
+    handlePinClick,
     refreshPins,
-    invalidatePinCommentsCache, // Add cache invalidation
+    invalidatePinCommentsCache,
     isRefreshing,
     getPinComments,
     currentZoom,
-    // New batch comment features
-    setBatchComments,
     commentsLoading,
-    loadVisiblePinsComments,
   } = useMap(initialCoordinates);
 
   //just work once on mount
@@ -70,7 +66,7 @@ export default function Map({ initialCoordinates }: MapProps) {
     <div className="relative w-full h-full">
       <div
         ref={mapContainer}
-        className="w-full h-full min-h-[600px]"
+        className="w-full h-full min-h-dvh"
         {...longPressBind()}
       />
 
@@ -85,60 +81,38 @@ export default function Map({ initialCoordinates }: MapProps) {
       />
 
       {/* Loading Indicators */}
-      {(pinsLoading || commentsLoading || isLoading) && (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border z-60]">
+      {(pinsLoading || isLoading) && (
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border z-[60]">
           <div className="flex items-center space-x-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
             <span className="text-sm text-foreground">
-              {isLoading
-                ? "Getting location..."
-                : pinsLoading && commentsLoading
-                ? "Loading pins & comments..."
-                : pinsLoading
-                ? "Loading pins..."
-                : "Loading comments..."}
+              {isLoading ? "Getting location..." : "Loading pins..."}
             </span>
           </div>
         </div>
       )}
 
-      {/* Desktop Controls */}
+      {/* Map Controls - Top Right */}
+      <div className="fixed top-20 right-4 z-30 flex flex-col gap-1.5">
+        <ThemeToggle isMobile={false} />
+        <LocationButton
+          userLocation={userLocation}
+          locationPermission={locationPermission}
+          onGetLocation={getUserLocation}
+          onGoToLocation={goToUserLocation}
+          isMobile={false}
+        />
+      </div>
+
+      {/* Map Style Toggle - Bottom Right */}
       <div className="hidden sm:block">
-        {/* Map Style Toggle Buttons - Bottom Right */}
         <MapStyleToggle
           currentStyle={currentStyle}
           onStyleChange={changeMapStyle}
           isMobile={false}
         />
-
-        {/* Theme and Location Buttons - Top Right (Fixed positioning like refresh button) */}
-        <div className="fixed top-20 right-4 z-30 flex flex-row gap-2">
-          <ThemeToggle isMobile={false} />
-          <LocationButton
-            userLocation={userLocation}
-            locationPermission={locationPermission}
-            onGetLocation={getUserLocation}
-            onGoToLocation={goToUserLocation}
-            isMobile={false}
-          />
-        </div>
       </div>
-
-      {/* Mobile Controls */}
       <div className="sm:hidden">
-        {/* Theme and Location Buttons - Top Right (Fixed positioning like refresh button) */}
-        <div className="fixed top-20 right-4 z-30 flex flex-row gap-2">
-          <ThemeToggle isMobile={true} />
-          <LocationButton
-            userLocation={userLocation}
-            locationPermission={locationPermission}
-            onGetLocation={getUserLocation}
-            onGoToLocation={goToUserLocation}
-            isMobile={true}
-          />
-        </div>
-
-        {/* Map Style Toggle - Bottom Right with Safari URL bar safe margin */}
         <MapStyleToggle
           currentStyle={currentStyle}
           onStyleChange={changeMapStyle}
@@ -185,42 +159,23 @@ export default function Map({ initialCoordinates }: MapProps) {
               onDeleteComment={handleDeleteComment}
               onVoteComment={handleVoteComment}
               currentUserId={user?.id || ""}
-              loading={pinsLoading}
+              loading={commentsLoading}
               onRefresh={async () => {
-                // Refresh pin comments and update all related caches
                 if (selectedPin) {
                   try {
-                    const pinId = selectedPin.pinId;
+                    // Invalidate comment cache so getPinComments fetches fresh
+                    invalidatePinCommentsCache(selectedPin.pinId);
 
-                    // First invalidate caches to ensure fresh data
-                    await invalidatePinCommentsCache(pinId);
-
-                    const comments = await getPinComments(
-                      selectedPin.pinId,
-                      true
-                    ); // Force fresh data
+                    const comments = await getPinComments(selectedPin.pinId, true);
                     if (comments) {
-                      // Check if pin was auto-deleted
-                      if (comments.length === 0) {
-                        // Pin was auto-deleted, close modal
+                      if (!comments.length) {
                         setShowPinDetailModal(false);
                         setSelectedPin(null);
                         return;
                       }
-
-                      // Update selected pin state
                       setSelectedPin((prev) =>
                         prev ? { ...prev, comments } : null
                       );
-
-                      // Update batch comments cache for this pin with fresh data
-                      setBatchComments((prev) => ({
-                        ...prev,
-                        [selectedPin.pinId]: comments,
-                      }));
-
-                      // Force refresh of visible pins comments to ensure cache consistency
-                      loadVisiblePinsComments();
                     }
                   } catch (error) {
                     console.error("Failed to refresh comments:", error);
@@ -236,8 +191,8 @@ export default function Map({ initialCoordinates }: MapProps) {
         <PinMarker
           key={pin.id}
           pin={pin}
-          map={map.current} // ✅ map.current kullanın (maplibregl.Map instance'ı)
-          onPinClick={() => showPinPopup(pin)} // Use showPinPopup to restore popup flow
+          map={map.current}
+          onPopupClick={handlePinClick}
         />
       ))}
 
@@ -250,18 +205,19 @@ export default function Map({ initialCoordinates }: MapProps) {
       />
 
       {/* Buy Me a Coffee Button - Bottom Left */}
-      <div className="fixed bottom-16 left-4 z-[9999] pb-safe">
+      <div className="fixed bottom-16 left-4 z-[50] pb-safe">
         <a
           href="https://www.buymeacoffee.com/hakantrkmndev"
           target="_blank"
           rel="noopener noreferrer"
         >
-          <Image
+          <img
             src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png"
             alt="Buy Me A Coffee"
             height={30}
             width={108}
             loading="lazy"
+            decoding="async"
             style={{ height: "30px", width: "108px" }}
           />
         </a>

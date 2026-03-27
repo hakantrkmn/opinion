@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Crosshair, Loader2, Lock, Navigation } from "lucide-react";
 
 interface LocationButtonProps {
   userLocation: [number, number] | null;
@@ -35,53 +35,34 @@ export const LocationButton = ({
     }
   };
 
-  const getButtonIcon = () => {
-    if (userLocation) {
-      return "📍";
-    } else if (locationPermission === "denied") {
-      return "🔒";
-    } else {
-      return "🎯";
-    }
-  };
-
   const isDisabled = locationPermission === "loading";
+  const isDenied = locationPermission === "denied";
+  const hasLocation = !!userLocation;
 
-  if (isMobile) {
-    return (
-      <Button
-        onClick={handleClick}
-        variant="outline"
-        size="icon"
-        className="shadow-lg flex-shrink-0 !bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:hover:bg-background transition-all duration-200"
-        title={getButtonTitle()}
-        disabled={isDisabled}
-      >
-        {locationPermission === "loading" ? (
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-        ) : (
-          <span className="text-base">{getButtonIcon()}</span>
-        )}
-      </Button>
-    );
-  }
+  const size = isMobile ? "h-10 w-10" : "h-9 w-9";
 
   return (
-    <Button
+    <button
       onClick={handleClick}
-      variant="outline"
-      size="icon"
-      className="shadow-lg h-8 w-8 flex-shrink-0 !bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:hover:bg-background transition-all duration-200 hover:scale-105 disabled:hover:scale-100"
+      className={`${size} rounded-xl backdrop-blur-md border shadow-lg flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 ${
+        hasLocation
+          ? "bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/15 hover:border-blue-500/50"
+          : isDenied
+          ? "bg-background/90 border-red-500/30 hover:border-red-500/50"
+          : "bg-background/90 border-border/50 hover:border-border"
+      }`}
       title={getButtonTitle()}
       disabled={isDisabled}
     >
-      {locationPermission === "loading" ? (
-        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+      {isDisabled ? (
+        <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />
+      ) : hasLocation ? (
+        <Navigation className="h-4 w-4 text-blue-500 fill-blue-500/20" />
+      ) : isDenied ? (
+        <Lock className="h-4 w-4 text-red-400" />
       ) : (
-        <span className="transition-transform duration-200">
-          {getButtonIcon()}
-        </span>
+        <Crosshair className="h-4 w-4 text-muted-foreground" />
       )}
-    </Button>
+    </button>
   );
 };

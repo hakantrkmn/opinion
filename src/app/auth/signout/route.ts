@@ -1,15 +1,8 @@
-import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 export async function POST() {
-  const supabase = await createClient();
-
-  const { error } = await supabase.auth.signOut();
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
+  // Better Auth handles signout via the client SDK
+  // This route just redirects to /auth
   return NextResponse.redirect(
     new URL(
       "/auth",

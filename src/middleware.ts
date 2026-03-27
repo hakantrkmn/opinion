@@ -1,5 +1,8 @@
-import { createServerClient } from "@supabase/ssr";
+import { betterFetch } from "@better-fetch/fetch";
+import type { auth } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
+
+type Session = typeof auth.$Infer.Session;
 
 export async function middleware(request: NextRequest) {
   // Public routes - no auth required
@@ -10,7 +13,7 @@ export async function middleware(request: NextRequest) {
       request.nextUrl.pathname.startsWith(route)
   );
 
-  // Sitemap ve robots.txt için middleware bypass
+  // Bypass for static files and special routes
   if (
     request.nextUrl.pathname === "/sitemap.xml" ||
     request.nextUrl.pathname === "/robots.txt" ||
@@ -19,46 +22,25 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Public routes için auth kontrolü yapmadan geç
+  // Public routes don't need auth (except admin)
   if (isPublicRoute && !request.nextUrl.pathname.startsWith("/admin")) {
     return NextResponse.next();
   }
 
-  // Admin routes için auth kontrol et
+  // Protected routes: /admin, /profile
   if (
     request.nextUrl.pathname.startsWith("/admin") ||
     request.nextUrl.pathname.startsWith("/profile")
   ) {
-    let response = NextResponse.next({
-      request,
-    });
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    const { data: session } = await betterFetch<Session>(
+      "/api/auth/get-session",
       {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value }) =>
-              request.cookies.set(name, value)
-            );
-            response = NextResponse.next({
-              request,
-            });
-            cookiesToSet.forEach(({ name, value, options }) =>
-              response.cookies.set(name, value, options)
-            );
-          },
+        baseURL: request.nextUrl.origin,
+        headers: {
+          cookie: request.headers.get("cookie") || "",
         },
       }
     );
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
 
     if (!session) {
       const url = request.nextUrl.clone();
@@ -66,13 +48,12 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    return response;
+    return NextResponse.next();
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  // Auth, API routes ve static dosyalar için middleware çalışmasın
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/auth).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/auth|uploads).*)"],
 };

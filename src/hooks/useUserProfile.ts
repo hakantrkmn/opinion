@@ -1,114 +1,41 @@
 "use client";
 
-import { userService } from "@/lib/supabase/userService";
-import { UserStats } from "@/types";
-import { useQuery } from "@tanstack/react-query";
+import { useProfile, type UserProfile } from "@/hooks/queries/use-profile";
+import { apiClient } from "@/lib/api/client";
+import type { UserStats } from "@/types";
 import { useSession } from "./useSession";
 
-export interface UserProfile {
-  id: string;
-  email: string;
-  display_name?: string;
-  avatar_url?: string;
-  created_at: string;
-}
+export type { UserProfile };
 
 export function useUserProfile() {
-  const { user, signOut } = useSession();
+  const { user } = useSession();
 
   const {
     data: profile,
     isLoading,
     error,
     refetch,
-  } = useQuery({
-    queryKey: ["userProfile", user?.id],
-    queryFn: async (): Promise<UserProfile | null> => {
-      if (!user?.id) return null;
-
-      const { profile, error, isAuthError } = await userService.getUserProfile(
-        user.id
-      );
-
-      if (error) {
-        console.error("Failed to fetch user profile:", error);
-        console.log(
-          "🔍 Debug info - User session exists but profile fetch failed:",
-          {
-            userId: user.id,
-            userEmail: user.email,
-            errorType: typeof error,
-            errorMessage: error,
-            isAuthError,
-          }
-        );
-
-        // If this is a real authentication error, sign out the user
-        if (isAuthError) {
-          console.log("🚪 Authentication error detected, signing out user...");
-          // Delay signOut to avoid React state update conflicts
-          setTimeout(() => signOut(), 100);
-          return null;
-        }
-
-        // Database error but session is valid - return fallback profile
-        // Return basic profile from auth user if database fetch fails
-        return {
-          id: user.id,
-          email: user.email || "",
-          display_name: user.user_metadata?.display_name,
-          avatar_url: user.user_metadata?.avatar_url || undefined,
-          created_at: user.created_at || new Date().toISOString(),
-        };
-      }
-
-      // Ensure null avatar_url is converted to undefined for consistency
-      if (profile) {
-        return {
-          ...profile,
-          avatar_url: profile.avatar_url || undefined,
-        };
-      }
-
-      return profile;
-    },
-    enabled: !!user?.id, // Only run if user is logged in
-    staleTime: 5 * 60 * 1000, // 5 minutes cache
-    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection
-    retry: 1,
-  });
+  } = useProfile(user?.id);
 
   const updateProfile = (
     updates: Partial<Pick<UserProfile, "display_name" | "avatar_url">>
   ) => {
     if (!profile) return;
-
-    // Handle null avatar_url by converting to undefined
-    const sanitizedUpdates = {
-      ...updates,
-      avatar_url: updates.avatar_url === null ? undefined : updates.avatar_url,
-    };
-
-    // Update cache optimistically
-    const updatedProfile = { ...profile, ...sanitizedUpdates };
-
-    // Update the query cache
     refetch();
-
-    return updatedProfile;
+    return { ...profile, ...updates };
   };
+
   const getProfileFromDB = async (): Promise<{
     stats: UserStats;
     success: boolean;
   }> => {
-    if (!user?.id) throw new Error("User ID is required");
-    const result = await userService.getUserStatsWithPerformanceInfo(user.id);
+    const result = await apiClient<UserStats>("/api/profile/stats");
     return { stats: result, success: result.error === null };
   };
 
   return {
     getProfileFromDB,
-    profile,
+    profile: profile || null,
     isLoading,
     error,
     updateProfile,

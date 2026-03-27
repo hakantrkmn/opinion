@@ -3,23 +3,26 @@
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { userService } from "@/lib/supabase/userService";
-import type { User } from "@supabase/supabase-js";
-import { Camera, Loader2, Save, Trash2, X } from "lucide-react";
+import {
+  useUploadAvatar,
+  useDeleteAvatar,
+  useUpdateDisplayName,
+} from "@/hooks/mutations/use-profile-mutations";
+import { Camera, Loader2, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 interface EditProfileProps {
-  user: User;
+  user: { id: string; email: string; name?: string };
   isOpen: boolean;
   onClose: () => void;
   onProfileUpdate: (updates: {
@@ -35,13 +38,13 @@ export function EditProfile({
   onProfileUpdate,
 }: EditProfileProps) {
   const { profile } = useUserProfile();
+  const uploadAvatarMutation = useUploadAvatar();
+  const deleteAvatarMutation = useDeleteAvatar();
+  const updateNameMutation = useUpdateDisplayName();
+
   const [displayName, setDisplayName] = useState(profile?.display_name || "");
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
-  const [uploading, setUploading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
-  // Update state when profile data loads
   useEffect(() => {
     if (profile) {
       setDisplayName(profile.display_name || "");
@@ -49,7 +52,9 @@ export function EditProfile({
     }
   }, [profile]);
 
-  if (!isOpen) return null;
+  const uploading = uploadAvatarMutation.isPending;
+  const deleting = deleteAvatarMutation.isPending;
+  const saving = updateNameMutation.isPending;
 
   const handleAvatarUpload = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -57,101 +62,43 @@ export function EditProfile({
     const file = event.target.files?.[0];
     if (!file) return;
 
-    setUploading(true);
-    try {
-      const { avatarUrl: newAvatarUrl, error } = await userService.uploadAvatar(
-        user.id,
-        file
-      );
-
-      if (error) {
-        toast.error("Avatar upload failed", {
-          description: error,
-        });
-        return;
-      }
-
-      if (newAvatarUrl) {
-        setAvatarUrl(newAvatarUrl);
-        toast.success("Avatar uploaded successfully!");
-      }
-    } catch {
-      toast.error("Avatar upload failed", {
-        description: "An unexpected error occurred",
-      });
-    } finally {
-      setUploading(false);
-      // Clear the input so the same file can be selected again
-      event.target.value = "";
-    }
+    uploadAvatarMutation.mutate(file, {
+      onSuccess: (data) => {
+        setAvatarUrl(data.url);
+      },
+    });
+    event.target.value = "";
   };
 
-  const handleDeleteAvatar = async () => {
-    setDeleting(true);
-    try {
-      const { success, error } = await userService.deleteAvatar(user.id);
-
-      if (error) {
-        toast.error("Failed to delete avatar", {
-          description: error,
-        });
-        return;
-      }
-
-      if (success) {
+  const handleDeleteAvatar = () => {
+    deleteAvatarMutation.mutate(undefined, {
+      onSuccess: () => {
         setAvatarUrl("");
-        toast.success("Avatar deleted successfully!");
-      }
-    } catch {
-      toast.error("Failed to delete avatar", {
-        description: "An unexpected error occurred",
-      });
-    } finally {
-      setDeleting(false);
-    }
+      },
+    });
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      // Update display name if changed
-      const currentDisplayName = profile?.display_name || "";
+  const handleSave = () => {
+    const currentDisplayName = profile?.display_name || "";
 
-      let success = true;
-      let error = null;
-
-      if (displayName.trim() !== currentDisplayName) {
-        const result = await userService.updateDisplayName(
-          user.id,
-          displayName
-        );
-        if (!result.success) {
-          success = false;
-          error = result.error;
-        }
-      }
-
-      if (!success) {
-        toast.error("Failed to save changes", {
-          description: error,
-        });
-        return;
-      }
-
-      // Call parent's update handler
+    if (displayName.trim() !== currentDisplayName) {
+      updateNameMutation.mutate(displayName.trim(), {
+        onSuccess: () => {
+          onProfileUpdate({
+            display_name: displayName,
+            avatar_url: avatarUrl || null,
+          });
+          toast.success("Profile updated!");
+          onClose();
+        },
+      });
+    } else {
       onProfileUpdate({
         display_name: displayName,
         avatar_url: avatarUrl || null,
       });
-
-      toast.success("Profile updated successfully!");
+      toast.success("Profile updated!");
       onClose();
-    } catch {
-      toast.error("Failed to save changes", {
-        description: "An unexpected error occurred",
-      });
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -160,137 +107,136 @@ export function EditProfile({
     avatarUrl !== (profile?.avatar_url || "");
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Edit Profile</CardTitle>
-              <CardDescription>Update your profile information</CardDescription>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden border-none shadow-2xl">
+        {/* Accent bar */}
+        <div className="h-1 w-full bg-gradient-to-r from-indigo-500 to-blue-500" />
+
+        <div className="p-6">
+          <DialogHeader className="space-y-0 mb-6">
+            <DialogTitle className="text-lg font-bold">Edit Profile</DialogTitle>
+            <DialogDescription className="text-sm mt-1">
+              Update your profile information
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Avatar Section */}
+            <div className="flex flex-col items-center gap-3">
+              <div className="relative group">
+                <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-indigo-500 to-blue-500 opacity-15 blur-sm group-hover:opacity-25 transition-opacity" />
+                <Avatar
+                  src={avatarUrl}
+                  alt={displayName || user.email || "User"}
+                  size="xl"
+                  fallbackText={displayName || user.email}
+                />
+
+                {/* Upload button */}
+                <label
+                  htmlFor="avatar-upload"
+                  className="absolute bottom-0 right-0 w-8 h-8 bg-gradient-to-br from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 text-white rounded-full cursor-pointer transition-all flex items-center justify-center shadow-md hover:shadow-lg hover:scale-105"
+                >
+                  {uploading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Camera className="h-3.5 w-3.5" />
+                  )}
+                </label>
+
+                <input
+                  id="avatar-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                  disabled={uploading || saving}
+                />
+              </div>
+
+              {/* Delete avatar button */}
+              {avatarUrl && (
+                <button
+                  onClick={handleDeleteAvatar}
+                  disabled={deleting || uploading || saving}
+                  className="text-[11px] font-medium text-red-500 hover:text-red-600 transition-colors cursor-pointer disabled:opacity-40 flex items-center gap-1"
+                >
+                  {deleting ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3 w-3" />
+                  )}
+                  Remove avatar
+                </button>
+              )}
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              disabled={saving}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardHeader>
 
-        <CardContent className="space-y-6">
-          {/* Avatar Section */}
-          <div className="flex flex-col items-center space-y-4">
-            <div className="relative">
-              <Avatar
-                src={avatarUrl}
-                alt={displayName || user.email || "User"}
-                size="xl"
-                fallbackText={displayName || user.email}
+            {/* Display Name */}
+            <div className="space-y-2">
+              <Label htmlFor="display-name" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Display Name
+              </Label>
+              <Input
+                id="display-name"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Enter your display name"
+                disabled={saving}
+                maxLength={50}
+                className="h-11 rounded-xl border-border/60 focus:border-indigo-500/50 focus:ring-indigo-500/20 transition-colors"
               />
-
-              {/* Upload button */}
-              <label
-                htmlFor="avatar-upload"
-                className="absolute bottom-0 right-0 bg-primary hover:bg-primary/90 text-primary-foreground p-2 rounded-full cursor-pointer transition-colors"
-              >
-                {uploading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Camera className="h-4 w-4" />
-                )}
-              </label>
-
-              <input
-                id="avatar-upload"
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarUpload}
-                className="hidden"
-                disabled={uploading || saving}
-              />
+              <p className="text-[11px] text-muted-foreground/50 text-right tabular-nums">
+                {displayName.length}/50
+              </p>
             </div>
 
-            {/* Delete avatar button */}
-            {avatarUrl && (
+            {/* Email (read-only) */}
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Email
+              </Label>
+              <Input
+                id="email"
+                value={user.email || ""}
+                disabled
+                className="h-11 rounded-xl bg-muted/30 text-muted-foreground"
+              />
+              <p className="text-[11px] text-muted-foreground/50">
+                Email cannot be changed
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-2">
               <Button
                 variant="outline"
-                size="sm"
-                onClick={handleDeleteAvatar}
-                disabled={deleting || uploading || saving}
-                className="text-red-600 hover:text-red-700"
+                onClick={onClose}
+                disabled={saving}
+                className="flex-1 h-11 rounded-xl font-medium"
               >
-                {deleting ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Trash2 className="h-4 w-4 mr-2" />
-                )}
-                Remove Avatar
+                Cancel
               </Button>
-            )}
+              <Button
+                onClick={handleSave}
+                disabled={!hasChanges || saving}
+                className="flex-1 h-11 rounded-xl font-medium bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 border-none text-white shadow-md disabled:opacity-40 disabled:shadow-none transition-all"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Saving…
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
-
-          {/* Display Name */}
-          <div className="space-y-2">
-            <Label htmlFor="display-name">Display Name</Label>
-            <Input
-              id="display-name"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Enter your display name"
-              disabled={saving}
-              maxLength={50}
-            />
-            <p className="text-xs text-muted-foreground">
-              {displayName.length}/50 characters
-            </p>
-          </div>
-
-          {/* Email (read-only) */}
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              value={user.email || ""}
-              disabled
-              className="bg-muted"
-            />
-            <p className="text-xs text-muted-foreground">
-              Email cannot be changed
-            </p>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex space-x-2 pt-4">
-            <Button
-              variant="outline"
-              onClick={onClose}
-              disabled={saving}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={!hasChanges || saving}
-              className="flex-1"
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Changes
-                </>
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

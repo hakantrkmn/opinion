@@ -1,12 +1,11 @@
-import { adminService } from "@/lib/supabase/admin";
-import { NextRequest, NextResponse } from "next/server";
+import { adminService } from "@/lib/services/adminService";
+import { checkAdminAuth } from "@/lib/admin-auth";
+import { NextResponse } from "next/server";
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
-    const userEmail = request.headers.get("x-user-email");
-
-    // Check admin authorization
-    if (!userEmail || userEmail !== process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
+    const isAdmin = await checkAdminAuth();
+    if (!isAdmin) {
       return NextResponse.json(
         { error: "Unauthorized. Admin access required." },
         { status: 401 }

@@ -98,19 +98,17 @@ export const UserLocationCircle = ({
 
   // Circle kaldırma fonksiyonu
   const removeCircle = () => {
-    if (!map || !circleRef.current) return;
+    if (!map || !circleRef.current || !map.getStyle) return;
 
     const { sourceId, layerId } = circleRef.current;
 
     try {
-      if (map.getLayer && map.getLayer(layerId)) {
-        map.removeLayer(layerId);
+      if (map.getStyle()) {
+        if (map.getLayer(layerId)) map.removeLayer(layerId);
+        if (map.getSource(sourceId)) map.removeSource(sourceId);
       }
-      if (map.getSource && map.getSource(sourceId)) {
-        map.removeSource(sourceId);
-      }
-    } catch (error) {
-      console.warn("Error removing circle:", error);
+    } catch {
+      // Map already destroyed during cleanup — safe to ignore
     }
 
     circleRef.current = null;

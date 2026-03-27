@@ -1,21 +1,17 @@
 import DynamicProfilePage from "@/components/profile/DynamicProfilePage";
-import { createClient } from "@/lib/supabase/server";
-import { userService } from "@/lib/supabase/userService";
+import { getServerSession } from "@/lib/auth-server";
+import { userService } from "@/lib/services/userService";
 import { UserStats } from "@/types";
 import { redirect } from "next/navigation";
 
 export default async function ProfilePage() {
-  const supabase = await createClient();
+  const session = await getServerSession();
 
-  // Server-side auth kontrolü
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) {
+  if (!session?.user) {
     redirect("/auth");
   }
+
+  const user = session.user;
   const { stats, error: statsError } = await userService.getUserStats(user.id);
   const statsobj: UserStats = {
     stats: stats,
@@ -26,9 +22,10 @@ export default async function ProfilePage() {
       improvement: "",
     },
   };
-  console.log(stats);
+
   if (statsError) {
     redirect("/404");
   }
+
   return <DynamicProfilePage user={user} userStats={statsobj} />;
 }

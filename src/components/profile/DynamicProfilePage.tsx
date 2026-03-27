@@ -2,7 +2,6 @@
 
 import Header from "@/components/common/Header";
 import { UserStats } from "@/types";
-import type { User } from "@supabase/supabase-js";
 import { Loader2 } from "lucide-react";
 import dynamic from "next/dynamic";
 
@@ -28,7 +27,7 @@ const ProfileClient = dynamic(
 );
 
 interface DynamicProfilePageProps {
-  user: User;
+  user: { id: string; email: string; name?: string; image?: string | null };
   userStats: UserStats;
 }
 

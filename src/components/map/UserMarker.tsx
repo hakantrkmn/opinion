@@ -1,7 +1,6 @@
 "use client";
 
 import { User } from "lucide-react";
-import Image from "next/image";
 import { useState } from "react";
 
 // Import the shared image cache from Avatar component
@@ -42,25 +41,25 @@ export default function UserMarker({
     >
       <div className="relative">
         {avatarUrl && !imageError ? (
-          <div className="w-8 h-8 rounded-full border-2 border-white shadow-lg overflow-hidden bg-black">
-            <Image
+          <div className="w-8 h-8 rounded-full border-2 border-background shadow-lg overflow-hidden bg-foreground">
+            <img
               src={avatarUrl}
               alt={displayName || "User"}
               width={32}
               height={32}
               onError={handleImageError}
               className="object-cover rounded-full"
-              sizes="32px"
               loading="lazy"
+              decoding="async"
             />
           </div>
         ) : (
-          <div className="w-8 h-8 bg-black rounded-full border-2 border-white shadow-lg flex items-center justify-center">
-            <User className="w-5 h-5 text-white" />
+          <div className="w-8 h-8 bg-foreground rounded-full border-2 border-background shadow-lg flex items-center justify-center">
+            <User className="w-5 h-5 text-background" />
           </div>
         )}
       </div>
-      <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-black"></div>
+      <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-foreground"></div>
     </div>
   );
 }
@@ -75,17 +74,10 @@ export const generateUserMarkerHTML = (
     const cache = getImageCache();
     const isImageCached = cache.get(avatarUrl) || false;
 
-    console.log("GenerateUserMarkerHTML Debug:", {
-      avatarUrl,
-      isImageCached,
-      displayName,
-      cacheSize: cache.size,
-    });
-
     return `
         <div class="relative flex flex-col items-center animate-bounce">
             <div class="relative">
-                <div class="w-8 h-8 rounded-full border-2 border-white shadow-lg overflow-hidden">
+                <div class="w-8 h-8 rounded-full border-2 border-background shadow-lg overflow-hidden">
                     <img
                         src="${avatarUrl}"
                         alt="${displayName || "User"}"
@@ -94,7 +86,6 @@ export const generateUserMarkerHTML = (
                           isImageCached ? "display: block;" : "display: none;"
                         }"
                         onload="
-                          console.log('UserMarker avatar loaded:', '${avatarUrl}');
                           this.style.display='block';
                           this.nextElementSibling.style.display='none';
                           // Update cache
@@ -102,7 +93,6 @@ export const generateUserMarkerHTML = (
                           cache.set('${avatarUrl}', true);
                         "
                         onerror="
-                          console.log('UserMarker avatar failed:', '${avatarUrl}');
                           this.style.display='none';
                           this.nextElementSibling.style.display='flex';
                           // Remove from cache
@@ -110,7 +100,7 @@ export const generateUserMarkerHTML = (
                           cache.delete('${avatarUrl}');
                         "
                     />
-                    <div class="w-full h-full bg-black rounded-full flex items-center justify-center" style="${
+                    <div class="w-full h-full bg-foreground rounded-full flex items-center justify-center" style="${
                       isImageCached ? "display: none;" : "display: flex;"
                     }">
                         <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -119,7 +109,7 @@ export const generateUserMarkerHTML = (
                     </div>
                 </div>
             </div>
-            <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-black"></div>
+            <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-foreground"></div>
         </div>
         `;
   }
@@ -127,7 +117,7 @@ export const generateUserMarkerHTML = (
   return `
     <div class="relative flex flex-col items-center animate-bounce">
         <div class="relative">
-            <div class="w-8 h-8 bg-black rounded-full border-2 border-white shadow-lg flex items-center justify-center">
+            <div class="w-8 h-8 bg-foreground rounded-full border-2 border-background shadow-lg flex items-center justify-center">
                 <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
                 </svg>

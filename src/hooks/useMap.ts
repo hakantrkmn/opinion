@@ -1,47 +1,23 @@
 import { useEffect } from "react";
 import { LongPressEventType, useLongPress } from "use-long-press";
+import { useMapStore } from "@/store/map-store";
 import { useCommentOperations } from "./useCommentOperations";
 import { useMapCore } from "./useMapCore";
 import { usePinOperations } from "./usePinOperations";
 
 export const useMap = (initialCoordinates?: [number, number] | null) => {
-  // Core map state and functionality
   const mapCore = useMapCore(initialCoordinates);
-  mapCore.currentStyle = localStorage.getItem("mapStyle") || "voyager";
+  const store = useMapStore();
 
-  // Pin operations
-  const pinOps = usePinOperations({
-    map: mapCore.map,
-    tempPin: mapCore.tempPin,
-    setTempPin: mapCore.setTempPin,
-    setShowPinModal: mapCore.setShowPinModal,
-    setSelectedPin: mapCore.setSelectedPin,
-    setShowPinDetailModal: mapCore.setShowPinDetailModal,
-    selectedPin: mapCore.selectedPin,
-  });
-
-  // Setup loadPinsFromMapWithCache callback for mapCore
+  const pinOps = usePinOperations({ map: mapCore.map });
   const loadPinsFromMapWithCache = pinOps.loadPinsFromMapWithCache;
 
-  // Comment operations
   const commentOps = useCommentOperations({
-    mapPins: pinOps.pins,
-    commentsLoading: mapCore.commentsLoading,
-    setCommentsLoading: mapCore.setCommentsLoading,
-    batchComments: mapCore.batchComments,
-    setBatchComments: mapCore.setBatchComments,
-    selectedPin: mapCore.selectedPin,
-    setSelectedPin: mapCore.setSelectedPin,
-    setShowPinDetailModal: mapCore.setShowPinDetailModal,
     getPinComments: pinOps.getPinComments,
-    getBatchComments: pinOps.getBatchComments,
   });
 
-  // Long press hook
   const longPressBind = useLongPress(pinOps.onLongPress, {
-    onCancel: () => {
-      // Action to take when cancelled
-    },
+    onCancel: () => {},
     threshold: 500,
     cancelOnMovement: true,
     detect: LongPressEventType.Pointer,
@@ -59,25 +35,12 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
     mapCore.addUserMarker,
   ]);
 
-  // Watch pins state for debugging
-  useEffect(() => {
-    if (pinOps.pins.length > 0) {
-      console.log("Pins loaded:", pinOps.pins.length);
-    }
-  }, [pinOps.pins]);
-
   // Cleanup
   useEffect(() => {
     return () => {
-      if (pinOps.loadingTimeoutRef.current) {
-        clearTimeout(pinOps.loadingTimeoutRef.current);
-      }
-      if (mapCore.userMarker.current) {
-        mapCore.userMarker.current.remove();
-      }
-      if (mapCore.map.current) {
-        mapCore.map.current.remove();
-      }
+      if (pinOps.loadingTimeoutRef.current) clearTimeout(pinOps.loadingTimeoutRef.current);
+      if (mapCore.userMarker.current) mapCore.userMarker.current.remove();
+      if (mapCore.map.current) mapCore.map.current.remove();
     };
   }, [pinOps.loadingTimeoutRef, mapCore.userMarker, mapCore.map]);
 
@@ -90,26 +53,20 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
     currentStyle: mapCore.currentStyle,
     locationPermission: mapCore.locationPermission,
     userLocation: mapCore.userLocation,
-    mapStyles: {}, // Will be imported in components
-
-    // Pin modal state
-    showPinModal: mapCore.showPinModal,
-    setShowPinModal: mapCore.setShowPinModal,
-    showPinDetailModal: mapCore.showPinDetailModal,
-    setShowPinDetailModal: mapCore.setShowPinDetailModal,
-    selectedPin: mapCore.selectedPin,
-    setSelectedPin: mapCore.setSelectedPin,
-
-    // Loading states
-    pinsLoading: pinOps.loading,
-    isRefreshing: mapCore.isRefreshing,
-
-    // User
+    currentZoom: mapCore.currentZoom,
     user: mapCore.user,
 
-    // Pins
+    // Store state (Zustand)
+    showPinModal: store.showPinModal,
+    setShowPinModal: store.setShowPinModal,
+    showPinDetailModal: store.showPinDetailModal,
+    setShowPinDetailModal: store.setShowPinDetailModal,
+    selectedPin: store.selectedPin,
+    setSelectedPin: store.setSelectedPin,
+    isRefreshing: store.isRefreshing,
+    commentsLoading: store.commentsLoading,
     mapPins: pinOps.pins,
-    handlePinClick: commentOps.handlePinClick,
+    pinsLoading: pinOps.loading,
 
     // Actions
     getUserLocation: mapCore.getUserLocation,
@@ -119,23 +76,16 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
     initializeMap: () => mapCore.initializeMap(loadPinsFromMapWithCache),
     createPin: pinOps.createPin,
     longPressBind,
+    refreshPins: pinOps.refreshPins,
+    // Comment operations
+    handlePinClick: commentOps.handlePinClick,
     handleAddComment: commentOps.handleAddComment,
     handleEditComment: commentOps.handleEditComment,
     handleDeleteComment: commentOps.handleDeleteComment,
     handleVoteComment: commentOps.handleVoteComment,
-    showPinPopup: pinOps.showPinPopup,
-    refreshPins: pinOps.refreshPins,
     invalidatePinCommentsCache: commentOps.invalidatePinCommentsCache,
     getPinComments: pinOps.getPinComments,
-    getBatchComments: pinOps.getBatchComments,
-    currentZoom: mapCore.currentZoom,
-    batchComments: mapCore.batchComments,
-    setBatchComments: mapCore.setBatchComments,
-    commentsLoading: mapCore.commentsLoading,
-    loadVisiblePinsComments: commentOps.loadVisiblePinsComments,
-    hasUserCommented: async () => {
-      // This functionality is now handled locally in PinDetailModal
-      return { hasCommented: false, commentId: undefined };
-    },
+
+    hasUserCommented: async () => ({ hasCommented: false, commentId: undefined }),
   };
 };

@@ -1,31 +1,21 @@
-import { adminService } from "@/lib/supabase/admin";
-import { NextResponse } from "next/server";
+import { adminService } from "@/lib/services/adminService";
+import { checkAdminAuth } from "@/lib/admin-auth";
+import { NextRequest, NextResponse } from "next/server";
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
-
-async function checkAdminAuth(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const userEmail = request.headers.get("x-user-email");
-    return userEmail === ADMIN_EMAIL;
-  } catch {
-    return false;
-  }
-}
-
-export async function GET(request: Request) {
-  try {
-    const isAdmin = await checkAdminAuth(request);
+    const isAdmin = await checkAdminAuth();
     if (!isAdmin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data, error } = await adminService.getAllComments();
+    const { searchParams } = new URL(request.url);
+    const page = Number(searchParams.get("page")) || 1;
+    const pageSize = Number(searchParams.get("pageSize")) || 50;
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    const { data, pagination } = await adminService.getAllComments(page, pageSize);
 
-    return NextResponse.json({ data });
+    return NextResponse.json({ data, pagination });
   } catch (error) {
     console.error("Admin comments API error:", error);
     return NextResponse.json(

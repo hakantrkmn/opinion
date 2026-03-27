@@ -38,32 +38,29 @@ export const getActivityBadge = (count?: number) => {
   if (!count || count === 0)
     return {
       text: "New",
-      color:
-        "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
+      color: "bg-primary/10 text-primary",
     };
   if (count <= 3)
     return {
       text: "Active",
-      color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+      color: "bg-primary/15 text-primary",
     };
   if (count <= 10)
     return {
       text: "Popular",
-      color:
-        "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+      color: "bg-primary/20 text-primary",
     };
   return {
     text: "Very Active",
-    color:
-      "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
+    color: "bg-primary/25 text-primary",
   };
 };
 export const getPinColor = (commentCount?: number) => {
   if (!commentCount || commentCount === 0)
-    return "bg-destructive hover:bg-destructive";
+    return "bg-destructive hover:bg-destructive/90";
   if (commentCount <= 3)
-    return "bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700";
+    return "bg-primary hover:bg-primary/90";
   if (commentCount <= 10)
-    return "bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-700";
-  return "bg-purple-500 hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700";
+    return "bg-primary/80 hover:bg-primary/70";
+  return "bg-primary/60 hover:bg-primary/50";
 };

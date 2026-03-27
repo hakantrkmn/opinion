@@ -1,5 +1,4 @@
 import { ThemeProvider } from "@/components/common/theme-provider";
-import { LazyAnalytics } from "@/components/LazyAnalytics";
 import { LazyToaster } from "@/components/LazyToaster";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import {
@@ -26,8 +25,8 @@ export function generateViewport() {
   return {
     width: "device-width",
     initialScale: 1,
-    maximumScale: 1,
-    userScalable: "no",
+    maximumScale: 5,
+    userScalable: "yes",
     viewportFit: "cover",
     height: "device-height",
   };
@@ -150,7 +149,6 @@ export default function RootLayout({
             disableTransitionOnChange
             storageKey="opinion-theme"
           >
-            <LazyAnalytics />
             {children}
             <LazyToaster />
           </ThemeProvider>

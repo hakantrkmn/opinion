@@ -1,110 +1,94 @@
 "use client";
 
 import { Avatar } from "@/components/ui/Avatar";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useSession } from "@/hooks/useSession";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { LogOut, Search, Shield, User } from "lucide-react";
+import { LogOut, Shield, User } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export default function Header() {
   const { user, signOut, isSigningOut } = useSession();
-  const { profile, isLoading } = useUserProfile();
-
-  // Debug logging
-  console.log("Header Debug:", {
-    user: user?.id,
-    profile,
-    isLoading,
-    avatarUrl: profile?.avatar_url,
-  });
+  const { profile } = useUserProfile();
+  const pathname = usePathname();
 
   return (
-    <header className="bg-background border-b border-border shadow-sm sticky top-0 z-20">
+    <header className="bg-background/80 backdrop-blur-xl border-b border-border/40 sticky top-0 z-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-14">
+          {/* Logo */}
           <Link
             href="/"
-            className="text-2xl font-bold text-foreground hover:text-primary transition-colors flex items-center gap-2"
+            className="text-lg font-bold text-foreground hover:text-foreground/80 transition-colors"
           >
-            <span className="font-serif">oPINion</span>
+            <span className="tracking-tight">oPINion</span>
           </Link>
 
-          {/* Search Input - Placeholder for future search functionality */}
-          <div className="hidden sm:flex items-center flex-1 max-w-md mx-4 lg:mx-8">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="Search pins..."
-                className="pl-10 text-sm"
-                disabled
-              />
-            </div>
-          </div>
+          {/* Spacer */}
+          <div className="hidden sm:flex flex-1 max-w-md mx-4 lg:mx-8" />
 
-          <div className="flex items-center space-x-2 sm:space-x-4">
+          {/* Actions */}
+          <div className="flex items-center gap-1.5">
             {user ? (
               <>
-                <div className="hidden lg:flex items-center space-x-2 bg-muted rounded-full px-3 py-1.5">
+                {/* Desktop user pill */}
+                <div className="hidden lg:flex items-center gap-2 bg-muted/40 rounded-full px-3 py-1.5 mr-1">
                   <Avatar
                     src={profile?.avatar_url}
                     alt={profile?.display_name || user.email || "User"}
                     size="sm"
                     fallbackText={profile?.display_name || user.email}
                   />
-                  <span className="text-sm text-foreground font-medium truncate max-w-32">
+                  <span className="text-xs font-medium text-foreground truncate max-w-28">
                     {profile?.display_name || user.email}
                   </span>
                 </div>
+
+                {/* Admin */}
                 {user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    asChild
-                    className="hidden sm:flex"
+                  <Link
+                    href="/admin"
+                    className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                    aria-label="Admin panel"
                   >
-                    <Link href="/admin">
-                      <Shield className="h-4 w-4 sm:mr-2" />
-                      <span className="hidden sm:inline">Admin</span>
-                    </Link>
-                  </Button>
+                    <Shield className="h-4 w-4" />
+                  </Link>
                 )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  asChild
-                  className="hidden sm:flex"
+
+                {/* Profile */}
+                <Link
+                  href="/profile"
+                  className={`h-8 px-2.5 rounded-lg flex items-center gap-1.5 text-xs font-medium transition-colors ${
+                    pathname === "/profile"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  }`}
+                  aria-label="Profile"
                 >
-                  <Link href="/profile">
-                    <User className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Profile</span>
-                  </Link>
-                </Button>
-                <Button variant="ghost" size="sm" asChild className="sm:hidden">
-                  <Link href="/profile">
-                    <User className="h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
+                  <User className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Profile</span>
+                </Link>
+
+                {/* Sign Out */}
+                <button
                   onClick={() => signOut()}
                   disabled={isSigningOut}
-                  className="text-xs sm:text-sm"
+                  className="h-8 px-2.5 rounded-lg flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer disabled:opacity-50"
+                  aria-label={isSigningOut ? "Signing out" : "Sign out"}
                 >
-                  <LogOut className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                  <LogOut className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">
-                    {isSigningOut ? "Signing Out..." : "Sign Out"}
+                    {isSigningOut ? "Signing Out…" : "Sign Out"}
                   </span>
-                </Button>
+                </button>
               </>
             ) : (
-              <Button asChild size="sm">
-                <Link href="/auth">
-                  <span className="text-xs sm:text-sm">Sign In</span>
-                </Link>
-              </Button>
+              <Link
+                href="/auth"
+                className="h-8 px-4 rounded-lg bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 text-white text-xs font-medium flex items-center transition-all shadow-sm"
+              >
+                Sign In
+              </Link>
             )}
           </div>
         </div>
