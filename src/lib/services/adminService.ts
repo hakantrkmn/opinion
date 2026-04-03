@@ -3,6 +3,10 @@ import { db, sql } from "@/db";
 import { pins, comments, commentVotes, userStats } from "@/db/schema/app";
 import { user } from "@/db/schema/auth";
 import { eq, desc, count } from "drizzle-orm";
+import { deleteCommentPhoto } from "@/lib/services/photoService";
+import { unlink } from "fs/promises";
+import { join } from "path";
+import { existsSync } from "fs";
 
 const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 100;
@@ -132,17 +136,68 @@ export const adminService = {
   },
 
   async deletePin(pinId: string) {
+    // Delete comment photos before deleting the pin
+    const pinComments = await db
+      .select({ photoUrl: comments.photoUrl })
+      .from(comments)
+      .where(eq(comments.pinId, pinId));
+
+    for (const comment of pinComments) {
+      if (comment.photoUrl) {
+        await deleteCommentPhoto(comment.photoUrl);
+      }
+    }
+
     await db.delete(pins).where(eq(pins.id, pinId));
     return { error: null };
   },
 
   async deleteComment(commentId: string) {
+    // Delete comment photo before deleting the comment
+    const [comment] = await db
+      .select({ photoUrl: comments.photoUrl })
+      .from(comments)
+      .where(eq(comments.id, commentId));
+
+    if (comment?.photoUrl) {
+      await deleteCommentPhoto(comment.photoUrl);
+    }
+
     await db.delete(comments).where(eq(comments.id, commentId));
     return { error: null };
   },
 
   async deleteUser(userId: string) {
-    // Cascade will handle related records
+    // Delete user's avatar file
+    const [userData] = await db
+      .select({ avatarUrl: user.avatarUrl })
+      .from(user)
+      .where(eq(user.id, userId));
+
+    if (userData?.avatarUrl?.startsWith("/uploads/")) {
+      try {
+        const filePath = join(process.cwd(), "public", userData.avatarUrl);
+        if (existsSync(filePath)) {
+          await unlink(filePath);
+        }
+      } catch {
+        // Don't fail if cleanup fails
+      }
+    }
+
+    // Delete all comment photos from user's comments
+    const userComments = await db
+      .select({ photoUrl: comments.photoUrl })
+      .from(comments)
+      .where(eq(comments.userId, userId));
+
+    for (const comment of userComments) {
+      if (comment.photoUrl) {
+        await deleteCommentPhoto(comment.photoUrl);
+      }
+    }
+
+    // Cascade will handle related database records
     await db.delete(user).where(eq(user.id, userId));
     return { error: null };
   },

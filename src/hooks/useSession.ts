@@ -62,7 +62,7 @@ export function useSession() {
     },
     onSuccess: () => {
       queryClient.clear();
-      router.push("/auth");
+      router.push("/");
     },
   });
 

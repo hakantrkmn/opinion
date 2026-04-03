@@ -16,35 +16,31 @@ export function generatePinPopupHTML(pin: Pin): string {
   const MAX_PIN_NAME_LENGTH = 28;
   const displayName =
     pin.name.length > MAX_PIN_NAME_LENGTH
-      ? pin.name.slice(0, MAX_PIN_NAME_LENGTH) + "…"
+      ? pin.name.slice(0, MAX_PIN_NAME_LENGTH) + "\u2026"
       : pin.name;
 
   const activityBadge = getActivityBadge(commentCount);
 
   const isHot = commentCount > 10;
-  const isPopular = commentCount > 3;
   const isActive = commentCount > 0;
 
-  const accentGradient = isHot
-    ? "linear-gradient(135deg, #f59e0b, #ef4444)"
-    : isPopular
-    ? "linear-gradient(135deg, #8b5cf6, #6366f1)"
+  // Consistent palette: emerald (active), amber (hot), zinc (inactive)
+  const accentColor = isHot
+    ? "#f59e0b"
     : isActive
-    ? "linear-gradient(135deg, #6366f1, #3b82f6)"
-    : "linear-gradient(135deg, #64748b, #94a3b8)";
+    ? "#10b981"
+    : "#71717a";
 
   const badgeBg = isHot
-    ? "background: rgba(239, 68, 68, 0.12); color: #ef4444;"
-    : isPopular
-    ? "background: rgba(99, 102, 241, 0.12); color: #6366f1;"
+    ? "background: rgba(245, 158, 11, 0.12); color: #f59e0b;"
     : isActive
-    ? "background: rgba(59, 130, 246, 0.12); color: #3b82f6;"
-    : "background: rgba(100, 116, 139, 0.1); color: #64748b;";
+    ? "background: rgba(16, 185, 129, 0.12); color: #10b981;"
+    : "background: rgba(113, 113, 122, 0.1); color: #71717a;";
 
   return `
     <div id="pin-popup" style="position: relative; width: 280px; background: var(--background); border-radius: 16px; overflow: hidden; cursor: pointer; border: 1px solid var(--border); box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);">
       <!-- Accent bar -->
-      <div style="height: 3px; background: ${accentGradient};"></div>
+      <div style="height: 3px; background: ${accentColor};"></div>
 
       <div style="padding: 16px;">
         <!-- Header -->
@@ -60,8 +56,8 @@ export function generatePinPopupHTML(pin: Pin): string {
         <!-- Meta row -->
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
           <div style="display: flex; align-items: center; gap: 6px;">
-            <div style="width: 22px; height: 22px; border-radius: 50%; ${isActive ? 'background: ' + accentGradient : 'background: var(--muted)'}; display: flex; align-items: center; justify-content: center;">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${isActive ? 'white' : 'var(--muted-foreground)'}" stroke-width="2">
+            <div style="width: 22px; height: 22px; border-radius: 50%; background: ${accentColor}; display: flex; align-items: center; justify-content: center;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                 <circle cx="12" cy="7" r="4"/>
               </svg>

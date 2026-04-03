@@ -2,11 +2,11 @@
 
 import { USER_LOCATION_CIRCLE_RADIUS } from "@/constants/mapConstants";
 import { useMap } from "@/hooks/useMap";
+import { usePinClustering } from "@/hooks/usePinClustering";
 
 import { useEffect } from "react";
 import { RefreshButton } from "../common/RefreshButton";
 import PinDetailModal from "../pin/PinDetailModal";
-import PinMarker from "../pin/PinMarker";
 import PinModal from "../pin/PinModal";
 import { LocationButton } from "./LocationButton";
 import { MapStyleToggle } from "./MapStyleToggle";
@@ -23,7 +23,6 @@ export default function Map({ initialCoordinates }: MapProps) {
     currentStyle,
     locationPermission,
     userLocation,
-
     getUserLocation,
     changeMapStyle,
     goToUserLocation,
@@ -37,12 +36,11 @@ export default function Map({ initialCoordinates }: MapProps) {
     selectedPin,
     setSelectedPin,
     pinsLoading,
-    handleAddComment, // usePins'den gelen
-    // Yeni fonksiyonları ekleyelim
+    handleAddComment,
     handleEditComment,
     handleDeleteComment,
     handleVoteComment,
-    user, // User'ı ekleyelim
+    user,
     map,
     mapPins,
     handlePinClick,
@@ -54,12 +52,13 @@ export default function Map({ initialCoordinates }: MapProps) {
     commentsLoading,
   } = useMap(initialCoordinates);
 
-  //just work once on mount
+  // Clustering: cluster layer + DOM marker hybrid
+  usePinClustering(map, mapPins, handlePinClick, currentZoom > 0);
+
   useEffect(() => {
     initializeMap();
   }, []);
 
-  // Type guard for location permission
   const isLoading = locationPermission === "loading";
 
   return (
@@ -70,17 +69,15 @@ export default function Map({ initialCoordinates }: MapProps) {
         {...longPressBind()}
       />
 
-      {/* User Location Circle - 50 metre yarıçap */}
       <UserLocationCircle
         map={map.current}
         coordinates={userLocation}
         radius={USER_LOCATION_CIRCLE_RADIUS}
-        color="#3B82F6"
+        color="#10b981"
         opacity={0.2}
-        outlineColor="#3B82F6"
+        outlineColor="#10b981"
       />
 
-      {/* Loading Indicators */}
       {(pinsLoading || isLoading) && (
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border z-[60]">
           <div className="flex items-center space-x-2">
@@ -92,7 +89,6 @@ export default function Map({ initialCoordinates }: MapProps) {
         </div>
       )}
 
-      {/* Map Controls - Top Right */}
       <div className="fixed top-20 right-4 z-30 flex flex-col gap-1.5">
         <ThemeToggle isMobile={false} />
         <LocationButton
@@ -104,7 +100,6 @@ export default function Map({ initialCoordinates }: MapProps) {
         />
       </div>
 
-      {/* Map Style Toggle - Bottom Right */}
       <div className="hidden sm:block">
         <MapStyleToggle
           currentStyle={currentStyle}
@@ -120,21 +115,18 @@ export default function Map({ initialCoordinates }: MapProps) {
         />
       </div>
 
-      {/* Pin Creation Modal */}
       <PinModal
         isOpen={showPinModal}
         onClose={() => setShowPinModal(false)}
         onCreatePin={createPin}
       />
 
-      {/* Pin Detail Modal */}
       {selectedPin &&
         (() => {
-          // Find the actual pin object to get coordinates
           const actualPin = mapPins.find((pin) => pin.id === selectedPin.pinId);
           const coordinates = actualPin
             ? {
-                lat: actualPin.location.coordinates[1], // GeoJSON format: [lng, lat]
+                lat: actualPin.location.coordinates[1],
                 lng: actualPin.location.coordinates[0],
               }
             : undefined;
@@ -145,10 +137,6 @@ export default function Map({ initialCoordinates }: MapProps) {
               onClose={() => {
                 setShowPinDetailModal(false);
                 setSelectedPin(null);
-                // Clear map popups when modal is closed
-                const existingPopups =
-                  document.querySelectorAll(".maplibregl-popup");
-                existingPopups.forEach((popup) => popup.remove());
               }}
               pinName={selectedPin?.pinName || ""}
               pinId={selectedPin?.pinId || ""}
@@ -163,9 +151,7 @@ export default function Map({ initialCoordinates }: MapProps) {
               onRefresh={async () => {
                 if (selectedPin) {
                   try {
-                    // Invalidate comment cache so getPinComments fetches fresh
                     invalidatePinCommentsCache(selectedPin.pinId);
-
                     const comments = await getPinComments(selectedPin.pinId, true);
                     if (comments) {
                       if (!comments.length) {
@@ -186,25 +172,15 @@ export default function Map({ initialCoordinates }: MapProps) {
           );
         })()}
 
-      {/* Pin Markers */}
-      {mapPins.map((pin) => (
-        <PinMarker
-          key={pin.id}
-          pin={pin}
-          map={map.current}
-          onPopupClick={handlePinClick}
-        />
-      ))}
+      {/* Pin'ler tamamen MapLibre layer-based - DOM marker yok */}
 
-      {/* Refresh button */}
       <RefreshButton
         onRefresh={refreshPins}
         isRefreshing={isRefreshing}
         currentZoom={currentZoom}
-        minZoomLevel={12} // Minimum zoom level 12
+        minZoomLevel={0}
       />
 
-      {/* Buy Me a Coffee Button - Bottom Left */}
       <div className="fixed bottom-16 left-4 z-[50] pb-safe">
         <a
           href="https://www.buymeacoffee.com/hakantrkmndev"

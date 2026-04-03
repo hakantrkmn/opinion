@@ -1,7 +1,10 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { expo } from "@better-auth/expo";
 import { db } from "@/db";
 import * as schema from "@/db/schema/auth";
+import { eq, and, isNull } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -22,6 +25,11 @@ export const auth = betterAuth({
       maxAge: 5 * 60, // 5 minutes
     },
   },
+  plugins: [expo()],
+  trustedOrigins: [
+    "opinionmobile://",
+    ...(process.env.BETTER_AUTH_URL ? [process.env.BETTER_AUTH_URL] : []),
+  ],
   user: {
     additionalFields: {
       displayName: {
@@ -48,13 +56,28 @@ export const auth = betterAuth({
     user: {
       create: {
         after: async (user) => {
+          // Copy name to display_name if not set
+          try {
+            if (user.name) {
+              await db
+                .update(schema.user)
+                .set({ displayName: user.name })
+                .where(
+                  and(
+                    eq(schema.user.id, user.id),
+                    isNull(schema.user.displayName)
+                  )
+                );
+            }
+          } catch {
+            // Non-critical, display_name can be set later
+          }
+
           // Initialize user stats when a new user is created
-          // The DB trigger on the "user" table also handles this,
-          // but this is a safety net
           try {
             await db.execute(
-              `INSERT INTO user_stats (user_id, total_pins, total_comments, total_likes_received, total_dislikes_received, total_votes_given, last_activity_at)
-               VALUES ('${user.id}', 0, 0, 0, 0, 0, NOW())
+              sql`INSERT INTO user_stats (user_id, total_pins, total_comments, total_likes_received, total_dislikes_received, total_votes_given, last_activity_at)
+               VALUES (${user.id}, 0, 0, 0, 0, 0, NOW())
                ON CONFLICT (user_id) DO NOTHING`
             );
           } catch {

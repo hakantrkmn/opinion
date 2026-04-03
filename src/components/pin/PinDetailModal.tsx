@@ -13,6 +13,7 @@ import {
   type SortCriteria,
 } from "@/lib/comment-sort-manager";
 import type { Comment, EnhancedComment } from "@/types";
+import { PinIcon } from "@/components/icons/PinIcon";
 import { MessageCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 import CommentItem from "../map/CommentItem";
@@ -77,31 +78,22 @@ export default function PinDetailModal({
 
   const commentCount = comments.length;
   const isHot = commentCount > 10;
-  const isPopular = commentCount > 3;
   const isActive = commentCount > 0;
 
-  const accentGradient = isHot
-    ? "from-amber-500 to-red-500"
-    : isPopular
-    ? "from-violet-500 to-indigo-500"
+  const accentColor = isHot
+    ? "bg-amber-500 shadow-[0_2px_8px_-2px_rgba(245,158,11,0.4)]"
     : isActive
-    ? "from-indigo-500 to-blue-500"
-    : "from-slate-400 to-slate-500";
+    ? "bg-emerald-500 shadow-[0_2px_8px_-2px_rgba(16,185,129,0.4)]"
+    : "bg-zinc-400 dark:bg-zinc-600";
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-[95vw] max-w-2xl h-[85vh] sm:h-[80vh] flex flex-col p-0 gap-0 overflow-hidden border-none shadow-2xl">
-        {/* Accent gradient bar */}
-        <div className={`h-1 w-full bg-gradient-to-r ${accentGradient} flex-shrink-0`} />
-
         {/* Header */}
         <DialogHeader className="flex-shrink-0 px-5 pt-5 pb-4 space-y-0">
           <div className="flex items-start gap-3 mb-3">
-            <div className={`flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br ${accentGradient} flex items-center justify-center shadow-md`}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                <circle cx="12" cy="10" r="3"/>
-              </svg>
+            <div className={`flex-shrink-0 w-10 h-10 rounded-xl ${accentColor} flex items-center justify-center`}>
+              <PinIcon className="h-5 w-5 text-white" />
             </div>
             <div className="min-w-0 flex-1">
               <DialogTitle className="text-lg font-bold text-foreground leading-tight tracking-tight">
@@ -146,7 +138,7 @@ export default function PinDetailModal({
               {[1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="p-4 rounded-2xl border border-border/50 bg-muted/30"
+                  className="p-4 rounded-2xl border border-border/50"
                   style={{ animationDelay: `${i * 100}ms` }}
                 >
                   <div className="flex items-center gap-3 mb-3">
@@ -164,9 +156,9 @@ export default function PinDetailModal({
               ))}
             </div>
           ) : comments.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center px-4">
-              <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${accentGradient} flex items-center justify-center mb-4 opacity-30`}>
-                <MessageCircle className="h-8 w-8 text-white" />
+            <div className="flex flex-col items-center justify-center py-12 text-center px-4 animate-[fadeSlideIn_0.4s_ease_both]">
+              <div className="w-16 h-16 rounded-2xl bg-muted/30 flex items-center justify-center mb-4">
+                <MessageCircle className="h-8 w-8 text-muted-foreground/30" />
               </div>
               <h3 className="text-sm font-semibold mb-1.5 text-foreground">
                 No comments yet

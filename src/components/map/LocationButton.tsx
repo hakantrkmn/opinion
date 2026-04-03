@@ -46,7 +46,7 @@ export const LocationButton = ({
       onClick={handleClick}
       className={`${size} rounded-xl backdrop-blur-md border shadow-lg flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 ${
         hasLocation
-          ? "bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/15 hover:border-blue-500/50"
+          ? "bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/15 hover:border-emerald-500/50"
           : isDenied
           ? "bg-background/90 border-red-500/30 hover:border-red-500/50"
           : "bg-background/90 border-border/50 hover:border-border"
@@ -57,7 +57,7 @@ export const LocationButton = ({
       {isDisabled ? (
         <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />
       ) : hasLocation ? (
-        <Navigation className="h-4 w-4 text-blue-500 fill-blue-500/20" />
+        <Navigation className="h-4 w-4 text-emerald-500 fill-emerald-500/20" />
       ) : isDenied ? (
         <Lock className="h-4 w-4 text-red-400" />
       ) : (

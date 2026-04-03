@@ -438,6 +438,9 @@ export const userService = {
           display_name: row.displayName || "Anonymous",
           avatar_url: row.avatarUrl || undefined,
         },
+        pins: {
+          name: row.pinName || "Unknown",
+        },
         vote_count: votesByComment[row.id] || 0,
       }));
 

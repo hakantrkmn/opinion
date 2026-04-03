@@ -1,7 +1,8 @@
 "use client";
 
 // Remove Button import to reduce bundle size
-import { Globe, MapPin, MessageCircle, Navigation, Rocket, Users, Wrench } from "lucide-react";
+import { PinIcon } from "@/components/icons/PinIcon";
+import { Globe, MessageCircle, Navigation, Rocket, Users } from "lucide-react";
 
 interface WelcomeScreenProps {
     onLoadMap: () => void;
@@ -14,7 +15,7 @@ export default function WelcomeScreen({ onLoadMap }: WelcomeScreenProps) {
                 {/* Logo and Title */}
                 <div className="space-y-4">
                     <div className="flex items-center justify-center space-x-2">
-                        <MapPin className="h-12 w-12 text-primary" />
+                        <PinIcon className="h-12 w-12 text-primary" />
                         <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
                             oPINion
                         </h1>
@@ -63,7 +64,7 @@ export default function WelcomeScreen({ onLoadMap }: WelcomeScreenProps) {
                         onClick={onLoadMap}
                         className="inline-flex items-center px-8 py-6 text-lg font-semibold text-primary-foreground bg-primary rounded-lg shadow-lg hover:shadow-xl hover:bg-primary/90 transition-all duration-300 motion-safe:hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 cursor-pointer"
                     >
-                        <MapPin className="h-5 w-5 mr-2" />
+                        <PinIcon className="h-5 w-5 mr-2" />
                         Load Interactive Map
                     </button>
                     <p className="text-sm text-muted-foreground">
@@ -88,22 +89,6 @@ export default function WelcomeScreen({ onLoadMap }: WelcomeScreenProps) {
                         </div>
                     </div>
                 </div>
-
-                {/* Debug Button - Development Only */}
-                {process.env.NODE_ENV === 'development' && (
-                    <div className="pt-4">
-                        <button
-                            onClick={() => {
-                                localStorage.removeItem('opinion-has-loaded-map');
-                                window.location.reload();
-                            }}
-                            className="text-xs text-muted-foreground hover:text-foreground transition-colors underline inline-flex items-center gap-1"
-                        >
-                            <Wrench className="h-3 w-3" />
-                            Reset Welcome Screen (Dev Only)
-                        </button>
-                    </div>
-                )}
             </div>
         </div>
     );

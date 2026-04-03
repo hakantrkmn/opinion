@@ -1,7 +1,7 @@
 "use client";
 
 import type { Pin } from "@/types";
-import { getPinColor } from "@/utils/mapUtils";
+import { pinIconHTML } from "@/components/icons/PinIcon";
 
 // HTML String Generator - useMap.ts için
 export function generatePinElementHTML(pin: Pin, zoomLevel?: number): string {
@@ -24,33 +24,29 @@ export function generatePinElementHTML(pin: Pin, zoomLevel?: number): string {
   const MAX_NAME_LENGTH = 18;
   const truncatedName =
     pin.name.length > MAX_NAME_LENGTH
-      ? pin.name.slice(0, MAX_NAME_LENGTH) + "…"
+      ? pin.name.slice(0, MAX_NAME_LENGTH) + "\u2026"
       : pin.name;
 
-  // Dynamic color based on activity
+  // Consistent color palette: emerald (active), amber (hot), zinc (inactive)
   const markerBg = isHot
-    ? "background: linear-gradient(135deg, #f59e0b, #ef4444)"
+    ? "background: #f59e0b"
     : isPopular
-    ? "background: linear-gradient(135deg, #8b5cf6, #6366f1)"
+    ? "background: #10b981"
     : isActive
-    ? "background: linear-gradient(135deg, #6366f1, #3b82f6)"
-    : "background: linear-gradient(135deg, #64748b, #94a3b8)";
+    ? "background: #10b981"
+    : "background: #71717a";
 
   const pulseColor = isHot
-    ? "rgba(239, 68, 68, 0.3)"
-    : isPopular
-    ? "rgba(99, 102, 241, 0.3)"
+    ? "rgba(245, 158, 11, 0.3)"
     : isActive
-    ? "rgba(59, 130, 246, 0.3)"
-    : "rgba(148, 163, 184, 0.2)";
+    ? "rgba(16, 185, 129, 0.25)"
+    : "rgba(113, 113, 122, 0.15)";
 
   const shadowColor = isHot
-    ? "rgba(239, 68, 68, 0.4)"
-    : isPopular
-    ? "rgba(99, 102, 241, 0.35)"
+    ? "rgba(245, 158, 11, 0.4)"
     : isActive
-    ? "rgba(59, 130, 246, 0.3)"
-    : "rgba(100, 116, 139, 0.25)";
+    ? "rgba(16, 185, 129, 0.3)"
+    : "rgba(113, 113, 122, 0.25)";
 
   return `
     <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer; filter: drop-shadow(0 2px 6px ${shadowColor});">
@@ -67,10 +63,7 @@ export function generatePinElementHTML(pin: Pin, zoomLevel?: number): string {
         <div style="transform: rotate(45deg); display: flex; align-items: center; justify-content: center;">
           ${avatarUrl
             ? `<img src="${avatarUrl}" alt="" style="width: 22px; height: 22px; border-radius: 50%; object-fit: cover;" />`
-            : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-            <circle cx="12" cy="10" r="3"/>
-          </svg>`
+            : pinIconHTML(16, "white")
           }
         </div>
         ${

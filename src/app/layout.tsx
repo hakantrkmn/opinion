@@ -33,6 +33,11 @@ export function generateViewport() {
 }
 
 export const metadata: Metadata = {
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL || "https://opinion-xi.vercel.app"
   ),

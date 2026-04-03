@@ -141,7 +141,7 @@ export default function CommentForm({
             Sign in to share your thoughts
           </span>
         </div>
-        <Button asChild size="sm" className="rounded-lg h-8 px-3 text-xs font-medium bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 border-none text-white">
+        <Button asChild size="sm" className="rounded-lg h-8 px-3 text-xs font-medium shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96]">
           <Link href="/auth">Sign In</Link>
         </Button>
       </div>
@@ -185,7 +185,7 @@ export default function CommentForm({
           <button
             type="button"
             onClick={handleRemovePhoto}
-            className="h-6 w-6 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
+            className="h-6 w-6 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.90] cursor-pointer"
           >
             ×
           </button>
@@ -193,20 +193,18 @@ export default function CommentForm({
       )}
 
       {/* Comment Input Form */}
-      <form onSubmit={handleSubmit} className="flex items-end gap-2">
-        <div className="flex-1 relative">
-          <Textarea
-            ref={textareaRef}
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            placeholder="Share your thoughts…"
-            className="min-h-[44px] max-h-[120px] text-sm resize-none overflow-hidden rounded-xl border-border/50 focus:border-indigo-500/40 focus:ring-indigo-500/20 pr-10 transition-colors"
-            disabled={isUploading || disabled}
-            rows={1}
-          />
-        </div>
+      <form onSubmit={handleSubmit} className="space-y-2">
+        <Textarea
+          ref={textareaRef}
+          value={newComment}
+          onChange={(e) => setNewComment(e.target.value)}
+          placeholder="Share your thoughts..."
+          className="min-h-[44px] max-h-[120px] w-full text-sm resize-none overflow-hidden rounded-xl border-border/50"
+          disabled={isUploading || disabled}
+          rows={1}
+        />
 
-        <div className="flex items-center gap-1.5 flex-shrink-0 pb-0.5">
+        <div className="flex items-center justify-end gap-2">
           {!capturedPhoto && (
             <CameraCapture
               onPhotoCapture={handlePhotoCapture}
@@ -221,12 +219,15 @@ export default function CommentForm({
               (!newComment.trim() && !capturedPhoto) || isUploading || disabled
             }
             size="sm"
-            className="h-9 w-9 p-0 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 border-none text-white shadow-sm disabled:opacity-40 disabled:shadow-none transition-all"
+            className="h-9 px-4 rounded-xl text-xs font-medium gap-1.5 shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)] disabled:opacity-40 disabled:shadow-none transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.93]"
           >
             {isUploading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <Send className="h-4 w-4" />
+              <>
+                <Send className="h-3.5 w-3.5" />
+                Send
+              </>
             )}
           </Button>
         </div>

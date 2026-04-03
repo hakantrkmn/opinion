@@ -1,4 +1,4 @@
-import { MIN_ZOOM_LEVEL, USER_LOCATION_CIRCLE_RADIUS } from "@/constants";
+import { USER_LOCATION_CIRCLE_RADIUS } from "@/constants";
 import { useSession } from "@/hooks/useSession";
 import { useCreatePin, useDeletePin } from "@/hooks/mutations/use-pin-mutations";
 import { apiClient } from "@/lib/api/client";
@@ -6,9 +6,9 @@ import { queryKeys } from "@/lib/api/query-keys";
 import { useMapStore } from "@/store/map-store";
 import { locationService } from "@/services/locationService";
 import type { Comment, CreatePinData, EnhancedComment, MapBounds, Pin } from "@/types";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import type maplibregl from "maplibre-gl";
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 
 interface UsePinOperationsProps {
@@ -36,39 +36,45 @@ export const usePinOperations = ({ map }: UsePinOperationsProps) => {
   const store = useMapStore();
 
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastToastTimeRef = useRef<number>(0);
 
-  // Reactive pins cache
-  const { data: allPins = [] } = useQuery({
-    queryKey: queryKeys.pins.all,
-    queryFn: () => [] as Pin[],
-    initialData: [] as Pin[],
-    staleTime: Infinity,
-  });
+  // Simple pin state — single source of truth
+  const [pins, setPins] = useState<Pin[]>([]);
+
+  // Track last fetched bounds to avoid redundant API calls
+  const lastBoundsRef = useRef<string | null>(null);
 
   // --- Pin Loading ---
   const loadPins = useCallback(
     async (bounds: MapBounds, zoom: number, forceRefresh = false) => {
+      // Skip if same bounds (unless force)
+      const boundsKey = `${bounds.minLat.toFixed(4)},${bounds.maxLat.toFixed(4)},${bounds.minLng.toFixed(4)},${bounds.maxLng.toFixed(4)},${zoom}`;
+      if (!forceRefresh && lastBoundsRef.current === boundsKey) return;
+      lastBoundsRef.current = boundsKey;
+
       const params = new URLSearchParams({
         minLat: String(bounds.minLat),
         maxLat: String(bounds.maxLat),
         minLng: String(bounds.minLng),
         maxLng: String(bounds.maxLng),
       });
-      const data = await queryClient.fetchQuery({
-        queryKey: queryKeys.pins.bounds(bounds, zoom),
-        queryFn: () => apiClient<{ pins: Pin[] }>(`/api/pins?${params}`),
-        staleTime: forceRefresh ? 0 : 5 * 60 * 1000,
-      });
-      const pins = data.pins || [];
-      queryClient.setQueryData(queryKeys.pins.all, (old: Pin[] | undefined) => {
-        const existing = Array.isArray(old) ? old : [];
-        const ids = new Set(existing.map((p) => p.id));
-        return [...existing, ...pins.filter((p) => !ids.has(p.id))];
-      });
-      return pins;
+
+      try {
+        const data = await apiClient<{ pins: Pin[] }>(`/api/pins?${params}`);
+        const newPins = data.pins || [];
+
+        // Merge: add new pins, update existing ones
+        setPins((existing) => {
+          const map = new Map(existing.map((p) => [p.id, p]));
+          for (const pin of newPins) {
+            map.set(pin.id, pin);
+          }
+          return Array.from(map.values());
+        });
+      } catch (err) {
+        console.error("Failed to load pins:", err);
+      }
     },
-    [queryClient]
+    []
   );
 
   const loadPinsFromMapWithCache = useCallback(
@@ -81,15 +87,6 @@ export const usePinOperations = ({ map }: UsePinOperationsProps) => {
           if (!map.current) return;
           const bounds = map.current.getBounds();
           const zoom = Math.floor(map.current.getZoom());
-
-          if (zoom < MIN_ZOOM_LEVEL && !forceRefresh) {
-            const now = Date.now();
-            if (now - lastToastTimeRef.current > 5000) {
-              toast.info(`Zoom to level ${MIN_ZOOM_LEVEL} or higher to load pins`, { duration: 3000 });
-              lastToastTimeRef.current = now;
-            }
-            return;
-          }
 
           const latD = bounds.getNorth() - bounds.getSouth();
           const lngD = bounds.getEast() - bounds.getWest();
@@ -110,7 +107,7 @@ export const usePinOperations = ({ map }: UsePinOperationsProps) => {
     [map, loadPins]
   );
 
-  // --- Comment Fetching ---
+  // --- Comment Fetching (React Query stays for comments) ---
   const getPinComments = useCallback(
     async (pinId: string, forceRefresh = false): Promise<EnhancedComment[] | null> => {
       try {
@@ -120,7 +117,8 @@ export const usePinOperations = ({ map }: UsePinOperationsProps) => {
           staleTime: forceRefresh ? 0 : 2 * 60 * 1000,
         });
         if (data.error === "PIN_AUTO_DELETED") {
-          queryClient.invalidateQueries({ queryKey: queryKeys.pins.all });
+          // Remove deleted pin from state
+          setPins((prev) => prev.filter((p) => p.id !== pinId));
           return [];
         }
         return enrichComments(data.comments || [], user?.id);
@@ -163,7 +161,6 @@ export const usePinOperations = ({ map }: UsePinOperationsProps) => {
     });
   }, []);
 
-
   // --- Pin Creation ---
   const onLongPress = useCallback(
     async (e: React.SyntheticEvent) => {
@@ -192,6 +189,7 @@ export const usePinOperations = ({ map }: UsePinOperationsProps) => {
         await createPinMutation.mutateAsync({ lat: tp[1], lng: tp[0], pinName: data.pinName, comment: data.comment, photo: data.photo, photoMetadata: data.photoMetadata });
         store.setShowPinModal(false);
         store.setTempPin(null);
+        lastBoundsRef.current = null; // Force refetch
         loadPinsFromMapWithCache(true);
       } catch (err) {
         console.error("Pin creation error:", err);
@@ -200,32 +198,42 @@ export const usePinOperations = ({ map }: UsePinOperationsProps) => {
     [store, createPinMutation, loadPinsFromMapWithCache]
   );
 
+  const removePin = useCallback((pinId: string) => {
+    setPins((prev) => prev.filter((p) => p.id !== pinId));
+  }, []);
+
   return {
-    pins: allPins,
+    pins,
+    removePin,
     loading: createPinMutation.isPending || deletePinMutation.isPending,
     onLongPress,
     createPin,
     createPinFromData: async (data: CreatePinData) => {
       try {
         const pin = await createPinMutation.mutateAsync(data);
-        queryClient.setQueryData(queryKeys.pins.all, (old: Pin[] | undefined) => [...(old || []), pin]);
+        setPins((prev) => [...prev, pin]);
         return true;
       } catch { return false; }
     },
     deletePin: async (pinId: string) => {
       try {
         await deletePinMutation.mutateAsync(pinId);
-        queryClient.setQueryData(queryKeys.pins.all, (old: Pin[] | undefined) => (old || []).filter((p) => p.id !== pinId));
+        setPins((prev) => prev.filter((p) => p.id !== pinId));
         return true;
       } catch { return false; }
     },
     loadPins,
     loadPinsFromMapWithCache,
-    refreshPins: () => loadPinsFromMapWithCache(true),
+    refreshPins: () => {
+      lastBoundsRef.current = null;
+      loadPinsFromMapWithCache(true);
+    },
     clearMapPins,
     getPinComments,
     getBatchComments,
-    invalidateCache: () => queryClient.invalidateQueries({ queryKey: queryKeys.pins.all }),
+    invalidateCache: () => {
+      lastBoundsRef.current = null;
+    },
     loadingTimeoutRef,
   };
 };

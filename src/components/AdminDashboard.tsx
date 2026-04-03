@@ -22,9 +22,9 @@ import {
   useDeleteAdminComment,
   useRefreshStats,
 } from "@/hooks/mutations/use-admin-mutations";
+import { PinIcon } from "@/components/icons/PinIcon";
 import {
   BarChart3,
-  MapPin,
   MessageCircle,
   RefreshCw,
   Trash2,
@@ -156,7 +156,7 @@ export default function AdminDashboard() {
             Users ({typedUsers.length})
           </TabsTrigger>
           <TabsTrigger value="pins">
-            <MapPin className="h-4 w-4 mr-2" />
+            <PinIcon className="h-4 w-4 mr-2" />
             Pins ({typedPins.length})
           </TabsTrigger>
           <TabsTrigger value="comments">
@@ -180,7 +180,7 @@ export default function AdminDashboard() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Pins</CardTitle>
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <PinIcon className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{typedAnalytics.totalPins}</div>

@@ -28,7 +28,7 @@ export const ThemeToggle = ({ isMobile = false }: ThemeToggleProps) => {
           }`}
         />
         <Moon
-          className={`absolute inset-0 h-4 w-4 text-indigo-400 transition-all duration-300 ${
+          className={`absolute inset-0 h-4 w-4 text-emerald-400 transition-all duration-300 ${
             isDark ? "opacity-100 rotate-0 scale-100" : "opacity-0 -rotate-90 scale-0"
           }`}
         />

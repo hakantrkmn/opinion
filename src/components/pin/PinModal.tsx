@@ -17,7 +17,8 @@ import type {
   CameraCapture as CameraCaptureType,
   PinModalProps,
 } from "@/types";
-import { Camera, ImagePlus, LogIn, MapPin, X } from "lucide-react";
+import { PinIcon } from "@/components/icons/PinIcon";
+import { Camera, ImagePlus, LogIn, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -104,12 +105,11 @@ export default function PinModal({
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden border-none shadow-2xl">
-          <div className="h-1 w-full bg-gradient-to-r from-indigo-500 to-blue-500" />
           <div className="p-6">
             <DialogHeader className="space-y-0 mb-6">
               <DialogTitle className="flex items-center gap-2.5 text-lg font-bold">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 flex items-center justify-center">
-                  <LogIn className="h-4.5 w-4.5 text-white" />
+                <div className="w-9 h-9 rounded-xl bg-foreground flex items-center justify-center">
+                  <LogIn className="h-4.5 w-4.5 text-background" />
                 </div>
                 Sign In Required
               </DialogTitle>
@@ -119,8 +119,8 @@ export default function PinModal({
             </DialogHeader>
 
             <div className="text-center py-4 mb-4">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-blue-500/10 flex items-center justify-center mx-auto mb-3">
-                <MapPin className="h-8 w-8 text-indigo-500" />
+              <div className="w-16 h-16 rounded-2xl bg-muted/30 flex items-center justify-center mx-auto mb-3">
+                <PinIcon className="h-8 w-8 text-muted-foreground/40" />
               </div>
               <p className="text-sm text-muted-foreground max-w-[260px] mx-auto leading-relaxed">
                 Join the community to create pins, leave comments, and vote on
@@ -133,11 +133,11 @@ export default function PinModal({
                 type="button"
                 variant="outline"
                 onClick={handleClose}
-                className="flex-1 h-11 rounded-xl font-medium"
+                className="flex-1 h-11 rounded-xl font-medium transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.97]"
               >
                 Cancel
               </Button>
-              <Button asChild className="flex-1 h-11 rounded-xl font-medium bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 border-none text-white shadow-md">
+              <Button asChild className="flex-1 h-11 rounded-xl font-medium shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.97]">
                 <Link href="/auth">
                   <LogIn className="h-4 w-4 mr-2" />
                   Sign In
@@ -154,12 +154,11 @@ export default function PinModal({
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden border-none shadow-2xl">
-        <div className="h-1 w-full bg-gradient-to-r from-indigo-500 to-blue-500" />
         <div className="p-6">
           <DialogHeader className="space-y-0 mb-5">
             <DialogTitle className="flex items-center gap-2.5 text-lg font-bold">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 flex items-center justify-center shadow-md">
-                <MapPin className="h-4.5 w-4.5 text-white" />
+              <div className="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center shadow-[0_2px_8px_-2px_rgba(16,185,129,0.4)]">
+                <PinIcon className="h-4.5 w-4.5 text-white" />
               </div>
               What is your oPINion?
             </DialogTitle>
@@ -178,10 +177,10 @@ export default function PinModal({
                 type="text"
                 value={pinName}
                 onChange={(e) => setPinName(e.target.value)}
-                placeholder="Give your pin a name..."
+                placeholder="Name this place..."
                 required
                 maxLength={100}
-                className="h-11 rounded-xl border-border/60 focus:border-indigo-500/50 focus:ring-indigo-500/20 transition-colors"
+                className="h-11 rounded-xl"
               />
               <p className="text-[11px] text-muted-foreground/60 text-right tabular-nums">
                 {pinName.length}/100
@@ -199,7 +198,7 @@ export default function PinModal({
                 placeholder="What do you think about this location?"
                 rows={3}
                 required
-                className="rounded-xl border-border/60 focus:border-indigo-500/50 focus:ring-indigo-500/20 resize-none transition-colors"
+                className="rounded-xl resize-none"
               />
             </div>
 
@@ -249,20 +248,20 @@ export default function PinModal({
                 type="button"
                 variant="outline"
                 onClick={handleClose}
-                className="flex-1 h-11 rounded-xl font-medium"
+                className="flex-1 h-11 rounded-xl font-medium transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.97]"
                 disabled={isUploading}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                className="flex-1 h-11 rounded-xl font-medium bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 border-none text-white shadow-md transition-all"
+                className="flex-1 h-11 rounded-xl font-medium shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.97]"
                 disabled={isUploading}
               >
                 {isUploading ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-                    Creating…
+                    <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2" />
+                    Creating...
                   </>
                 ) : (
                   "Create Pin"

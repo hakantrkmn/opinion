@@ -30,7 +30,16 @@ export const useMapCore = (initialCoordinates?: [number, number] | null) => {
     ? { id: userSession.id, email: userSession.email || "" }
     : null;
 
-  // User marker
+  // User marker - zoom 13+ da görünür
+  const USER_MARKER_MIN_ZOOM = 13;
+
+  const updateUserMarkerVisibility = useCallback(() => {
+    if (!userMarker.current || !map.current) return;
+    const el = userMarker.current.getElement();
+    const zoom = map.current.getZoom();
+    el.style.display = zoom >= USER_MARKER_MIN_ZOOM ? "" : "none";
+  }, []);
+
   const addUserMarker = useCallback(
     (lng: number, lat: number) => {
       if (!map.current) return;
@@ -43,11 +52,17 @@ export const useMapCore = (initialCoordinates?: [number, number] | null) => {
         profile?.display_name
       );
 
+      // Zoom kontrolü
+      const zoom = map.current.getZoom();
+      if (zoom < USER_MARKER_MIN_ZOOM) el.style.display = "none";
+
       userMarker.current = new maplibregl.Marker({ element: el, anchor: "bottom" })
         .setLngLat([lng, lat])
         .addTo(map.current);
+
+      map.current.on("zoomend", updateUserMarkerVisibility);
     },
-    [profile]
+    [profile, updateUserMarkerVisibility]
   );
 
   const getUserLocation = async () => {
@@ -73,6 +88,7 @@ export const useMapCore = (initialCoordinates?: [number, number] | null) => {
 
       map.current.setStyle({
         version: 8,
+        glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
         sources: {
           cartodb: { type: "raster", tiles: style.tiles, tileSize: 256, attribution: style.attribution },
         },
@@ -104,6 +120,7 @@ export const useMapCore = (initialCoordinates?: [number, number] | null) => {
         container: mapContainer.current,
         style: {
           version: 8,
+          glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
           sources: {
             cartodb: {
               type: "raster",

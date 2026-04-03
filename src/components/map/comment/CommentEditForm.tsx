@@ -118,13 +118,14 @@ export default function CommentEditForm({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 min-w-0 overflow-hidden">
       {/* Text editing */}
       <Textarea
         value={editText}
         onChange={(e) => setEditText(e.target.value)}
         placeholder="Edit your comment..."
         rows={3}
+        className="w-full break-all"
       />
 
       {/* Photo management section */}

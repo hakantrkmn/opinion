@@ -30,18 +30,13 @@ export default function PinActions({
   };
 
   const handleShare = async () => {
-    if (!pinCoordinates) return;
-
-    const { lat, lng } = pinCoordinates;
     const currentUrl = window.location.origin;
-    const shareUrl = `${currentUrl}/?lat=${lat.toFixed(6)}&long=${lng.toFixed(
-      6
-    )}`;
+    const shareUrl = `${currentUrl}/pin/${pinId}`;
 
     try {
       await navigator.clipboard.writeText(shareUrl);
       toast.success("Link copied to clipboard!", {
-        description: "Share this link to show others this location",
+        description: `Share "${pinName}" with others`,
         duration: 3000,
       });
     } catch (error) {
@@ -75,7 +70,7 @@ export default function PinActions({
             size="sm"
             onClick={handleDirections}
             title="Get directions in Google Maps"
-            className="h-8 px-3 rounded-lg text-xs font-medium gap-1.5 bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 border-none text-white shadow-sm"
+            className="h-8 px-3 rounded-lg text-xs font-medium gap-1.5 shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96]"
           >
             <Navigation className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Directions</span>
@@ -85,7 +80,7 @@ export default function PinActions({
             size="sm"
             onClick={handleShare}
             title="Share this location"
-            className="h-8 px-3 rounded-lg text-xs font-medium gap-1.5 border-border/60 hover:bg-muted/60"
+            className="h-8 px-3 rounded-lg text-xs font-medium gap-1.5 border-border/60 hover:bg-muted/60 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96]"
           >
             <Share2 className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Share</span>
@@ -99,7 +94,7 @@ export default function PinActions({
           onClick={handleRefresh}
           disabled={refreshing}
           title="Refresh comments"
-          className="h-8 w-8 p-0 rounded-lg border-border/60 hover:bg-muted/60"
+          className="h-8 w-8 p-0 rounded-lg border-border/60 hover:bg-muted/60 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96]"
         >
           <RefreshCcw
             className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`}

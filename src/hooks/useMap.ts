@@ -14,6 +14,7 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
 
   const commentOps = useCommentOperations({
     getPinComments: pinOps.getPinComments,
+    removePin: pinOps.removePin,
   });
 
   const longPressBind = useLongPress(pinOps.onLongPress, {
@@ -39,8 +40,8 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
   useEffect(() => {
     return () => {
       if (pinOps.loadingTimeoutRef.current) clearTimeout(pinOps.loadingTimeoutRef.current);
-      if (mapCore.userMarker.current) mapCore.userMarker.current.remove();
-      if (mapCore.map.current) mapCore.map.current.remove();
+      try { mapCore.userMarker.current?.remove(); } catch {}
+      try { mapCore.map.current?.remove(); } catch {}
     };
   }, [pinOps.loadingTimeoutRef, mapCore.userMarker, mapCore.map]);
 

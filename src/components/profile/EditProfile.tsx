@@ -109,8 +109,6 @@ export function EditProfile({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden border-none shadow-2xl">
-        {/* Accent bar */}
-        <div className="h-1 w-full bg-gradient-to-r from-indigo-500 to-blue-500" />
 
         <div className="p-6">
           <DialogHeader className="space-y-0 mb-6">
@@ -124,7 +122,7 @@ export function EditProfile({
             {/* Avatar Section */}
             <div className="flex flex-col items-center gap-3">
               <div className="relative group">
-                <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-indigo-500 to-blue-500 opacity-15 blur-sm group-hover:opacity-25 transition-opacity" />
+                <div className="absolute -inset-1 rounded-full bg-foreground/5 blur-sm group-hover:bg-foreground/8 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]" />
                 <Avatar
                   src={avatarUrl}
                   alt={displayName || user.email || "User"}
@@ -135,7 +133,7 @@ export function EditProfile({
                 {/* Upload button */}
                 <label
                   htmlFor="avatar-upload"
-                  className="absolute bottom-0 right-0 w-8 h-8 bg-gradient-to-br from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 text-white rounded-full cursor-pointer transition-all flex items-center justify-center shadow-md hover:shadow-lg hover:scale-105"
+                  className="absolute bottom-0 right-0 w-8 h-8 bg-foreground hover:bg-foreground/90 text-background rounded-full cursor-pointer transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.93] flex items-center justify-center shadow-md hover:shadow-lg"
                 >
                   {uploading ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -159,7 +157,7 @@ export function EditProfile({
                 <button
                   onClick={handleDeleteAvatar}
                   disabled={deleting || uploading || saving}
-                  className="text-[11px] font-medium text-red-500 hover:text-red-600 transition-colors cursor-pointer disabled:opacity-40 flex items-center gap-1"
+                  className="text-[11px] font-medium text-red-500 hover:text-red-600 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96] cursor-pointer disabled:opacity-40 flex items-center gap-1"
                 >
                   {deleting ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
@@ -180,10 +178,10 @@ export function EditProfile({
                 id="display-name"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Enter your display name"
+                placeholder="Your name"
                 disabled={saving}
                 maxLength={50}
-                className="h-11 rounded-xl border-border/60 focus:border-indigo-500/50 focus:ring-indigo-500/20 transition-colors"
+                className="h-11 rounded-xl"
               />
               <p className="text-[11px] text-muted-foreground/50 text-right tabular-nums">
                 {displayName.length}/50
@@ -212,19 +210,19 @@ export function EditProfile({
                 variant="outline"
                 onClick={onClose}
                 disabled={saving}
-                className="flex-1 h-11 rounded-xl font-medium"
+                className="flex-1 h-11 rounded-xl font-medium transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.97]"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleSave}
                 disabled={!hasChanges || saving}
-                className="flex-1 h-11 rounded-xl font-medium bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 border-none text-white shadow-md disabled:opacity-40 disabled:shadow-none transition-all"
+                className="flex-1 h-11 rounded-xl font-medium shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.97] disabled:opacity-40 disabled:shadow-none"
               >
                 {saving ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Saving…
+                    Saving...
                   </>
                 ) : (
                   <>

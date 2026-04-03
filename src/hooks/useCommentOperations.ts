@@ -6,17 +6,19 @@ import {
   useDeleteComment,
   useVoteComment,
 } from "@/hooks/mutations/use-comment-mutations";
-import type { Comment, EnhancedComment, Pin } from "@/types";
+import type { Comment, EnhancedComment } from "@/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "@/hooks/useSession";
 import { useCallback } from "react";
 
 interface UseCommentOperationsProps {
   getPinComments: (pinId: string, forceRefresh?: boolean) => Promise<EnhancedComment[] | null>;
+  removePin: (pinId: string) => void;
 }
 
 export const useCommentOperations = ({
   getPinComments,
+  removePin,
 }: UseCommentOperationsProps) => {
   const queryClient = useQueryClient();
   const { user } = useSession();
@@ -99,10 +101,8 @@ export const useCommentOperations = ({
       try {
         const result = await deleteMutation.mutateAsync({ commentId, pinId: sp.pinId });
         if (result.pinDeleted) {
-          // Pin was auto-deleted, remove from pins cache
-          queryClient.setQueryData(queryKeys.pins.all, (old: Pin[] | undefined) =>
-            (old || []).filter((p) => p.id !== sp.pinId)
-          );
+          // Pin was auto-deleted, remove from map
+          removePin(sp.pinId);
           store.setShowPinDetailModal(false);
           store.setSelectedPin(null);
         } else {
@@ -113,7 +113,7 @@ export const useCommentOperations = ({
         return true;
       } catch { return false; }
     },
-    [store, deleteMutation, queryClient]
+    [store, deleteMutation, removePin]
   );
 
   // Vote comment: optimistic local update, no refetch
@@ -168,6 +168,7 @@ export const useCommentOperations = ({
 
       try {
         await voteMutation.mutateAsync({ commentId, value, pinId });
+        invalidatePinCommentsCache(pinId);
         return true;
       } catch {
         // Rollback on failure
@@ -175,7 +176,7 @@ export const useCommentOperations = ({
         return false;
       }
     },
-    [store, voteMutation, user?.id]
+    [store, voteMutation, user?.id, invalidatePinCommentsCache]
   );
 
   return {

@@ -7,7 +7,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { MapPin, Search } from "lucide-react";
+import { PinIcon } from "@/components/icons/PinIcon";
+import { Search } from "lucide-react";
 import Link from "next/link";
 
 export default function NotFound() {
@@ -19,7 +20,7 @@ export default function NotFound() {
           <CardHeader className="pb-4">
             <div className="flex justify-center mb-4">
               <div className="relative">
-                <MapPin className="h-16 w-16 text-muted-foreground" />
+                <PinIcon className="h-16 w-16 text-muted-foreground" />
                 <div className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">
                   !
                 </div>

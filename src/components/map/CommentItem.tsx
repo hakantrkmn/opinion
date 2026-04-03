@@ -67,8 +67,8 @@ export default function CommentItem({
   }
 
   return (
-    <div className={`group relative rounded-2xl border border-border/50 bg-card transition-all hover:border-border/80 hover:shadow-sm ${isOptimistic ? 'opacity-70' : ''}`}>
-      <div className="p-4">
+    <div className={`group relative rounded-2xl border border-border/50 bg-card overflow-hidden min-w-0 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-border/80 hover:shadow-sm ${isOptimistic ? 'opacity-70' : ''}`}>
+      <div className="p-4 min-w-0">
         {/* Header: avatar, name, date */}
         <div className="flex items-center justify-between gap-3 mb-3">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -131,13 +131,13 @@ export default function CommentItem({
           <>
             {/* Comment text */}
             <div className="mb-3">
-              <p className="text-sm leading-relaxed text-foreground/90">
+              <p className="text-sm leading-relaxed text-foreground/90 break-all overflow-hidden">
                 {displayText}
               </p>
               {isLongComment && (
                 <button
                   onClick={() => setIsExpanded(!isExpanded)}
-                  className="text-xs text-primary hover:text-primary/80 mt-1.5 font-semibold transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 focus:ring-offset-1 rounded-sm"
+                  className="text-xs text-primary hover:text-primary/80 mt-1.5 font-semibold transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.97] cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 focus:ring-offset-1 rounded-sm"
                 >
                   {isExpanded ? "Show less" : "Read more"}
                 </button>
