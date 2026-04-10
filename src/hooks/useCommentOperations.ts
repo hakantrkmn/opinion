@@ -6,7 +6,7 @@ import {
   useDeleteComment,
   useVoteComment,
 } from "@/hooks/mutations/use-comment-mutations";
-import type { Comment, EnhancedComment } from "@/types";
+import type { Comment, EnhancedComment, Pin } from "@/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "@/hooks/useSession";
 import { useCallback } from "react";
