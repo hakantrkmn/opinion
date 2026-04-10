@@ -35,6 +35,7 @@ yarn-error.log*
 
 # uploads
 public/uploads/
+/storage/
 
 # vercel
 .vercel

@@ -7,6 +7,7 @@ import { eq, desc, count } from "drizzle-orm";
 import { writeFile, unlink, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
+import { UPLOAD_DIR } from "@/lib/storage";
 
 export const userService = {
   async uploadAvatar(
@@ -41,7 +42,7 @@ export const userService = {
 
       const fileExt = file.name.split(".").pop();
       const fileName = `avatar-${Date.now()}.${fileExt}`;
-      const dirPath = join(process.cwd(), "public", "uploads", "avatars", userId);
+      const dirPath = join(UPLOAD_DIR, "avatars", userId);
       const filePath = join(dirPath, fileName);
 
       // Ensure directory exists
@@ -61,7 +62,8 @@ export const userService = {
       // Cleanup old avatar
       if (currentUser?.avatarUrl?.startsWith("/uploads/")) {
         try {
-          const oldPath = join(process.cwd(), "public", currentUser.avatarUrl);
+          const relative = currentUser.avatarUrl.replace(/^\/uploads\//, "");
+          const oldPath = join(UPLOAD_DIR, relative);
           if (existsSync(oldPath)) {
             await unlink(oldPath);
           }
@@ -92,7 +94,8 @@ export const userService = {
 
       if (userData.avatarUrl.startsWith("/uploads/")) {
         try {
-          const filePath = join(process.cwd(), "public", userData.avatarUrl);
+          const relative = userData.avatarUrl.replace(/^\/uploads\//, "");
+          const filePath = join(UPLOAD_DIR, relative);
           if (existsSync(filePath)) {
             await unlink(filePath);
           }

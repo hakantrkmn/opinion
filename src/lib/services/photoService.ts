@@ -3,6 +3,7 @@ import { compressImage, needsCompression } from "@/utils/photoCompression";
 import { writeFile, unlink, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
+import { UPLOAD_DIR } from "@/lib/storage";
 
 /**
  * Upload photo to local storage
@@ -26,13 +27,7 @@ export async function uploadCommentPhoto(
     }
 
     const fileName = generatePhotoFileName(finalFile.name, userId, commentId);
-    const dirPath = join(
-      process.cwd(),
-      "public",
-      "uploads",
-      "comment-photos",
-      userId
-    );
+    const dirPath = join(UPLOAD_DIR, "comment-photos", userId);
     const filePath = join(dirPath, fileName);
 
     if (!existsSync(dirPath)) {
@@ -74,7 +69,8 @@ export async function deleteCommentPhoto(photoUrl: string): Promise<boolean> {
       return false;
     }
 
-    const filePath = join(process.cwd(), "public", relativePath);
+    const relative = relativePath.replace(/^\/uploads\//, "");
+    const filePath = join(UPLOAD_DIR, relative);
     if (existsSync(filePath)) {
       await unlink(filePath);
     }
@@ -131,7 +127,8 @@ export async function getPhotoMetadata(
 ): Promise<Record<string, unknown> | null> {
   try {
     if (url.startsWith("/uploads/")) {
-      const filePath = join(process.cwd(), "public", url);
+      const relative = url.replace(/^\/uploads\//, "");
+      const filePath = join(UPLOAD_DIR, relative);
       const { stat } = await import("fs/promises");
       const stats = await stat(filePath);
       return {
