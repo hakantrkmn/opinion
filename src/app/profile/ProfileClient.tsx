@@ -5,7 +5,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Avatar } from "@/components/ui/Avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { useUserPins, useUserComments } from "@/hooks/queries/use-profile";
+import { useUserPins, useUserComments, useProfileStats } from "@/hooks/queries/use-profile";
 import type { Comment, Pin, UserStats } from "@/types";
 import { queryKeys } from "@/lib/api/query-keys";
 import { PinIcon } from "@/components/icons/PinIcon";
@@ -62,6 +62,7 @@ export function ProfileClient({ user, userStats }: ProfileClientProps) {
 
   const { data: pins = [], isLoading: pinsLoading, error: pinsError } = useUserPins(activeTab === "pins");
   const { data: comments = [], isLoading: commentsLoading, error: commentsError } = useUserComments(activeTab === "comments");
+  const { data: liveProfileStats } = useProfileStats(user.id, { initialData: userStats });
 
   const loading = pinsLoading || commentsLoading;
   const error = pinsError?.message || commentsError?.message || null;
@@ -98,7 +99,7 @@ export function ProfileClient({ user, userStats }: ProfileClientProps) {
     }
   };
 
-  const stats = userStats.stats;
+  const stats = liveProfileStats?.stats ?? userStats.stats;
   const totalPins = stats?.totalPins || 0;
   const totalComments = stats?.totalComments || 0;
   const totalLikes = stats?.totalLikes || 0;

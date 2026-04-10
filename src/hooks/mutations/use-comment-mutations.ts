@@ -1,5 +1,6 @@
 import { apiClient } from "@/lib/api/client";
-import { useMutation } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/api/query-keys";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 export function useAddComment() {
@@ -58,6 +59,7 @@ export function useEditComment() {
 }
 
 export function useDeleteComment() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
       commentId,
@@ -74,6 +76,9 @@ export function useDeleteComment() {
       });
     },
     onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.profile.pins });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.profile.comments });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.profile.stats });
       if (result.pinDeleted) {
         toast.success("Pin deleted after removing last comment");
       } else {

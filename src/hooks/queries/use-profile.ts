@@ -27,7 +27,10 @@ export function useProfile(userId: string | undefined) {
   });
 }
 
-export function useProfileStats(userId: string | undefined) {
+export function useProfileStats(
+  userId: string | undefined,
+  options?: { initialData?: UserStats }
+) {
   return useQuery({
     queryKey: queryKeys.profile.stats,
     queryFn: async () => {
@@ -35,6 +38,7 @@ export function useProfileStats(userId: string | undefined) {
       return data;
     },
     enabled: !!userId,
+    initialData: options?.initialData,
     staleTime: 5 * 60 * 1000,
   });
 }

@@ -519,6 +519,16 @@ export const pinService = {
 
       const pinId = comment.pinId;
 
+      const [pinRow] = await db
+        .select({ userId: pins.userId })
+        .from(pins)
+        .where(eq(pins.id, pinId));
+
+      const voterRows = await db
+        .select({ userId: commentVotes.userId })
+        .from(commentVotes)
+        .where(eq(commentVotes.commentId, commentId));
+
       if (comment.photoUrl) {
         const { deleteCommentPhoto } = await import("./photoService");
         await deleteCommentPhoto(comment.photoUrl);
@@ -536,6 +546,19 @@ export const pinService = {
       await db
         .delete(comments)
         .where(and(eq(comments.id, commentId), eq(comments.userId, userId)));
+
+      const affectedUserIds = new Set<string>([comment.userId]);
+      if (pinRow?.userId) affectedUserIds.add(pinRow.userId);
+      for (const v of voterRows) affectedUserIds.add(v.userId);
+
+      const { userService } = await import("./userService");
+      await Promise.all(
+        [...affectedUserIds].map((uid) =>
+          userService.refreshUserStats(uid).catch((err) => {
+            console.error("refreshUserStats after comment delete:", uid, err);
+          })
+        )
+      );
 
       const wasLastComment = commentCountBefore === 1;
 
