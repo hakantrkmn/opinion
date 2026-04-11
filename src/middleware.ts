@@ -33,11 +33,10 @@ export async function middleware(request: NextRequest) {
 
   // Self-fetch must hit the local HTTP listener, not the public origin.
   // Behind a TLS-terminating proxy (Dokploy/Traefik), request.nextUrl.origin
-  // is https://... but the container serves plain HTTP — causing
-  // ERR_SSL_PACKET_LENGTH_TOO_LONG. Prefer an explicit internal URL.
+  // is https://... but the container serves plain HTTP. Going out to the
+  // public domain also fails due to NAT hairpinning. Always use loopback.
   const internalBaseUrl =
     process.env.INTERNAL_URL ||
-    process.env.BETTER_AUTH_URL ||
     `http://127.0.0.1:${process.env.PORT || 3000}`;
 
   const { data: session } = await betterFetch<Session>(
