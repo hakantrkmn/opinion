@@ -57,6 +57,7 @@ export default function Map({ initialCoordinates }: MapProps) {
 
   useEffect(() => {
     initializeMap();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const isLoading = locationPermission === "loading";

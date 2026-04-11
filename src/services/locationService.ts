@@ -42,7 +42,7 @@ export class LocationService {
       } else {
         return "prompt";
       }
-    } catch (error) {
+    } catch {
       return "unknown";
     }
   }
@@ -56,7 +56,7 @@ export class LocationService {
         return [longitude, latitude];
       }
       return null;
-    } catch (error) {
+    } catch {
       return null;
     }
   }

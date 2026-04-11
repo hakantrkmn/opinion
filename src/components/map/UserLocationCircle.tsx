@@ -82,6 +82,7 @@ export const UserLocationCircle = ({
         id: layerId,
         type: "fill",
         source: sourceId,
+        minzoom: 16,
         paint: {
           "fill-color": color,
           "fill-opacity": opacity,
@@ -129,6 +130,7 @@ export const UserLocationCircle = ({
     return () => {
       removeCircle();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, coordinates, radius, color, opacity, outlineColor]);
 
   // Component unmount olduğunda circle'ı kaldır
@@ -136,6 +138,7 @@ export const UserLocationCircle = ({
     return () => {
       removeCircle();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map]);
 
   // Bu component sadece logic yapıyor, UI render etmiyor

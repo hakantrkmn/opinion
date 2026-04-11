@@ -29,7 +29,6 @@ export default function CommentEditForm({
   comment,
   onSave,
   onCancel,
-  currentUserId,
 }: CommentEditFormProps) {
   const [editText, setEditText] = useState(comment.text);
   const [editPhotoAction, setEditPhotoAction] = useState<

@@ -1,7 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import type { Comment, EnhancedComment } from "@/types";
 import {
   ThumbsDown,
   ThumbsUp,
@@ -31,7 +29,6 @@ export default function CommentVoting({
   onVote,
   currentUserId,
   isOptimistic,
-  commentVotes,
 }: CommentVotingProps) {
   const [localVote, setLocalVote] = useState(userVote || 0);
   const [localLikeCount, setLocalLikeCount] = useState(initialLikeCount);

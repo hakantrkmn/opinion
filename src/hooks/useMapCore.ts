@@ -31,7 +31,7 @@ export const useMapCore = (initialCoordinates?: [number, number] | null) => {
     : null;
 
   // User marker - zoom 13+ da görünür
-  const USER_MARKER_MIN_ZOOM = 13;
+  const USER_MARKER_MIN_ZOOM = 16;
 
   const updateUserMarkerVisibility = useCallback(() => {
     if (!userMarker.current || !map.current) return;
@@ -133,6 +133,7 @@ export const useMapCore = (initialCoordinates?: [number, number] | null) => {
         },
         center: defaultCenter,
         zoom: defaultZoom,
+        minZoom: 7,
         maxZoom: 20,
       });
 

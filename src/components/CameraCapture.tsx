@@ -262,11 +262,13 @@ export default function CameraCapture({
     return () => {
       if (!isMobile) stopCamera();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showCameraModal, isMobile]);
 
   // Clean up camera stream on unmount
   useEffect(() => {
     return () => stopCamera();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Clean up object URLs

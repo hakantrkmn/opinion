@@ -3,7 +3,7 @@ import type { Comment, CreatePinData, MapBounds, Pin } from "@/types";
 import { db, sql } from "@/db";
 import { pins, comments, commentVotes } from "@/db/schema/app";
 import { user } from "@/db/schema/auth";
-import { eq, and, inArray, asc, desc } from "drizzle-orm";
+import { eq, and, inArray, asc } from "drizzle-orm";
 
 export const pinService = {
   async createPin(

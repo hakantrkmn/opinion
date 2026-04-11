@@ -1,10 +1,6 @@
-import type { MapBounds } from "@/types";
-
 export const queryKeys = {
   pins: {
     all: ["pins"] as const,
-    bounds: (bounds: MapBounds, zoom: number) =>
-      ["pins", "bounds", JSON.stringify(bounds), zoom] as const,
     comments: (pinId: string) => ["pins", "comments", pinId] as const,
     batchComments: (pinIds: string[]) =>
       ["pins", "batch-comments", pinIds.sort().join(",")] as const,

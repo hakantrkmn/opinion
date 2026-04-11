@@ -119,7 +119,7 @@ export function usePinClustering(
 
       listenersAttachedRef.current = true;
     }
-  }, [map]);
+  }, []);
 
   /** Unclustered pin'leri DOM marker olarak sync et */
   const syncMarkers = useCallback(() => {
@@ -212,6 +212,7 @@ export function usePinClustering(
     if (m.isStyleLoaded()) addSourceAndLayers(m);
     m.on("style.load", onStyleLoad);
     return () => { m.off("style.load", onStyleLoad); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, addSourceAndLayers]);
 
   // DOM marker sync - data/render event'lerinde
@@ -225,6 +226,7 @@ export function usePinClustering(
     return () => {
       m.off("idle", handler);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, syncMarkers]);
 
   // Pin data değişince source güncelle
@@ -239,9 +241,10 @@ export function usePinClustering(
 
   // Cleanup on unmount
   useEffect(() => {
+    const markers = markersRef.current;
     return () => {
-      for (const marker of markersRef.current.values()) marker.remove();
-      markersRef.current.clear();
+      for (const marker of markers.values()) marker.remove();
+      markers.clear();
     };
   }, []);
 

@@ -175,7 +175,7 @@ export const checkIOSPermissionState = async (): Promise<
     } else {
       return "prompt";
     }
-  } catch (error) {
+  } catch {
     return "unknown";
   }
 };

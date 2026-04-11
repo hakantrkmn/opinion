@@ -1,4 +1,4 @@
-import { GeoJSONPoint, MapBounds } from "@/types";
+import { GeoJSONPoint } from "@/types";
 
 export const parseLocation = (location: GeoJSONPoint): [number, number] => {
   if (!location) {
@@ -12,28 +12,6 @@ export const parseLocation = (location: GeoJSONPoint): [number, number] => {
   console.warn("Could not parse location:", location);
   return [0, 0];
 };
-export function getBoundsKey(bounds: MapBounds, zoom: number): string {
-  const getGridSize = (zoom: number) => {
-    if (zoom >= 15) return 0.01;
-    if (zoom >= 12) return 0.02;
-    if (zoom >= 10) return 0.05;
-    return 0.1;
-  };
-
-  const gridSize = getGridSize(zoom);
-  const gridMinLat = Math.floor(bounds.minLat / gridSize) * gridSize;
-  const gridMaxLat = Math.ceil(bounds.maxLat / gridSize) * gridSize;
-  const gridMinLng = Math.floor(bounds.minLng / gridSize) * gridSize;
-  const gridMaxLng = Math.ceil(bounds.maxLng / gridSize) * gridSize;
-
-  return [
-    gridMinLat.toFixed(3),
-    gridMaxLat.toFixed(3),
-    gridMinLng.toFixed(3),
-    gridMaxLng.toFixed(3),
-    zoom,
-  ].join(",");
-}
 export const getActivityBadge = (count?: number) => {
   if (!count || count === 0)
     return {

@@ -6,6 +6,13 @@ import { queryKeys } from "@/lib/api/query-keys";
 import { useMapStore } from "@/store/map-store";
 import { locationService } from "@/services/locationService";
 import type { Comment, CreatePinData, EnhancedComment, MapBounds, Pin } from "@/types";
+import {
+  TileCache,
+  boundsToTiles,
+  pinTileZoomFor,
+  tileKeyForPin,
+  tileToBounds,
+} from "@/utils/tileCache";
 import { useQueryClient } from "@tanstack/react-query";
 import type maplibregl from "maplibre-gl";
 import { useCallback, useRef, useState } from "react";
@@ -14,6 +21,9 @@ import { toast } from "sonner";
 interface UsePinOperationsProps {
   map: React.MutableRefObject<maplibregl.Map | null>;
 }
+
+// Low-zoom safety: if viewport covers more than this many z14 tiles, skip fetch.
+const MAX_TILES_PER_FETCH = 16;
 
 // Shared enrichment utility
 function enrichComments(comments: Comment[], userId?: string): EnhancedComment[] {
@@ -28,6 +38,17 @@ function enrichComments(comments: Comment[], userId?: string): EnhancedComment[]
   }));
 }
 
+async function fetchTilePins(bounds: MapBounds): Promise<Pin[]> {
+  const params = new URLSearchParams({
+    minLat: String(bounds.minLat),
+    maxLat: String(bounds.maxLat),
+    minLng: String(bounds.minLng),
+    maxLng: String(bounds.maxLng),
+  });
+  const data = await apiClient<{ pins: Pin[] }>(`/api/pins?${params}`);
+  return data.pins || [];
+}
+
 export const usePinOperations = ({ map }: UsePinOperationsProps) => {
   const { user } = useSession();
   const queryClient = useQueryClient();
@@ -36,45 +57,65 @@ export const usePinOperations = ({ map }: UsePinOperationsProps) => {
   const store = useMapStore();
 
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const cacheRef = useRef<TileCache>(new TileCache());
+  const inFlightRef = useRef<Set<string>>(new Set());
 
-  // Simple pin state — single source of truth
   const [pins, setPins] = useState<Pin[]>([]);
 
-  // Track last fetched bounds to avoid redundant API calls
-  const lastBoundsRef = useRef<string | null>(null);
+  const syncPinsState = useCallback(() => {
+    setPins(cacheRef.current.allPins());
+  }, []);
 
-  // --- Pin Loading ---
-  const loadPins = useCallback(
-    async (bounds: MapBounds, zoom: number, forceRefresh = false) => {
-      // Skip if same bounds (unless force)
-      const boundsKey = `${bounds.minLat.toFixed(4)},${bounds.maxLat.toFixed(4)},${bounds.minLng.toFixed(4)},${bounds.maxLng.toFixed(4)},${zoom}`;
-      if (!forceRefresh && lastBoundsRef.current === boundsKey) return;
-      lastBoundsRef.current = boundsKey;
+  const loadTiles = useCallback(
+    async (forceRefresh = false) => {
+      const m = map.current;
+      if (!m) return;
 
-      const params = new URLSearchParams({
-        minLat: String(bounds.minLat),
-        maxLat: String(bounds.maxLat),
-        minLng: String(bounds.minLng),
-        maxLng: String(bounds.maxLng),
+      const viewport = m.getBounds();
+      const viewportBounds: MapBounds = {
+        minLat: viewport.getSouth(),
+        maxLat: viewport.getNorth(),
+        minLng: viewport.getWest(),
+        maxLng: viewport.getEast(),
+      };
+
+      const tileZoom = pinTileZoomFor(m.getZoom());
+      const tiles = boundsToTiles(viewportBounds, tileZoom, MAX_TILES_PER_FETCH);
+      if (tiles.length === 0) return;
+
+      const cache = cacheRef.current;
+      if (forceRefresh) {
+        for (const t of tiles) cache.delete(t.key);
+      } else {
+        // Touch cached tiles so LRU keeps them warm.
+        for (const t of tiles) cache.get(t.key);
+      }
+
+      const missing = tiles.filter((t) => !cache.has(t.key) && !inFlightRef.current.has(t.key));
+      if (missing.length === 0) {
+        syncPinsState();
+        return;
+      }
+
+      for (const t of missing) inFlightRef.current.add(t.key);
+
+      const results = await Promise.allSettled(
+        missing.map((t) => fetchTilePins(tileToBounds(t.x, t.y, tileZoom)))
+      );
+
+      results.forEach((res, i) => {
+        const t = missing[i];
+        inFlightRef.current.delete(t.key);
+        if (res.status === "fulfilled") {
+          cache.set(t.key, res.value);
+        } else {
+          console.error("Failed to load tile", t.key, res.reason);
+        }
       });
 
-      try {
-        const data = await apiClient<{ pins: Pin[] }>(`/api/pins?${params}`);
-        const newPins = data.pins || [];
-
-        // Merge: add new pins, update existing ones
-        setPins((existing) => {
-          const map = new Map(existing.map((p) => [p.id, p]));
-          for (const pin of newPins) {
-            map.set(pin.id, pin);
-          }
-          return Array.from(map.values());
-        });
-      } catch (err) {
-        console.error("Failed to load pins:", err);
-      }
+      syncPinsState();
     },
-    []
+    [map, syncPinsState]
   );
 
   const loadPinsFromMapWithCache = useCallback(
@@ -83,28 +124,13 @@ export const usePinOperations = ({ map }: UsePinOperationsProps) => {
       if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
 
       loadingTimeoutRef.current = setTimeout(
-        async () => {
-          if (!map.current) return;
-          const bounds = map.current.getBounds();
-          const zoom = Math.floor(map.current.getZoom());
-
-          const latD = bounds.getNorth() - bounds.getSouth();
-          const lngD = bounds.getEast() - bounds.getWest();
-          await loadPins(
-            {
-              minLat: bounds.getSouth() - latD * 0.2,
-              maxLat: bounds.getNorth() + latD * 0.2,
-              minLng: bounds.getWest() - lngD * 0.2,
-              maxLng: bounds.getEast() + lngD * 0.2,
-            },
-            zoom,
-            forceRefresh
-          );
+        () => {
+          void loadTiles(forceRefresh);
         },
         forceRefresh ? 0 : 300
       );
     },
-    [map, loadPins]
+    [map, loadTiles]
   );
 
   // --- Comment Fetching (React Query stays for comments) ---
@@ -117,8 +143,12 @@ export const usePinOperations = ({ map }: UsePinOperationsProps) => {
           staleTime: forceRefresh ? 0 : 2 * 60 * 1000,
         });
         if (data.error === "PIN_AUTO_DELETED") {
-          // Remove deleted pin from state
-          setPins((prev) => prev.filter((p) => p.id !== pinId));
+          const tileKey = (() => {
+            const pin = cacheRef.current.allPins().find((p) => p.id === pinId);
+            return pin ? tileKeyForPin(pin) : null;
+          })();
+          if (tileKey) cacheRef.current.delete(tileKey);
+          syncPinsState();
           return [];
         }
         return enrichComments(data.comments || [], user?.id);
@@ -126,7 +156,7 @@ export const usePinOperations = ({ map }: UsePinOperationsProps) => {
         return null;
       }
     },
-    [queryClient, user?.id]
+    [queryClient, user?.id, syncPinsState]
   );
 
   const getBatchComments = useCallback(
@@ -161,6 +191,14 @@ export const usePinOperations = ({ map }: UsePinOperationsProps) => {
     });
   }, []);
 
+  const removeFromCache = useCallback(
+    (pinId: string) => {
+      cacheRef.current.removePinById(pinId);
+      syncPinsState();
+    },
+    [syncPinsState]
+  );
+
   // --- Pin Creation ---
   const onLongPress = useCallback(
     async (e: React.SyntheticEvent) => {
@@ -186,21 +224,34 @@ export const usePinOperations = ({ map }: UsePinOperationsProps) => {
       const tp = store.tempPin;
       if (!tp) return;
       try {
-        await createPinMutation.mutateAsync({ lat: tp[1], lng: tp[0], pinName: data.pinName, comment: data.comment, photo: data.photo, photoMetadata: data.photoMetadata });
+        const pin = await createPinMutation.mutateAsync({
+          lat: tp[1],
+          lng: tp[0],
+          pinName: data.pinName,
+          comment: data.comment,
+          photo: data.photo,
+          photoMetadata: data.photoMetadata,
+        });
         store.setShowPinModal(false);
         store.setTempPin(null);
-        lastBoundsRef.current = null; // Force refetch
-        loadPinsFromMapWithCache(true);
+        // Invalidate the tile the new pin lives in so the next visit re-fetches it
+        // authoritatively (in case another client added pins nearby). Then add the
+        // pin optimistically so the user sees it immediately without a refetch.
+        cacheRef.current.delete(tileKeyForPin(pin));
+        setPins((prev) => [...prev.filter((p) => p.id !== pin.id), pin]);
       } catch (err) {
         console.error("Pin creation error:", err);
       }
     },
-    [store, createPinMutation, loadPinsFromMapWithCache]
+    [store, createPinMutation]
   );
 
-  const removePin = useCallback((pinId: string) => {
-    setPins((prev) => prev.filter((p) => p.id !== pinId));
-  }, []);
+  const removePin = useCallback(
+    (pinId: string) => {
+      removeFromCache(pinId);
+    },
+    [removeFromCache]
+  );
 
   return {
     pins,
@@ -211,28 +262,29 @@ export const usePinOperations = ({ map }: UsePinOperationsProps) => {
     createPinFromData: async (data: CreatePinData) => {
       try {
         const pin = await createPinMutation.mutateAsync(data);
-        setPins((prev) => [...prev, pin]);
+        cacheRef.current.delete(tileKeyForPin(pin));
+        setPins((prev) => [...prev.filter((p) => p.id !== pin.id), pin]);
         return true;
       } catch { return false; }
     },
     deletePin: async (pinId: string) => {
       try {
         await deletePinMutation.mutateAsync(pinId);
-        setPins((prev) => prev.filter((p) => p.id !== pinId));
+        removeFromCache(pinId);
         return true;
       } catch { return false; }
     },
-    loadPins,
     loadPinsFromMapWithCache,
     refreshPins: () => {
-      lastBoundsRef.current = null;
+      cacheRef.current.clear();
+      setPins([]);
       loadPinsFromMapWithCache(true);
     },
     clearMapPins,
     getPinComments,
     getBatchComments,
     invalidateCache: () => {
-      lastBoundsRef.current = null;
+      cacheRef.current.clear();
     },
     loadingTimeoutRef,
   };

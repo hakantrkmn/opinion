@@ -78,7 +78,6 @@ export default function PinMarker({ pin, map, onPopupClick }: PinMarkerProps) {
         markerRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, pinId]);
 
   return null;

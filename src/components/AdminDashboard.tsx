@@ -52,9 +52,18 @@ export default function AdminDashboard() {
   const delComment = useDeleteAdminComment();
   const refreshStats = useRefreshStats();
 
-  const users = (usersResp?.data || []) as unknown as AdminUser[];
-  const pins = (pinsResp?.data || []) as unknown as AdminPin[];
-  const comments = (commentsResp?.data || []) as unknown as AdminComment[];
+  const users = useMemo(
+    () => (usersResp?.data || []) as unknown as AdminUser[],
+    [usersResp]
+  );
+  const pins = useMemo(
+    () => (pinsResp?.data || []) as unknown as AdminPin[],
+    [pinsResp]
+  );
+  const comments = useMemo(
+    () => (commentsResp?.data || []) as unknown as AdminComment[],
+    [commentsResp]
+  );
   const analytics = (analyticsResp as { data?: AdminAnalytics } | undefined)
     ?.data;
 

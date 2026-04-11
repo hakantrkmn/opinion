@@ -25,7 +25,6 @@ interface CommentFormProps {
 export default function CommentForm({
   onSubmit,
   disabled,
-  pinId,
   currentUserId,
   userAlreadyCommented,
 }: CommentFormProps) {

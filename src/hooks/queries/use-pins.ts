@@ -1,26 +1,7 @@
 import { apiClient } from "@/lib/api/client";
 import { queryKeys } from "@/lib/api/query-keys";
-import type { Comment, MapBounds, Pin } from "@/types";
+import type { Comment } from "@/types";
 import { useQuery } from "@tanstack/react-query";
-
-export function usePins(bounds: MapBounds | null, zoom: number) {
-  return useQuery({
-    queryKey: bounds ? queryKeys.pins.bounds(bounds, zoom) : queryKeys.pins.all,
-    queryFn: async () => {
-      if (!bounds) return [];
-      const params = new URLSearchParams({
-        minLat: String(bounds.minLat),
-        maxLat: String(bounds.maxLat),
-        minLng: String(bounds.minLng),
-        maxLng: String(bounds.maxLng),
-      });
-      const data = await apiClient<{ pins: Pin[] }>(`/api/pins?${params}`);
-      return data.pins || [];
-    },
-    enabled: !!bounds,
-    staleTime: 5 * 60 * 1000,
-  });
-}
 
 export function usePinComments(pinId: string | null) {
   return useQuery({

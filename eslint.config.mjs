@@ -19,6 +19,12 @@ const eslintConfig = [
       "build/**",
       "next-env.d.ts",
     ],
+    rules: {
+      // Project serves user-uploaded photos from Supabase storage and external
+      // avatars (Google, etc). Migrating to next/image would require
+      // remotePatterns config plus per-call width/height props; keep <img> for now.
+      "@next/next/no-img-element": "off",
+    },
   },
 ];
 

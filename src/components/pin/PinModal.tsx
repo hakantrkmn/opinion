@@ -18,7 +18,7 @@ import type {
   PinModalProps,
 } from "@/types";
 import { PinIcon } from "@/components/icons/PinIcon";
-import { Camera, ImagePlus, LogIn, X } from "lucide-react";
+import { ImagePlus, LogIn, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";

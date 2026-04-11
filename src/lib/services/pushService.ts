@@ -126,6 +126,11 @@ export const pushService = {
         result.sent += 1;
       } else {
         result.failed += 1;
+        console.error("[push] ticket error:", {
+          token: validTokens[index],
+          message: ticket.message,
+          details: ticket.details,
+        });
         const errCode = ticket.details?.error;
         if (errCode === "DeviceNotRegistered") {
           const offendingToken = validTokens[index];

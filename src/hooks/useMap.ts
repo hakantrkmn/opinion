@@ -29,6 +29,7 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
     if (mapCore.userLocation && mapCore.profile) {
       mapCore.addUserMarker(mapCore.userLocation[0], mapCore.userLocation[1]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     mapCore.profile?.avatar_url,
     mapCore.profile?.display_name,

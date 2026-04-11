@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { db, sql } from "@/db";
 import { pins, comments, commentVotes, userStats, pushTokens } from "@/db/schema/app";
 import { user } from "@/db/schema/auth";

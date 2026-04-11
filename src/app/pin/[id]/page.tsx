@@ -11,7 +11,7 @@ import {
 import Header from "@/components/common/Header";
 import { PinIcon } from "@/components/icons/PinIcon";
 import { db } from "@/db";
-import { pins, comments, commentVotes } from "@/db/schema/app";
+import { pins, comments } from "@/db/schema/app";
 import { user } from "@/db/schema/auth";
 import { eq, asc, sql } from "drizzle-orm";
 import { Metadata } from "next";
@@ -20,10 +20,8 @@ import { notFound } from "next/navigation";
 import {
   Calendar,
   ChevronRight,
-  MapPin,
   MessageCircle,
   Navigation,
-  Share2,
   ThumbsUp,
   ThumbsDown,
   User,

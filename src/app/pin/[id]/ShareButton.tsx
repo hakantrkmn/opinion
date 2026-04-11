@@ -8,7 +8,7 @@ interface ShareButtonProps {
   pinName: string;
 }
 
-export default function ShareButton({ url, pinName }: ShareButtonProps) {
+export default function ShareButton({ url }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
 
   const handleShare = async () => {
