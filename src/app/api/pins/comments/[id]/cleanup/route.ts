@@ -4,6 +4,8 @@ import {
   requireSession,
   enforceRateLimit,
   checkCsrfOrigin,
+  errorResponse,
+  ApiErrorCode,
 } from "@/lib/api-helpers";
 import { idParamSchema } from "@/lib/validation/schemas";
 import { RATE_LIMITS } from "@/lib/rate-limit";
@@ -24,17 +26,14 @@ export async function DELETE(
 
     const parsed = idParamSchema.safeParse(await params);
     if (!parsed.success) {
-      return NextResponse.json({ success: false, pinDeleted: false, error: "Invalid id" }, { status: 400 });
+      return errorResponse(400, ApiErrorCode.BAD_REQUEST, "Invalid id");
     }
 
     const result = await pinService.deleteCommentWithCleanup(parsed.data.id, session.user.id);
-    if (result.error) return NextResponse.json({ error: result.error }, { status: 400 });
+    if (result.error) return errorResponse(400, ApiErrorCode.BAD_REQUEST, result.error);
     return NextResponse.json(result);
   } catch (error) {
     console.error("Comment cleanup DELETE error:", error);
-    return NextResponse.json(
-      { success: false, pinDeleted: false, error: "Failed to delete comment" },
-      { status: 500 }
-    );
+    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Failed to delete comment");
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { adminService } from "@/lib/services/adminService";
 import {
+  ApiErrorCode,
   errorResponse,
   json,
   requireAdmin,
@@ -28,6 +29,6 @@ export async function GET(request: NextRequest) {
     return json({ data, pagination });
   } catch (err) {
     console.error("Admin pins API error:", err);
-    return errorResponse(500, "Internal server error");
+    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Internal server error");
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { pinService } from "@/lib/services/pinService";
 import {
+  ApiErrorCode,
   errorResponse,
   json,
   getSession,
@@ -22,10 +23,10 @@ export async function POST(request: NextRequest) {
     if (body.error) return body.error;
 
     const { comments, error } = await pinService.getBatchComments(body.data.pinIds, userId);
-    if (error) return errorResponse(500, error);
+    if (error) return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, error);
     return json({ comments });
   } catch (error) {
     console.error("Batch comments error:", error);
-    return errorResponse(500, "Failed to get comments");
+    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Failed to get comments");
   }
 }

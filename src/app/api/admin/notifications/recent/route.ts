@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { adminAuditLogs } from "@/db/schema/app";
 import { eq, desc } from "drizzle-orm";
 import {
+  ApiErrorCode,
   errorResponse,
   json,
   requireAdmin,
@@ -49,6 +50,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (err) {
     console.error("Admin notifications recent error:", err);
-    return errorResponse(500, "Internal server error");
+    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Internal server error");
   }
 }

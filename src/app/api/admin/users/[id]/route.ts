@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { adminService } from "@/lib/services/adminService";
 import {
+  ApiErrorCode,
   errorResponse,
   json,
   requireAdmin,
@@ -26,10 +27,10 @@ export async function DELETE(
     if (rl) return rl;
 
     const parsed = idParamSchema.safeParse(await params);
-    if (!parsed.success) return errorResponse(400, "Invalid id");
+    if (!parsed.success) return errorResponse(400, ApiErrorCode.BAD_REQUEST, "Invalid id");
 
     if (parsed.data.id === session.user.id) {
-      return errorResponse(400, "Cannot delete your own admin account");
+      return errorResponse(400, ApiErrorCode.BAD_REQUEST, "Cannot delete your own admin account");
     }
 
     await adminService.deleteUser(parsed.data.id);
@@ -45,6 +46,6 @@ export async function DELETE(
     return json({ success: true });
   } catch (err) {
     console.error("Admin delete user API error:", err);
-    return errorResponse(500, "Internal server error");
+    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Internal server error");
   }
 }

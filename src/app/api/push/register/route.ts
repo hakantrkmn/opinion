@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import {
+  ApiErrorCode,
   errorResponse,
   json,
   requireSession,
@@ -37,11 +38,15 @@ export async function POST(request: NextRequest) {
     });
 
     if (!result.success) {
-      return errorResponse(400, result.error ?? "Failed to register token");
+      return errorResponse(
+        400,
+        ApiErrorCode.BAD_REQUEST,
+        result.error ?? "Failed to register token"
+      );
     }
     return json({ success: true });
   } catch (err) {
     console.error("Push register API error:", err);
-    return errorResponse(500, "Internal server error");
+    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Internal server error");
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { pinService } from "@/lib/services/pinService";
 import {
+  ApiErrorCode,
   errorResponse,
   json,
   requireSession,
@@ -26,7 +27,7 @@ export async function POST(
     if (rl) return rl;
 
     const paramParsed = idParamSchema.safeParse(await params);
-    if (!paramParsed.success) return errorResponse(400, "Invalid id");
+    if (!paramParsed.success) return errorResponse(400, ApiErrorCode.BAD_REQUEST, "Invalid id");
 
     const body = await parseBody(request, voteCommentSchema);
     if (body.error) return body.error;
@@ -36,10 +37,10 @@ export async function POST(
       body.data.value,
       session.user.id
     );
-    if (error) return errorResponse(400, error);
+    if (error) return errorResponse(400, ApiErrorCode.BAD_REQUEST, error);
     return json({ success });
   } catch (error) {
     console.error("Vote POST error:", error);
-    return errorResponse(500, "Failed to vote");
+    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Failed to vote");
   }
 }

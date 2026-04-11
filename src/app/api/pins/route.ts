@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { pinService } from "@/lib/services/pinService";
 import {
+  ApiErrorCode,
   errorResponse,
   json,
   parseFormData,
@@ -21,11 +22,11 @@ export async function GET(request: NextRequest) {
     if (parsed.error) return parsed.error;
 
     const { pins, error } = await pinService.getPins(parsed.data);
-    if (error) return errorResponse(500, error);
+    if (error) return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, error);
     return json({ pins });
   } catch (error) {
     console.error("Pins GET error:", error);
-    return errorResponse(500, "Failed to get pins");
+    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Failed to get pins");
   }
 }
 
@@ -57,10 +58,10 @@ export async function POST(request: NextRequest) {
       },
       session.user.id
     );
-    if (error) return errorResponse(500, error);
+    if (error) return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, error);
     return json({ pin });
   } catch (error) {
     console.error("Pins POST error:", error);
-    return errorResponse(500, "Failed to create pin");
+    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Failed to create pin");
   }
 }

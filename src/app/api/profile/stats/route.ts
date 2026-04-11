@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { userService } from "@/lib/services/userService";
 import {
+  ApiErrorCode,
   errorResponse,
   json,
   requireSession,
@@ -20,6 +21,6 @@ export async function GET(request: NextRequest) {
     return json(result);
   } catch (error) {
     console.error("Profile stats error:", error);
-    return errorResponse(500, "Failed to get stats");
+    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Failed to get stats");
   }
 }

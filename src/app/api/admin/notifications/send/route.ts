@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import {
+  ApiErrorCode,
   errorResponse,
   json,
   requireAdmin,
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     if (tokens.length === 0) {
       if (target.type === "user") {
-        return errorResponse(404, "User has no active devices");
+        return errorResponse(404, ApiErrorCode.NOT_FOUND, "User has no active devices");
       }
       await recordAudit({
         actorId: session.user.id,
@@ -75,6 +76,6 @@ export async function POST(request: NextRequest) {
     return json(result);
   } catch (err) {
     console.error("Admin notification send error:", err);
-    return errorResponse(500, "Internal server error");
+    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Internal server error");
   }
 }

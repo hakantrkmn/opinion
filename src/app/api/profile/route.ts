@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { userService } from "@/lib/services/userService";
 import {
+  ApiErrorCode,
   errorResponse,
   json,
   requireSession,
@@ -27,12 +28,12 @@ export async function PUT(request: NextRequest) {
 
     if (body.data.displayName !== undefined) {
       const result = await userService.updateDisplayName(session.user.id, body.data.displayName);
-      if (!result.success) return errorResponse(400, result.error || "Failed to update");
+      if (!result.success) return errorResponse(400, ApiErrorCode.BAD_REQUEST, result.error || "Failed to update");
     }
     return json({ success: true });
   } catch (error) {
     console.error("Profile update error:", error);
-    return errorResponse(500, "Failed to update profile");
+    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Failed to update profile");
   }
 }
 
@@ -48,10 +49,10 @@ export async function DELETE(request: NextRequest) {
     if (rl) return rl;
 
     const result = await userService.deleteAvatar(session.user.id);
-    if (!result.success) return errorResponse(400, result.error || "Failed");
+    if (!result.success) return errorResponse(400, ApiErrorCode.BAD_REQUEST, result.error || "Failed to delete avatar");
     return json({ success: true });
   } catch (error) {
     console.error("Avatar delete error:", error);
-    return errorResponse(500, "Failed to delete avatar");
+    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Failed to delete avatar");
   }
 }

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { uploadCommentPhoto } from "@/lib/services/photoService";
 import { userService } from "@/lib/services/userService";
 import {
+  ApiErrorCode,
   errorResponse,
   json,
   requireSession,
@@ -35,26 +36,26 @@ export async function POST(request: NextRequest) {
     try {
       formData = await request.formData();
     } catch {
-      return errorResponse(400, "Invalid form data");
+      return errorResponse(400, ApiErrorCode.INVALID_FORM_DATA, "Invalid form data");
     }
 
     const file = formData.get("file");
-    if (!(file instanceof File)) return errorResponse(400, "No file provided");
+    if (!(file instanceof File)) return errorResponse(400, ApiErrorCode.BAD_REQUEST, "No file provided");
 
     if (file.size > MAX_FILE_SIZE) {
-      return errorResponse(400, "File size must be less than 10MB");
+      return errorResponse(400, ApiErrorCode.BAD_REQUEST, "File size must be less than 10MB");
     }
     if (!ALLOWED_TYPES.includes(file.type)) {
-      return errorResponse(400, "Only image files are allowed (JPG, PNG, WebP, GIF)");
+      return errorResponse(400, ApiErrorCode.BAD_REQUEST, "Only image files are allowed (JPG, PNG, WebP, GIF)");
     }
 
     const typeValue = formData.get("type");
     const typeParsed = uploadTypeSchema.safeParse(typeValue);
-    if (!typeParsed.success) return errorResponse(400, "Invalid upload type");
+    if (!typeParsed.success) return errorResponse(400, ApiErrorCode.BAD_REQUEST, "Invalid upload type");
 
     if (typeParsed.data === "avatar") {
       const result = await userService.uploadAvatar(session.user.id, file);
-      if (result.error) return errorResponse(400, result.error);
+      if (result.error) return errorResponse(400, ApiErrorCode.BAD_REQUEST, result.error);
       return json({ url: result.avatarUrl });
     }
 
@@ -63,14 +64,14 @@ export async function POST(request: NextRequest) {
       ? commentIdRaw
       : undefined;
     if (commentId && !/^[a-zA-Z0-9_-]{1,64}$/.test(commentId)) {
-      return errorResponse(400, "Invalid commentId");
+      return errorResponse(400, ApiErrorCode.BAD_REQUEST, "Invalid commentId");
     }
 
     const result = await uploadCommentPhoto(file, session.user.id, commentId);
-    if (!result.success) return errorResponse(400, result.error || "Upload failed");
+    if (!result.success) return errorResponse(400, ApiErrorCode.BAD_REQUEST, result.error || "Upload failed");
     return json({ url: result.url, metadata: result.metadata });
   } catch (error) {
     console.error("Upload error:", error);
-    return errorResponse(500, "Upload failed");
+    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Upload failed");
   }
 }

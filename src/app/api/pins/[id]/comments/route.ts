@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { pinService } from "@/lib/services/pinService";
 import {
+  ApiErrorCode,
   errorResponse,
   json,
   getSession,
@@ -24,13 +25,13 @@ export async function GET(
     if (rl) return rl;
 
     const parsed = idParamSchema.safeParse(await params);
-    if (!parsed.success) return errorResponse(400, "Invalid id");
+    if (!parsed.success) return errorResponse(400, ApiErrorCode.BAD_REQUEST, "Invalid id");
 
     const { comments, error } = await pinService.getPinComments(parsed.data.id, userId);
     return json({ comments, error });
   } catch (error) {
     console.error("Pin comments GET error:", error);
-    return errorResponse(500, "Failed to get comments");
+    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Failed to get comments");
   }
 }
 
@@ -49,7 +50,7 @@ export async function POST(
     if (rl) return rl;
 
     const paramParsed = idParamSchema.safeParse(await params);
-    if (!paramParsed.success) return errorResponse(400, "Invalid id");
+    if (!paramParsed.success) return errorResponse(400, ApiErrorCode.BAD_REQUEST, "Invalid id");
 
     const body = await parseBody(request, createCommentSchema);
     if (body.error) return body.error;
@@ -61,10 +62,10 @@ export async function POST(
       body.data.photoUrl ?? undefined,
       body.data.photoMetadata ?? undefined
     );
-    if (error) return errorResponse(400, error);
+    if (error) return errorResponse(400, ApiErrorCode.BAD_REQUEST, error);
     return json({ comment });
   } catch (error) {
     console.error("Pin comment POST error:", error);
-    return errorResponse(500, "Failed to add comment");
+    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Failed to add comment");
   }
 }

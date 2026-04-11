@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { pinService } from "@/lib/services/pinService";
 import {
+  ApiErrorCode,
   errorResponse,
   json,
   requireSession,
@@ -26,7 +27,7 @@ export async function PUT(
     if (rl) return rl;
 
     const paramParsed = idParamSchema.safeParse(await params);
-    if (!paramParsed.success) return errorResponse(400, "Invalid id");
+    if (!paramParsed.success) return errorResponse(400, ApiErrorCode.BAD_REQUEST, "Invalid id");
 
     const body = await parseBody(request, updateCommentSchema);
     if (body.error) return body.error;
@@ -38,11 +39,11 @@ export async function PUT(
       body.data.photoUrl ?? undefined,
       body.data.photoMetadata ?? undefined
     );
-    if (error) return errorResponse(400, error);
+    if (error) return errorResponse(400, ApiErrorCode.BAD_REQUEST, error);
     return json({ success });
   } catch (error) {
     console.error("Comment PUT error:", error);
-    return errorResponse(500, "Failed to update comment");
+    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Failed to update comment");
   }
 }
 
@@ -61,13 +62,13 @@ export async function DELETE(
     if (rl) return rl;
 
     const parsed = idParamSchema.safeParse(await params);
-    if (!parsed.success) return errorResponse(400, "Invalid id");
+    if (!parsed.success) return errorResponse(400, ApiErrorCode.BAD_REQUEST, "Invalid id");
 
     const { success, error } = await pinService.deleteComment(parsed.data.id, session.user.id);
-    if (error) return errorResponse(400, error);
+    if (error) return errorResponse(400, ApiErrorCode.BAD_REQUEST, error);
     return json({ success });
   } catch (error) {
     console.error("Comment DELETE error:", error);
-    return errorResponse(500, "Failed to delete comment");
+    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Failed to delete comment");
   }
 }

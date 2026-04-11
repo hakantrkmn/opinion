@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { userService } from "@/lib/services/userService";
 import {
+  ApiErrorCode,
   errorResponse,
   json,
   requireSession,
@@ -17,10 +18,10 @@ export async function GET(request: NextRequest) {
     if (rl) return rl;
 
     const { profile, error } = await userService.getUserProfile(session.user.id);
-    if (error) return errorResponse(500, error);
+    if (error) return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, error);
     return json({ profile });
   } catch (error) {
     console.error("Profile me error:", error);
-    return errorResponse(500, "Failed to get profile");
+    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Failed to get profile");
   }
 }

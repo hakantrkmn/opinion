@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { adminService } from "@/lib/services/adminService";
 import {
+  ApiErrorCode,
   errorResponse,
   json,
   requireAdmin,
@@ -25,7 +26,11 @@ export async function POST(request: NextRequest) {
     const { success, error } = await adminService.refreshAllUserStats();
     if (!success) {
       console.error("Failed to refresh user statistics:", error);
-      return errorResponse(500, error || "Failed to refresh user statistics");
+      return errorResponse(
+        500,
+        ApiErrorCode.INTERNAL_ERROR,
+        error || "Failed to refresh user statistics"
+      );
     }
 
     const duration = Number((performance.now() - startTime).toFixed(2));
@@ -51,6 +56,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     console.error("Error in refresh-stats API:", err);
-    return errorResponse(500, "Internal server error while refreshing statistics");
+    return errorResponse(
+      500,
+      ApiErrorCode.INTERNAL_ERROR,
+      "Internal server error while refreshing statistics"
+    );
   }
 }
