@@ -6,6 +6,7 @@ export interface AdminUser {
   avatarUrl?: string;
   createdAt?: string;
   created_at?: string;
+  pushTokenCount?: number;
 }
 
 export interface AdminPin {

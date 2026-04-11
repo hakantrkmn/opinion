@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { db, sql } from "@/db";
-import { pins, comments, commentVotes, userStats } from "@/db/schema/app";
+import { pins, comments, commentVotes, userStats, pushTokens } from "@/db/schema/app";
 import { user } from "@/db/schema/auth";
 import { eq, desc, count } from "drizzle-orm";
 import { deleteCommentPhoto } from "@/lib/services/photoService";
@@ -31,6 +31,10 @@ export const adminService = {
         avatarUrl: user.avatarUrl,
         role: user.role,
         createdAt: user.createdAt,
+        pushTokenCount: sql<number>`(
+          SELECT COUNT(*)::int FROM ${pushTokens}
+          WHERE ${pushTokens.userId} = ${user.id} AND ${pushTokens.isActive} = true
+        )`.as("push_token_count"),
       })
       .from(user)
       .orderBy(desc(user.createdAt))

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Bell, Loader2, Send, Users as UsersIcon, User as UserIcon } from "lucide-react";
+import { Bell, BellOff, Loader2, Send, Smartphone, Users as UsersIcon, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -155,6 +155,15 @@ export function NotificationsPanel({ users, setConfirm }: NotificationsPanelProp
                     {selectedUser.displayName || selectedUser.email}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">{selectedUser.email}</p>
+                  {(selectedUser.pushTokenCount ?? 0) === 0 ? (
+                    <p className="mt-1 flex items-center gap-1 text-xs text-destructive">
+                      <BellOff className="h-3 w-3" /> No active devices — message won&apos;t be delivered
+                    </p>
+                  ) : (
+                    <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                      <Smartphone className="h-3 w-3" /> {selectedUser.pushTokenCount} device(s)
+                    </p>
+                  )}
                 </div>
                 <Button
                   variant="ghost"
@@ -177,22 +186,36 @@ export function NotificationsPanel({ users, setConfirm }: NotificationsPanelProp
                     <p className="px-3 py-2 text-xs text-muted-foreground">No matches</p>
                   ) : (
                     <ul className="divide-y divide-border">
-                      {filteredUsers.map((u) => (
-                        <li key={u.id}>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedUser(u)}
-                            className="w-full px-3 py-2 text-left text-sm hover:bg-muted/40"
-                          >
-                            <span className="block truncate font-medium">
-                              {u.displayName || u.email}
-                            </span>
-                            <span className="block truncate text-xs text-muted-foreground">
-                              {u.email}
-                            </span>
-                          </button>
-                        </li>
-                      ))}
+                      {filteredUsers.map((u) => {
+                        const hasToken = (u.pushTokenCount ?? 0) > 0;
+                        return (
+                          <li key={u.id}>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedUser(u)}
+                              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-muted/40"
+                            >
+                              <div className="min-w-0">
+                                <span className="block truncate font-medium">
+                                  {u.displayName || u.email}
+                                </span>
+                                <span className="block truncate text-xs text-muted-foreground">
+                                  {u.email}
+                                </span>
+                              </div>
+                              {hasToken ? (
+                                <span className="flex flex-none items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                                  <Smartphone className="h-3 w-3" /> {u.pushTokenCount}
+                                </span>
+                              ) : (
+                                <span className="flex flex-none items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                  <BellOff className="h-3 w-3" /> none
+                                </span>
+                              )}
+                            </button>
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </div>

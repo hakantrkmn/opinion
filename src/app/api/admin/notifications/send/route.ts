@@ -39,12 +39,15 @@ export async function POST(request: NextRequest) {
         : await pushService.getAllActiveTokens();
 
     if (tokens.length === 0) {
+      if (target.type === "user") {
+        return errorResponse(404, "User has no active devices");
+      }
       await recordAudit({
         actorId: session.user.id,
         actorEmail: session.user.email,
         action: "admin.notification.send",
-        targetType: target.type === "user" ? "user" : "broadcast",
-        targetId: target.type === "user" ? target.userId : null,
+        targetType: "broadcast",
+        targetId: null,
         metadata: { title, body, data, recipientCount: 0, sent: 0, failed: 0, deactivated: 0 },
       });
       return json({ sent: 0, failed: 0, deactivated: 0, recipientCount: 0 });
