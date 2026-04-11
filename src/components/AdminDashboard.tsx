@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, MapPin, MessageSquare, PieChart, Users } from "lucide-react";
+import { Bell, Loader2, MapPin, MessageSquare, PieChart, Users } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   useAdminUsers,
@@ -24,6 +24,7 @@ import { OverviewPanel } from "./admin/OverviewPanel";
 import { UserList } from "./admin/UserList";
 import { PinList } from "./admin/PinList";
 import { CommentList } from "./admin/CommentList";
+import { NotificationsPanel } from "./admin/NotificationsPanel";
 import { DeleteConfirmDialog } from "./admin/DeleteConfirmDialog";
 import type {
   AdminAnalytics,
@@ -153,7 +154,7 @@ export default function AdminDashboard() {
         <AdminStats analytics={analytics} loading={analyticsLoading} />
 
         <Tabs value={tab} onValueChange={(v) => { setTab(v as AdminTab); setQuery(""); }}>
-          <TabsList className="grid w-full grid-cols-4 sm:w-auto sm:inline-flex">
+          <TabsList className="grid w-full grid-cols-5 sm:w-auto sm:inline-flex">
             <TabsTrigger value="overview">
               <PieChart className="mr-2 h-4 w-4" />
               Overview
@@ -169,6 +170,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="comments">
               <MessageSquare className="mr-2 h-4 w-4" />
               Comments
+            </TabsTrigger>
+            <TabsTrigger value="notifications">
+              <Bell className="mr-2 h-4 w-4" />
+              Notifications
             </TabsTrigger>
           </TabsList>
 
@@ -207,6 +212,10 @@ export default function AdminDashboard() {
               onDelete={askDeletePin}
               pending={delPin.isPending}
             />
+          </TabsContent>
+
+          <TabsContent value="notifications" className="mt-6">
+            <NotificationsPanel users={users} setConfirm={setConfirm} />
           </TabsContent>
 
           <TabsContent value="comments" className="mt-6 space-y-4">

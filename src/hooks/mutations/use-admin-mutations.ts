@@ -76,6 +76,42 @@ export function useDeleteAdminComment() {
   });
 }
 
+export interface SendNotificationInput {
+  target: { type: "user"; userId: string } | { type: "all" };
+  title: string;
+  body: string;
+  data?: Record<string, unknown>;
+}
+
+export interface SendNotificationResult {
+  sent: number;
+  failed: number;
+  deactivated: number;
+  recipientCount: number;
+}
+
+export function useSendNotification() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: SendNotificationInput): Promise<SendNotificationResult> => {
+      return apiClient<SendNotificationResult>("/api/admin/notifications/send", {
+        method: "POST",
+        body: JSON.stringify(input),
+      });
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.notifications.recent });
+      const desc = `Sent ${data.sent}, failed ${data.failed}${
+        data.deactivated > 0 ? `, ${data.deactivated} stale token(s) cleaned` : ""
+      }`;
+      toast.success("Notification dispatched", { description: desc });
+    },
+    onError: (error) => {
+      toast.error("Failed to send notification", { description: error.message });
+    },
+  });
+}
+
 export function useRefreshStats() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -79,3 +79,19 @@ export const paginationSchema = z.object({
 export const uploadTypeSchema = z.enum(["avatar", "comment-photo"]);
 
 export const idParamSchema = z.object({ id: idSchema });
+
+export const registerPushTokenSchema = z.object({
+  token: z.string().min(1).max(200),
+  platform: z.enum(["ios", "android"]),
+  deviceName: z.string().max(120).optional().nullable(),
+});
+
+export const sendNotificationSchema = z.object({
+  target: z.discriminatedUnion("type", [
+    z.object({ type: z.literal("user"), userId: idSchema }),
+    z.object({ type: z.literal("all") }),
+  ]),
+  title: z.string().trim().min(1).max(100),
+  body: z.string().trim().min(1).max(500),
+  data: z.record(z.string(), z.unknown()).optional(),
+});

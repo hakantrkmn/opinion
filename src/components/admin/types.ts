@@ -43,7 +43,7 @@ export interface AdminAnalytics {
   }[];
 }
 
-export type AdminTab = "overview" | "users" | "pins" | "comments";
+export type AdminTab = "overview" | "users" | "pins" | "comments" | "notifications";
 
 export interface ConfirmState {
   title: string;

@@ -54,3 +54,30 @@ export function useAdminAnalytics() {
     },
   });
 }
+
+export interface RecentNotification {
+  id: string;
+  actorEmail: string | null;
+  targetType: string;
+  targetId: string | null;
+  metadata: {
+    title?: string;
+    body?: string;
+    recipientCount?: number;
+    sent?: number;
+    failed?: number;
+    deactivated?: number;
+  } | null;
+  createdAt: string;
+}
+
+export function useRecentNotifications() {
+  return useQuery({
+    queryKey: queryKeys.admin.notifications.recent,
+    queryFn: async () => {
+      return apiClient<{ data: RecentNotification[] }>(
+        "/api/admin/notifications/recent"
+      );
+    },
+  });
+}

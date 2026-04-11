@@ -22,5 +22,8 @@ export const queryKeys = {
     pins: (page = 1) => ["admin", "pins", page] as const,
     comments: (page = 1) => ["admin", "comments", page] as const,
     analytics: ["admin", "analytics"] as const,
+    notifications: {
+      recent: ["admin", "notifications", "recent"] as const,
+    },
   },
 } as const;

@@ -7,9 +7,10 @@ export type AuditAction =
   | "admin.user.delete"
   | "admin.pin.delete"
   | "admin.comment.delete"
-  | "admin.stats.refresh";
+  | "admin.stats.refresh"
+  | "admin.notification.send";
 
-export type AuditTargetType = "user" | "pin" | "comment" | "system";
+export type AuditTargetType = "user" | "pin" | "comment" | "system" | "broadcast";
 
 export async function recordAudit(params: {
   actorId: string;

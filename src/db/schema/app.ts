@@ -144,6 +144,30 @@ export const cleanupLogs = pgTable("cleanup_logs", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Push notification tokens
+export const pushTokens = pgTable(
+  "push_tokens",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    token: text("token").notNull(),
+    platform: text("platform").notNull(),
+    deviceName: text("device_name"),
+    isActive: boolean("is_active").notNull().default(true),
+    lastSeenAt: timestamp("last_seen_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("unique_push_token").on(table.token),
+    index("idx_push_tokens_user").on(table.userId),
+    index("idx_push_tokens_active").on(table.isActive),
+  ]
+);
+
 // Admin audit logs
 export const adminAuditLogs = pgTable(
   "admin_audit_logs",
