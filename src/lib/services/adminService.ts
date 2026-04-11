@@ -31,12 +31,13 @@ export const adminService = {
         avatarUrl: user.avatarUrl,
         role: user.role,
         createdAt: user.createdAt,
-        pushTokenCount: sql<number>`(
-          SELECT COUNT(*)::int FROM ${pushTokens}
-          WHERE ${pushTokens.userId} = ${user.id} AND ${pushTokens.isActive} = true
-        )`.as("push_token_count"),
+        pushTokenCount: sql<number>`COALESCE(SUM(CASE WHEN ${pushTokens.isActive} = true THEN 1 ELSE 0 END), 0)::int`.as(
+          "push_token_count"
+        ),
       })
       .from(user)
+      .leftJoin(pushTokens, eq(pushTokens.userId, user.id))
+      .groupBy(user.id)
       .orderBy(desc(user.createdAt))
       .limit(limit)
       .offset(offset);
