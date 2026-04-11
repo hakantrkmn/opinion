@@ -1,81 +1,76 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+import { NextRequest } from "next/server";
 import { uploadCommentPhoto } from "@/lib/services/photoService";
 import { userService } from "@/lib/services/userService";
+import {
+  errorResponse,
+  json,
+  requireSession,
+  enforceRateLimit,
+  checkCsrfOrigin,
+} from "@/lib/api-helpers";
+import { uploadTypeSchema } from "@/lib/validation/schemas";
+import { RATE_LIMITS } from "@/lib/rate-limit";
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const ALLOWED_TYPES = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+];
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
+    const csrf = checkCsrfOrigin(request);
+    if (csrf) return csrf;
 
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { session, error: authError } = await requireSession();
+    if (authError) return authError;
+
+    const rl = enforceRateLimit(request, "upload", RATE_LIMITS.upload, session.user.id);
+    if (rl) return rl;
+
+    let formData: FormData;
+    try {
+      formData = await request.formData();
+    } catch {
+      return errorResponse(400, "Invalid form data");
     }
 
-    const formData = await request.formData();
-    const file = formData.get("file") as File;
-    const type = formData.get("type") as string; // "avatar" or "comment-photo"
-
-    if (!file) {
-      return NextResponse.json(
-        { error: "No file provided" },
-        { status: 400 }
-      );
-    }
-
-    // Server-side file validation
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-    const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
+    const file = formData.get("file");
+    if (!(file instanceof File)) return errorResponse(400, "No file provided");
 
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: "File size must be less than 10MB" },
-        { status: 400 }
-      );
+      return errorResponse(400, "File size must be less than 10MB");
     }
-
     if (!ALLOWED_TYPES.includes(file.type)) {
-      return NextResponse.json(
-        { error: "Only image files are allowed (JPG, PNG, WebP, GIF)" },
-        { status: 400 }
-      );
+      return errorResponse(400, "Only image files are allowed (JPG, PNG, WebP, GIF)");
     }
 
-    if (type === "avatar") {
+    const typeValue = formData.get("type");
+    const typeParsed = uploadTypeSchema.safeParse(typeValue);
+    if (!typeParsed.success) return errorResponse(400, "Invalid upload type");
+
+    if (typeParsed.data === "avatar") {
       const result = await userService.uploadAvatar(session.user.id, file);
-      if (result.error) {
-        return NextResponse.json({ error: result.error }, { status: 400 });
-      }
-      return NextResponse.json({ url: result.avatarUrl });
+      if (result.error) return errorResponse(400, result.error);
+      return json({ url: result.avatarUrl });
     }
 
-    if (type === "comment-photo") {
-      const commentId = formData.get("commentId") as string | undefined;
-      const result = await uploadCommentPhoto(
-        file,
-        session.user.id,
-        commentId || undefined
-      );
-      if (!result.success) {
-        return NextResponse.json(
-          { error: result.error },
-          { status: 400 }
-        );
-      }
-      return NextResponse.json({ url: result.url, metadata: result.metadata });
+    const commentIdRaw = formData.get("commentId");
+    const commentId = typeof commentIdRaw === "string" && commentIdRaw.length > 0
+      ? commentIdRaw
+      : undefined;
+    if (commentId && !/^[a-zA-Z0-9_-]{1,64}$/.test(commentId)) {
+      return errorResponse(400, "Invalid commentId");
     }
 
-    return NextResponse.json(
-      { error: "Invalid upload type" },
-      { status: 400 }
-    );
+    const result = await uploadCommentPhoto(file, session.user.id, commentId);
+    if (!result.success) return errorResponse(400, result.error || "Upload failed");
+    return json({ url: result.url, metadata: result.metadata });
   } catch (error) {
     console.error("Upload error:", error);
-    return NextResponse.json(
-      { error: "Upload failed" },
-      { status: 500 }
-    );
+    return errorResponse(500, "Upload failed");
   }
 }

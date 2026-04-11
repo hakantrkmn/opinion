@@ -1,28 +1,25 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+import { NextRequest } from "next/server";
 import { userService } from "@/lib/services/userService";
+import {
+  errorResponse,
+  json,
+  requireSession,
+  enforceRateLimit,
+} from "@/lib/api-helpers";
+import { RATE_LIMITS } from "@/lib/rate-limit";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
+    const { session, error: authError } = await requireSession();
+    if (authError) return authError;
 
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const rl = enforceRateLimit(request, "profile:stats", RATE_LIMITS.read, session.user.id);
+    if (rl) return rl;
 
-    const result = await userService.getUserStatsWithPerformanceInfo(
-      session.user.id
-    );
-
-    return NextResponse.json(result);
+    const result = await userService.getUserStatsWithPerformanceInfo(session.user.id);
+    return json(result);
   } catch (error) {
     console.error("Profile stats error:", error);
-    return NextResponse.json(
-      { error: "Failed to get stats" },
-      { status: 500 }
-    );
+    return errorResponse(500, "Failed to get stats");
   }
 }

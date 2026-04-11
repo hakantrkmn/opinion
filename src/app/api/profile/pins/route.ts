@@ -1,18 +1,26 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+import { NextRequest } from "next/server";
 import { userService } from "@/lib/services/userService";
+import {
+  errorResponse,
+  json,
+  requireSession,
+  enforceRateLimit,
+} from "@/lib/api-helpers";
+import { RATE_LIMITS } from "@/lib/rate-limit";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { session, error: authError } = await requireSession();
+    if (authError) return authError;
+
+    const rl = enforceRateLimit(request, "profile:pins", RATE_LIMITS.read, session.user.id);
+    if (rl) return rl;
 
     const { pins, error } = await userService.getUserPins(session.user.id);
-    if (error) return NextResponse.json({ error }, { status: 500 });
-    return NextResponse.json({ pins });
+    if (error) return errorResponse(500, error);
+    return json({ pins });
   } catch (error) {
     console.error("Profile pins error:", error);
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+    return errorResponse(500, "Failed");
   }
 }

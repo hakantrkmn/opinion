@@ -467,11 +467,11 @@ export const pinService = {
         .where(eq(comments.pinId, pinId));
 
       const { deleteCommentPhoto } = await import("./photoService");
-      for (const c of commentsWithPhotos) {
-        if (c.photoUrl) {
-          await deleteCommentPhoto(c.photoUrl);
-        }
-      }
+      await Promise.all(
+        commentsWithPhotos
+          .filter((c) => !!c.photoUrl)
+          .map((c) => deleteCommentPhoto(c.photoUrl as string))
+      );
 
       // Cascade will handle comments
       await db.delete(pins).where(eq(pins.id, pinId));

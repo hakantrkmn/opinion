@@ -1,22 +1,37 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+import { NextRequest } from "next/server";
 import { pinService } from "@/lib/services/pinService";
+import {
+  errorResponse,
+  json,
+  requireSession,
+  enforceRateLimit,
+  checkCsrfOrigin,
+} from "@/lib/api-helpers";
+import { idParamSchema } from "@/lib/validation/schemas";
+import { RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const csrf = checkCsrfOrigin(request);
+    if (csrf) return csrf;
 
-    const { id } = await params;
-    const { success, error } = await pinService.deletePin(id, session.user.id);
-    if (error) return NextResponse.json({ error }, { status: 400 });
-    return NextResponse.json({ success });
+    const { session, error: authError } = await requireSession();
+    if (authError) return authError;
+
+    const rl = enforceRateLimit(request, "pins:delete", RATE_LIMITS.write, session.user.id);
+    if (rl) return rl;
+
+    const parsed = idParamSchema.safeParse(await params);
+    if (!parsed.success) return errorResponse(400, "Invalid id");
+
+    const { success, error } = await pinService.deletePin(parsed.data.id, session.user.id);
+    if (error) return errorResponse(400, error);
+    return json({ success });
   } catch (error) {
     console.error("Pin DELETE error:", error);
-    return NextResponse.json({ error: "Failed to delete pin" }, { status: 500 });
+    return errorResponse(500, "Failed to delete pin");
   }
 }

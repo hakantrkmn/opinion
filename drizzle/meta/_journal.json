@@ -8,6 +8,20 @@
       "when": 1774564000000,
       "tag": "0000_init",
       "breakpoints": false
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1775916445391,
+      "tag": "0001_grey_tinkerer",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776000000000,
+      "tag": "0002_pg_performance",
+      "breakpoints": true
     }
   ]
 }

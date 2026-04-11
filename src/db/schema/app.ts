@@ -47,6 +47,7 @@ export const pins = pgTable(
   (table) => [
     index("idx_pins_user_id").on(table.userId),
     index("idx_pins_created_at").on(table.createdAt),
+    index("idx_pins_user_created").on(table.userId, table.createdAt.desc()),
   ]
 );
 
@@ -75,6 +76,8 @@ export const comments = pgTable(
     index("idx_comments_pin_id").on(table.pinId),
     index("idx_comments_user_id").on(table.userId),
     index("idx_comments_created_at").on(table.createdAt),
+    index("idx_comments_pin_created").on(table.pinId, table.createdAt.desc()),
+    index("idx_comments_user_created").on(table.userId, table.createdAt.desc()),
     // Partial index: only index rows where is_first_comment = true (better selectivity than full boolean index)
     index("idx_comments_is_first").on(table.pinId).where(sql`is_first_comment = true`),
   ]
@@ -140,3 +143,28 @@ export const cleanupLogs = pgTable("cleanup_logs", {
   count: integer("count").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+// Admin audit logs
+export const adminAuditLogs = pgTable(
+  "admin_audit_logs",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    actorId: text("actor_id").notNull(),
+    actorEmail: text("actor_email"),
+    action: text("action").notNull(),
+    targetType: text("target_type").notNull(),
+    targetId: text("target_id"),
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_admin_audit_actor").on(table.actorId),
+    index("idx_admin_audit_target").on(table.targetType, table.targetId),
+    index("idx_admin_audit_created").on(table.createdAt),
+    index("idx_admin_audit_metadata_gin").using("gin", table.metadata),
+  ]
+);

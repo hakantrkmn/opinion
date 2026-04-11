@@ -1,0 +1,176 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { ZodError, type ZodType } from "zod";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { rateLimit, buildRateKey, type RateLimitOptions } from "@/lib/rate-limit";
+
+export type ApiSession = Awaited<ReturnType<typeof auth.api.getSession>>;
+
+export function json(body: unknown, init?: ResponseInit) {
+  return NextResponse.json(body, init);
+}
+
+export function errorResponse(status: number, message: string) {
+  return NextResponse.json({ error: message }, { status });
+}
+
+export async function getSession(): Promise<ApiSession> {
+  try {
+    return await auth.api.getSession({ headers: await headers() });
+  } catch {
+    return null;
+  }
+}
+
+export async function requireSession() {
+  const session = await getSession();
+  if (!session) return { session: null, error: errorResponse(401, "Unauthorized") };
+  return { session, error: null };
+}
+
+export async function requireAdmin() {
+  const session = await getSession();
+  if (!session) return { session: null, error: errorResponse(401, "Unauthorized") };
+  if (session.user?.role !== "admin") {
+    return { session: null, error: errorResponse(403, "Forbidden") };
+  }
+  return { session, error: null };
+}
+
+export async function parseBody<T>(
+  request: NextRequest,
+  schema: ZodType<T>
+): Promise<{ data: T; error: null } | { data: null; error: NextResponse }> {
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    return { data: null, error: errorResponse(400, "Invalid JSON body") };
+  }
+  const parsed = schema.safeParse(raw);
+  if (!parsed.success) {
+    return { data: null, error: zodErrorResponse(parsed.error) };
+  }
+  return { data: parsed.data, error: null };
+}
+
+export function parseQuery<T>(
+  request: NextRequest,
+  schema: ZodType<T>
+): { data: T; error: null } | { data: null; error: NextResponse } {
+  const { searchParams } = new URL(request.url);
+  const obj: Record<string, string> = {};
+  searchParams.forEach((v, k) => {
+    obj[k] = v;
+  });
+  const parsed = schema.safeParse(obj);
+  if (!parsed.success) {
+    return { data: null, error: zodErrorResponse(parsed.error) };
+  }
+  return { data: parsed.data, error: null };
+}
+
+export async function parseFormData<T>(
+  request: NextRequest,
+  schema: ZodType<T>
+): Promise<
+  | { data: T; formData: FormData; error: null }
+  | { data: null; formData: null; error: NextResponse }
+> {
+  let formData: FormData;
+  try {
+    formData = await request.formData();
+  } catch {
+    return { data: null, formData: null, error: errorResponse(400, "Invalid form data") };
+  }
+  const obj: Record<string, unknown> = {};
+  for (const [key, value] of formData.entries()) {
+    if (value instanceof File) continue;
+    if (key === "photoMetadata" && typeof value === "string" && value.length > 0) {
+      try {
+        obj[key] = JSON.parse(value);
+      } catch {
+        return { data: null, formData: null, error: errorResponse(400, "Invalid photoMetadata") };
+      }
+      continue;
+    }
+    obj[key] = value;
+  }
+  const parsed = schema.safeParse(obj);
+  if (!parsed.success) {
+    return { data: null, formData: null, error: zodErrorResponse(parsed.error) };
+  }
+  return { data: parsed.data, formData, error: null };
+}
+
+function zodErrorResponse(err: ZodError) {
+  return NextResponse.json(
+    {
+      error: "Validation failed",
+      issues: err.issues.map((i) => ({
+        path: i.path.join("."),
+        message: i.message,
+      })),
+    },
+    { status: 400 }
+  );
+}
+
+export function enforceRateLimit(
+  request: NextRequest,
+  scope: string,
+  limits: Omit<RateLimitOptions, "key">,
+  userId?: string | null
+): NextResponse | null {
+  const result = rateLimit({
+    key: buildRateKey(scope, request, userId ?? null),
+    ...limits,
+  });
+  if (result.allowed) return null;
+  const retryAfter = Math.ceil((result.resetAt - Date.now()) / 1000);
+  return NextResponse.json(
+    { error: "Too many requests" },
+    {
+      status: 429,
+      headers: {
+        "Retry-After": String(Math.max(1, retryAfter)),
+        "X-RateLimit-Remaining": String(result.remaining),
+      },
+    }
+  );
+}
+
+export function checkCsrfOrigin(request: NextRequest): NextResponse | null {
+  const method = request.method.toUpperCase();
+  if (method === "GET" || method === "HEAD" || method === "OPTIONS") return null;
+
+  const authHeader = request.headers.get("authorization");
+  if (authHeader?.toLowerCase().startsWith("bearer ")) return null;
+
+  const origin = request.headers.get("origin");
+  const referer = request.headers.get("referer");
+  const host = request.headers.get("host");
+  if (!host) return errorResponse(400, "Missing host");
+
+  const allowedHosts = new Set<string>([host]);
+  const envUrl = process.env.BETTER_AUTH_URL;
+  if (envUrl) {
+    try {
+      allowedHosts.add(new URL(envUrl).host);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const source = origin || referer;
+  if (!source) return errorResponse(403, "Missing origin");
+  try {
+    const sourceHost = new URL(source).host;
+    if (!allowedHosts.has(sourceHost)) {
+      return errorResponse(403, "Invalid origin");
+    }
+  } catch {
+    return errorResponse(403, "Invalid origin");
+  }
+  return null;
+}

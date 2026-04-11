@@ -1,26 +1,33 @@
+import { NextRequest } from "next/server";
 import { adminService } from "@/lib/services/adminService";
-import { checkAdminAuth } from "@/lib/admin-auth";
-import { NextRequest, NextResponse } from "next/server";
+import {
+  errorResponse,
+  json,
+  requireAdmin,
+  parseQuery,
+  enforceRateLimit,
+} from "@/lib/api-helpers";
+import { paginationSchema } from "@/lib/validation/schemas";
+import { RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
   try {
-    const isAdmin = await checkAdminAuth();
-    if (!isAdmin) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { session, error } = await requireAdmin();
+    if (error) return error;
 
-    const { searchParams } = new URL(request.url);
-    const page = Number(searchParams.get("page")) || 1;
-    const pageSize = Number(searchParams.get("pageSize")) || 50;
+    const rl = enforceRateLimit(request, "admin:users", RATE_LIMITS.admin, session.user.id);
+    if (rl) return rl;
 
-    const { data, pagination } = await adminService.getAllUsers(page, pageSize);
+    const parsed = parseQuery(request, paginationSchema);
+    if (parsed.error) return parsed.error;
 
-    return NextResponse.json({ data, pagination });
-  } catch (error) {
-    console.error("Admin users API error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
+    const { data, pagination } = await adminService.getAllUsers(
+      parsed.data.page,
+      parsed.data.pageSize
     );
+    return json({ data, pagination });
+  } catch (err) {
+    console.error("Admin users API error:", err);
+    return errorResponse(500, "Internal server error");
   }
 }

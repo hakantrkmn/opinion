@@ -1,62 +1,56 @@
+import { NextRequest } from "next/server";
 import { adminService } from "@/lib/services/adminService";
-import { checkAdminAuth } from "@/lib/admin-auth";
-import { NextResponse } from "next/server";
+import {
+  errorResponse,
+  json,
+  requireAdmin,
+  enforceRateLimit,
+  checkCsrfOrigin,
+} from "@/lib/api-helpers";
+import { RATE_LIMITS } from "@/lib/rate-limit";
+import { recordAudit } from "@/lib/audit-log";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
-    const isAdmin = await checkAdminAuth();
-    if (!isAdmin) {
-      return NextResponse.json(
-        { error: "Unauthorized. Admin access required." },
-        { status: 401 }
-      );
-    }
+    const csrf = checkCsrfOrigin(request);
+    if (csrf) return csrf;
 
-    console.log("🔄 Admin requesting refresh of all user statistics...");
+    const { session, error: authError } = await requireAdmin();
+    if (authError) return authError;
+
+    const rl = enforceRateLimit(request, "admin:refresh-stats", RATE_LIMITS.admin, session.user.id);
+    if (rl) return rl;
+
     const startTime = performance.now();
-
-    // Refresh all user statistics
     const { success, error } = await adminService.refreshAllUserStats();
-
     if (!success) {
-      console.error("❌ Failed to refresh user statistics:", error);
-      return NextResponse.json(
-        {
-          error: error || "Failed to refresh user statistics",
-          success: false,
-        },
-        { status: 500 }
-      );
+      console.error("Failed to refresh user statistics:", error);
+      return errorResponse(500, error || "Failed to refresh user statistics");
     }
 
-    const endTime = performance.now();
-    const duration = (endTime - startTime).toFixed(2);
-
-    console.log(
-      `✅ All user statistics refreshed successfully in ${duration}ms`
-    );
-
-    // Get updated statistics summary
+    const duration = Number((performance.now() - startTime).toFixed(2));
     const summary = await adminService.getUserStatsSummary();
 
-    return NextResponse.json({
+    await recordAudit({
+      actorId: session.user.id,
+      actorEmail: session.user.email,
+      action: "admin.stats.refresh",
+      targetType: "system",
+      metadata: { duration },
+    });
+
+    return json({
       success: true,
       message: "All user statistics refreshed successfully",
       performanceInfo: {
-        duration: parseFloat(duration),
+        duration,
         method: "bulk_refresh",
         timestamp: new Date().toISOString(),
       },
       summary: summary || null,
     });
-  } catch (error) {
-    console.error("❌ Error in refresh-stats API:", error);
-    return NextResponse.json(
-      {
-        error: "Internal server error while refreshing statistics",
-        success: false,
-      },
-      { status: 500 }
-    );
+  } catch (err) {
+    console.error("Error in refresh-stats API:", err);
+    return errorResponse(500, "Internal server error while refreshing statistics");
   }
 }

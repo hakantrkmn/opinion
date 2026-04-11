@@ -1,49 +1,66 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+import { NextRequest } from "next/server";
 import { pinService } from "@/lib/services/pinService";
+import {
+  errorResponse,
+  json,
+  parseFormData,
+  parseQuery,
+  requireSession,
+  enforceRateLimit,
+  checkCsrfOrigin,
+} from "@/lib/api-helpers";
+import { createPinFormSchema, pinBoundsSchema } from "@/lib/validation/schemas";
+import { RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const bounds = {
-      minLat: Number(searchParams.get("minLat")),
-      maxLat: Number(searchParams.get("maxLat")),
-      minLng: Number(searchParams.get("minLng")),
-      maxLng: Number(searchParams.get("maxLng")),
-    };
+    const rl = enforceRateLimit(request, "pins:get", RATE_LIMITS.read);
+    if (rl) return rl;
 
-    const { pins, error } = await pinService.getPins(bounds);
-    if (error) return NextResponse.json({ error }, { status: 500 });
-    return NextResponse.json({ pins });
+    const parsed = parseQuery(request, pinBoundsSchema);
+    if (parsed.error) return parsed.error;
+
+    const { pins, error } = await pinService.getPins(parsed.data);
+    if (error) return errorResponse(500, error);
+    return json({ pins });
   } catch (error) {
     console.error("Pins GET error:", error);
-    return NextResponse.json({ error: "Failed to get pins" }, { status: 500 });
+    return errorResponse(500, "Failed to get pins");
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const csrf = checkCsrfOrigin(request);
+    if (csrf) return csrf;
 
-    const formData = await request.formData();
-    const data = {
-      pinName: formData.get("pinName") as string,
-      comment: formData.get("comment") as string,
-      lat: Number(formData.get("lat")),
-      lng: Number(formData.get("lng")),
-      photo: formData.get("photo") as File | null || undefined,
-      photoMetadata: formData.get("photoMetadata")
-        ? JSON.parse(formData.get("photoMetadata") as string)
-        : undefined,
-    };
+    const { session, error: authError } = await requireSession();
+    if (authError) return authError;
 
-    const { pin, error } = await pinService.createPin(data, session.user.id);
-    if (error) return NextResponse.json({ error }, { status: 500 });
-    return NextResponse.json({ pin });
+    const rl = enforceRateLimit(request, "pins:post", RATE_LIMITS.write, session.user.id);
+    if (rl) return rl;
+
+    const parsed = await parseFormData(request, createPinFormSchema);
+    if (parsed.error) return parsed.error;
+
+    const photoEntry = parsed.formData.get("photo");
+    const photo = photoEntry instanceof File ? photoEntry : undefined;
+
+    const { pin, error } = await pinService.createPin(
+      {
+        pinName: parsed.data.pinName,
+        comment: parsed.data.comment,
+        lat: parsed.data.lat,
+        lng: parsed.data.lng,
+        photo,
+        photoMetadata: parsed.data.photoMetadata as never,
+      },
+      session.user.id
+    );
+    if (error) return errorResponse(500, error);
+    return json({ pin });
   } catch (error) {
     console.error("Pins POST error:", error);
-    return NextResponse.json({ error: "Failed to create pin" }, { status: 500 });
+    return errorResponse(500, "Failed to create pin");
   }
 }

@@ -1,30 +1,48 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+import { NextRequest } from "next/server";
 import { pinService } from "@/lib/services/pinService";
+import {
+  errorResponse,
+  json,
+  requireSession,
+  parseBody,
+  enforceRateLimit,
+  checkCsrfOrigin,
+} from "@/lib/api-helpers";
+import { idParamSchema, updateCommentSchema } from "@/lib/validation/schemas";
+import { RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const csrf = checkCsrfOrigin(request);
+    if (csrf) return csrf;
 
-    const { id } = await params;
-    const body = await request.json();
+    const { session, error: authError } = await requireSession();
+    if (authError) return authError;
+
+    const rl = enforceRateLimit(request, "comment:put", RATE_LIMITS.write, session.user.id);
+    if (rl) return rl;
+
+    const paramParsed = idParamSchema.safeParse(await params);
+    if (!paramParsed.success) return errorResponse(400, "Invalid id");
+
+    const body = await parseBody(request, updateCommentSchema);
+    if (body.error) return body.error;
+
     const { success, error } = await pinService.updateComment(
-      id,
-      body.text,
+      paramParsed.data.id,
+      body.data.text,
       session.user.id,
-      body.photoUrl,
-      body.photoMetadata
+      body.data.photoUrl ?? undefined,
+      body.data.photoMetadata ?? undefined
     );
-    if (error) return NextResponse.json({ error }, { status: 400 });
-    return NextResponse.json({ success });
+    if (error) return errorResponse(400, error);
+    return json({ success });
   } catch (error) {
     console.error("Comment PUT error:", error);
-    return NextResponse.json({ error: "Failed to update comment" }, { status: 500 });
+    return errorResponse(500, "Failed to update comment");
   }
 }
 
@@ -33,15 +51,23 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const csrf = checkCsrfOrigin(request);
+    if (csrf) return csrf;
 
-    const { id } = await params;
-    const { success, error } = await pinService.deleteComment(id, session.user.id);
-    if (error) return NextResponse.json({ error }, { status: 400 });
-    return NextResponse.json({ success });
+    const { session, error: authError } = await requireSession();
+    if (authError) return authError;
+
+    const rl = enforceRateLimit(request, "comment:delete", RATE_LIMITS.write, session.user.id);
+    if (rl) return rl;
+
+    const parsed = idParamSchema.safeParse(await params);
+    if (!parsed.success) return errorResponse(400, "Invalid id");
+
+    const { success, error } = await pinService.deleteComment(parsed.data.id, session.user.id);
+    if (error) return errorResponse(400, error);
+    return json({ success });
   } catch (error) {
     console.error("Comment DELETE error:", error);
-    return NextResponse.json({ error: "Failed to delete comment" }, { status: 500 });
+    return errorResponse(500, "Failed to delete comment");
   }
 }

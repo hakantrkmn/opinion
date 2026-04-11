@@ -1,18 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
 import { pinService } from "@/lib/services/pinService";
+import {
+  requireSession,
+  enforceRateLimit,
+  checkCsrfOrigin,
+} from "@/lib/api-helpers";
+import { idParamSchema } from "@/lib/validation/schemas";
+import { RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const csrf = checkCsrfOrigin(request);
+    if (csrf) return csrf;
 
-    const { id } = await params;
-    const result = await pinService.deleteCommentWithCleanup(id, session.user.id);
+    const { session, error: authError } = await requireSession();
+    if (authError) return authError;
+
+    const rl = enforceRateLimit(request, "comment:cleanup", RATE_LIMITS.write, session.user.id);
+    if (rl) return rl;
+
+    const parsed = idParamSchema.safeParse(await params);
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, pinDeleted: false, error: "Invalid id" }, { status: 400 });
+    }
+
+    const result = await pinService.deleteCommentWithCleanup(parsed.data.id, session.user.id);
     if (result.error) return NextResponse.json({ error: result.error }, { status: 400 });
     return NextResponse.json(result);
   } catch (error) {

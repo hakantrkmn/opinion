@@ -3,6 +3,16 @@ import { queryKeys } from "@/lib/api/query-keys";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+function invalidateAdminAndContent(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: ["admin"] });
+  queryClient.invalidateQueries({ queryKey: queryKeys.admin.analytics });
+  queryClient.invalidateQueries({ queryKey: queryKeys.pins.all });
+  queryClient.invalidateQueries({ queryKey: ["pins"] });
+  queryClient.invalidateQueries({ queryKey: queryKeys.profile.pins });
+  queryClient.invalidateQueries({ queryKey: queryKeys.profile.comments });
+  queryClient.invalidateQueries({ queryKey: queryKeys.profile.stats });
+}
+
 export function useDeleteAdminUser() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -10,8 +20,7 @@ export function useDeleteAdminUser() {
       return apiClient(`/api/admin/users/${userId}`, { method: "DELETE" });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
-      queryClient.invalidateQueries({ queryKey: queryKeys.admin.analytics });
+      invalidateAdminAndContent(queryClient);
       toast.success("User deleted");
     },
     onError: (error) => {
@@ -27,8 +36,7 @@ export function useDeleteAdminPin() {
       return apiClient(`/api/admin/pins/${pinId}`, { method: "DELETE" });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "pins"] });
-      queryClient.invalidateQueries({ queryKey: queryKeys.admin.analytics });
+      invalidateAdminAndContent(queryClient);
       toast.success("Pin deleted");
     },
     onError: (error) => {
@@ -37,18 +45,30 @@ export function useDeleteAdminPin() {
   });
 }
 
+interface DeleteAdminCommentResponse {
+  success: boolean;
+  pinDeleted?: boolean;
+  pinId?: string | null;
+}
+
 export function useDeleteAdminComment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (commentId: string) => {
-      return apiClient(`/api/admin/comments/${commentId}`, {
-        method: "DELETE",
-      });
+    mutationFn: async (commentId: string): Promise<DeleteAdminCommentResponse> => {
+      return apiClient<DeleteAdminCommentResponse>(
+        `/api/admin/comments/${commentId}`,
+        { method: "DELETE" }
+      );
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "comments"] });
-      queryClient.invalidateQueries({ queryKey: queryKeys.admin.analytics });
-      toast.success("Comment deleted");
+    onSuccess: (data) => {
+      invalidateAdminAndContent(queryClient);
+      if (data?.pinDeleted) {
+        toast.success("Comment deleted", {
+          description: "Pin removed — last comment was cleared.",
+        });
+      } else {
+        toast.success("Comment deleted");
+      }
     },
     onError: (error) => {
       toast.error("Failed to delete comment", { description: error.message });

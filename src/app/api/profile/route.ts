@@ -1,62 +1,57 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+import { NextRequest } from "next/server";
 import { userService } from "@/lib/services/userService";
+import {
+  errorResponse,
+  json,
+  requireSession,
+  parseBody,
+  enforceRateLimit,
+  checkCsrfOrigin,
+} from "@/lib/api-helpers";
+import { updateProfileSchema } from "@/lib/validation/schemas";
+import { RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
+    const csrf = checkCsrfOrigin(request);
+    if (csrf) return csrf;
 
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { session, error: authError } = await requireSession();
+    if (authError) return authError;
+
+    const rl = enforceRateLimit(request, "profile:put", RATE_LIMITS.write, session.user.id);
+    if (rl) return rl;
+
+    const body = await parseBody(request, updateProfileSchema);
+    if (body.error) return body.error;
+
+    if (body.data.displayName !== undefined) {
+      const result = await userService.updateDisplayName(session.user.id, body.data.displayName);
+      if (!result.success) return errorResponse(400, result.error || "Failed to update");
     }
-
-    const body = await request.json();
-    const { displayName } = body;
-
-    if (displayName !== undefined) {
-      const result = await userService.updateDisplayName(
-        session.user.id,
-        displayName
-      );
-      if (!result.success) {
-        return NextResponse.json({ error: result.error }, { status: 400 });
-      }
-    }
-
-    return NextResponse.json({ success: true });
+    return json({ success: true });
   } catch (error) {
     console.error("Profile update error:", error);
-    return NextResponse.json(
-      { error: "Failed to update profile" },
-      { status: 500 }
-    );
+    return errorResponse(500, "Failed to update profile");
   }
 }
 
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
+    const csrf = checkCsrfOrigin(request);
+    if (csrf) return csrf;
 
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { session, error: authError } = await requireSession();
+    if (authError) return authError;
+
+    const rl = enforceRateLimit(request, "profile:delete", RATE_LIMITS.write, session.user.id);
+    if (rl) return rl;
 
     const result = await userService.deleteAvatar(session.user.id);
-    if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 400 });
-    }
-
-    return NextResponse.json({ success: true });
+    if (!result.success) return errorResponse(400, result.error || "Failed");
+    return json({ success: true });
   } catch (error) {
     console.error("Avatar delete error:", error);
-    return NextResponse.json(
-      { error: "Failed to delete avatar" },
-      { status: 500 }
-    );
+    return errorResponse(500, "Failed to delete avatar");
   }
 }

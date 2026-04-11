@@ -2,16 +2,14 @@ import { getServerSession } from "@/lib/auth-server";
 import { redirect } from "next/navigation";
 import DynamicAdminDashboard from "@/components/DynamicAdminDashboard";
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
-
 export default async function AdminPage() {
   const session = await getServerSession();
 
   if (!session) {
-    redirect("/");
+    redirect("/auth");
   }
 
-  if (session.user.email !== ADMIN_EMAIL) {
+  if (session.user.role !== "admin") {
     redirect("/");
   }
 

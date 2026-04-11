@@ -142,29 +142,82 @@ export const adminService = {
       .from(comments)
       .where(eq(comments.pinId, pinId));
 
-    for (const comment of pinComments) {
-      if (comment.photoUrl) {
-        await deleteCommentPhoto(comment.photoUrl);
-      }
-    }
+    await Promise.all(
+      pinComments
+        .filter((c) => !!c.photoUrl)
+        .map((c) => deleteCommentPhoto(c.photoUrl as string))
+    );
 
     await db.delete(pins).where(eq(pins.id, pinId));
     return { error: null };
   },
 
   async deleteComment(commentId: string) {
-    // Delete comment photo before deleting the comment
     const [comment] = await db
-      .select({ photoUrl: comments.photoUrl })
+      .select({
+        pinId: comments.pinId,
+        userId: comments.userId,
+        photoUrl: comments.photoUrl,
+      })
       .from(comments)
       .where(eq(comments.id, commentId));
 
-    if (comment?.photoUrl) {
+    if (!comment) {
+      return {
+        success: false,
+        pinDeleted: false,
+        pinId: null,
+        error: "Comment not found",
+      };
+    }
+
+    const pinId = comment.pinId;
+
+    const [pinRow] = await db
+      .select({ userId: pins.userId })
+      .from(pins)
+      .where(eq(pins.id, pinId));
+
+    const voterRows = await db
+      .select({ userId: commentVotes.userId })
+      .from(commentVotes)
+      .where(eq(commentVotes.commentId, commentId));
+
+    if (comment.photoUrl) {
       await deleteCommentPhoto(comment.photoUrl);
     }
 
+    const commentsBefore = await db
+      .select({ id: comments.id })
+      .from(comments)
+      .where(eq(comments.pinId, pinId));
+    const commentCountBefore = commentsBefore.length;
+
     await db.delete(comments).where(eq(comments.id, commentId));
-    return { error: null };
+
+    const affectedUserIds = new Set<string>([comment.userId]);
+    if (pinRow?.userId) affectedUserIds.add(pinRow.userId);
+    for (const v of voterRows) affectedUserIds.add(v.userId);
+
+    const { userService } = await import("./userService");
+    await Promise.all(
+      [...affectedUserIds].map((uid) =>
+        userService.refreshUserStats(uid).catch((err) => {
+          console.error("refreshUserStats after admin comment delete:", uid, err);
+        })
+      )
+    );
+
+    let pinDeleted = false;
+    if (commentCountBefore === 1) {
+      const pinExists = await db
+        .select({ id: pins.id })
+        .from(pins)
+        .where(eq(pins.id, pinId));
+      pinDeleted = pinExists.length === 0;
+    }
+
+    return { success: true, pinDeleted, pinId, error: null };
   },
 
   async deleteUser(userId: string) {
@@ -191,11 +244,11 @@ export const adminService = {
       .from(comments)
       .where(eq(comments.userId, userId));
 
-    for (const comment of userComments) {
-      if (comment.photoUrl) {
-        await deleteCommentPhoto(comment.photoUrl);
-      }
-    }
+    await Promise.all(
+      userComments
+        .filter((c) => !!c.photoUrl)
+        .map((c) => deleteCommentPhoto(c.photoUrl as string))
+    );
 
     // Cascade will handle related database records
     await db.delete(user).where(eq(user.id, userId));

@@ -3,7 +3,7 @@ import type { Comment, Pin, UserStats } from "@/types";
 import { db, sql } from "@/db";
 import { pins, comments, commentVotes, userStats } from "@/db/schema/app";
 import { user } from "@/db/schema/auth";
-import { eq, desc, count } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { writeFile, unlink, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
@@ -247,70 +247,7 @@ export const userService = {
     userId: string
   ): Promise<{ success: boolean; error: string | null }> {
     try {
-      const [pinCount] = await db
-        .select({ count: count() })
-        .from(pins)
-        .where(eq(pins.userId, userId));
-
-      const [commentCount] = await db
-        .select({ count: count() })
-        .from(comments)
-        .where(eq(comments.userId, userId));
-
-      const userCommentIds = await db
-        .select({ id: comments.id })
-        .from(comments)
-        .where(eq(comments.userId, userId));
-
-      let likesReceived = 0;
-      let dislikesReceived = 0;
-
-      if (userCommentIds.length > 0) {
-        const ids = userCommentIds.map((c) => c.id);
-        const votesOnComments = await db
-          .select({ value: commentVotes.value })
-          .from(commentVotes)
-          .where(
-            sql`${commentVotes.commentId} IN (${sql.join(
-              ids.map((id) => sql`${id}`),
-              sql`, `
-            )})`
-          );
-
-        likesReceived = votesOnComments.filter((v) => v.value === 1).length;
-        dislikesReceived = votesOnComments.filter((v) => v.value === -1).length;
-      }
-
-      const [votesGiven] = await db
-        .select({ count: count() })
-        .from(commentVotes)
-        .where(eq(commentVotes.userId, userId));
-
-      await db
-        .insert(userStats)
-        .values({
-          userId,
-          totalPins: pinCount.count,
-          totalComments: commentCount.count,
-          totalLikesReceived: likesReceived,
-          totalDislikesReceived: dislikesReceived,
-          totalVotesGiven: votesGiven.count,
-          lastActivityAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .onConflictDoUpdate({
-          target: userStats.userId,
-          set: {
-            totalPins: pinCount.count,
-            totalComments: commentCount.count,
-            totalLikesReceived: likesReceived,
-            totalDislikesReceived: dislikesReceived,
-            totalVotesGiven: votesGiven.count,
-            lastActivityAt: new Date(),
-            updatedAt: new Date(),
-          },
-        });
-
+      await db.execute(sql`SELECT refresh_user_stats(${userId})`);
       return { success: true, error: null };
     } catch (error) {
       console.error("refreshUserStats error:", error);
@@ -354,13 +291,13 @@ export const userService = {
           updatedAt: pins.updatedAt,
           displayName: user.displayName,
           avatarUrl: user.avatarUrl,
-          commentsCount: count(comments.id),
+          commentsCount: sql<number>`(
+            SELECT COUNT(*)::int FROM ${comments} WHERE ${comments.pinId} = ${pins.id}
+          )`.as("comments_count"),
         })
         .from(pins)
         .leftJoin(user, eq(pins.userId, user.id))
-        .leftJoin(comments, eq(pins.id, comments.pinId))
         .where(eq(pins.userId, userId))
-        .groupBy(pins.id, user.displayName, user.avatarUrl)
         .orderBy(desc(pins.createdAt));
 
       const result: Pin[] = rows.map((row) => ({
@@ -401,33 +338,17 @@ export const userService = {
           pinLocation: pins.location,
           displayName: user.displayName,
           avatarUrl: user.avatarUrl,
+          voteCount: sql<number>`COALESCE((
+            SELECT SUM(${commentVotes.value})::int
+            FROM ${commentVotes}
+            WHERE ${commentVotes.commentId} = ${comments.id}
+          ), 0)`.as("vote_count"),
         })
         .from(comments)
         .leftJoin(pins, eq(comments.pinId, pins.id))
         .leftJoin(user, eq(comments.userId, user.id))
         .where(eq(comments.userId, userId))
         .orderBy(desc(comments.createdAt));
-
-      // Get votes for these comments
-      const commentIds = rows.map((r) => r.id);
-      const votes =
-        commentIds.length > 0
-          ? await db
-              .select({ commentId: commentVotes.commentId, value: commentVotes.value })
-              .from(commentVotes)
-              .where(
-                sql`${commentVotes.commentId} IN (${sql.join(
-                  commentIds.map((id) => sql`${id}`),
-                  sql`, `
-                )})`
-              )
-          : [];
-
-      const votesByComment: Record<string, number> = {};
-      for (const v of votes) {
-        votesByComment[v.commentId] =
-          (votesByComment[v.commentId] || 0) + v.value;
-      }
 
       const result: Comment[] = rows.map((row) => ({
         id: row.id,
@@ -444,7 +365,7 @@ export const userService = {
         pins: {
           name: row.pinName || "Unknown",
         },
-        vote_count: votesByComment[row.id] || 0,
+        vote_count: Number(row.voteCount) || 0,
       }));
 
       return { comments: result, error: null };
