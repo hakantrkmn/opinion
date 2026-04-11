@@ -140,6 +140,11 @@ export function enforceRateLimit(
   );
 }
 
+// Native mobile apps don't have a real web origin. They send a custom-scheme
+// Origin header (e.g. "opinionmobile://") which is matched against this list
+// verbatim — URL parsing would yield an empty host.
+const ALLOWED_NATIVE_ORIGINS = new Set<string>(["opinionmobile://"]);
+
 export function checkCsrfOrigin(request: NextRequest): NextResponse | null {
   const method = request.method.toUpperCase();
   if (method === "GET" || method === "HEAD" || method === "OPTIONS") return null;
@@ -152,6 +157,11 @@ export function checkCsrfOrigin(request: NextRequest): NextResponse | null {
   const host = request.headers.get("host");
   if (!host) return errorResponse(400, "Missing host");
 
+  const source = origin || referer;
+  if (!source) return errorResponse(403, "Missing origin");
+
+  if (ALLOWED_NATIVE_ORIGINS.has(source)) return null;
+
   const allowedHosts = new Set<string>([host]);
   const envUrl = process.env.BETTER_AUTH_URL;
   if (envUrl) {
@@ -162,8 +172,6 @@ export function checkCsrfOrigin(request: NextRequest): NextResponse | null {
     }
   }
 
-  const source = origin || referer;
-  if (!source) return errorResponse(403, "Missing origin");
   try {
     const sourceHost = new URL(source).host;
     if (!allowedHosts.has(sourceHost)) {
