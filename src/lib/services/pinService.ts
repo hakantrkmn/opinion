@@ -55,20 +55,38 @@ async function maybeNotifyCommentLike(params: {
   const tokens = await pushService.getActiveTokensForUser(comment.authorId);
   if (tokens.length === 0) return;
 
+  const [voter] = await db
+    .select({ displayName: user.displayName, name: user.name })
+    .from(user)
+    .where(eq(user.id, voterId));
+  const voterName = voter?.displayName || voter?.name || "Someone";
+
   const snippet =
     comment.text.length > 80 ? `${comment.text.slice(0, 80)}…` : comment.text;
-  const title = isFirst
-    ? "Yorumun beğenildi"
-    : `Yorumun ${currentLikes} beğeni aldı`;
+
+  let title: string;
+  let body: string;
+  if (isFirst) {
+    title = `${voterName} liked your comment`;
+    body = snippet;
+  } else {
+    const others = currentLikes - 1;
+    title =
+      others === 1
+        ? `${voterName} and 1 other liked your comment`
+        : `${voterName} and ${others} others liked your comment`;
+    body = snippet;
+  }
 
   const result = await pushService.sendToTokens(tokens, {
     title,
-    body: snippet,
+    body,
     data: {
       type: "comment_like",
       commentId,
       pinId: comment.pinId,
       count: currentLikes,
+      voterId,
     },
   });
 
