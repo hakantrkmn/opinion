@@ -3,7 +3,82 @@ import type { Comment, CreatePinData, MapBounds, Pin } from "@/types";
 import { db, sql } from "@/db";
 import { pins, comments, commentVotes } from "@/db/schema/app";
 import { user } from "@/db/schema/auth";
-import { eq, and, inArray, asc } from "drizzle-orm";
+import { eq, and, inArray, asc, count } from "drizzle-orm";
+import { pushService } from "./pushService";
+
+const LIKE_MILESTONES = new Set([5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000]);
+const LIKE_NOTIFY_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
+
+async function maybeNotifyCommentLike(params: {
+  commentId: string;
+  voterId: string;
+}): Promise<void> {
+  const { commentId, voterId } = params;
+
+  const [comment] = await db
+    .select({
+      authorId: comments.userId,
+      pinId: comments.pinId,
+      text: comments.text,
+      likeNotifiedCount: comments.likeNotifiedCount,
+      likeNotifiedAt: comments.likeNotifiedAt,
+    })
+    .from(comments)
+    .where(eq(comments.id, commentId));
+
+  if (!comment) return;
+  if (comment.authorId === voterId) return; // self-like
+
+  const [{ total } = { total: 0 }] = await db
+    .select({ total: count() })
+    .from(commentVotes)
+    .where(and(eq(commentVotes.commentId, commentId), eq(commentVotes.value, 1)));
+
+  const currentLikes = Number(total);
+  if (currentLikes <= 0) return;
+
+  const isFirst = currentLikes === 1;
+  const now = Date.now();
+  const lastAt = comment.likeNotifiedAt ? comment.likeNotifiedAt.getTime() : 0;
+  const withinCooldown = lastAt > 0 && now - lastAt < LIKE_NOTIFY_COOLDOWN_MS;
+  const isMilestone =
+    LIKE_MILESTONES.has(currentLikes) && currentLikes > comment.likeNotifiedCount;
+
+  let shouldNotify = false;
+  if (isFirst) {
+    shouldNotify = true;
+  } else if (!withinCooldown && isMilestone) {
+    shouldNotify = true;
+  }
+  if (!shouldNotify) return;
+
+  const tokens = await pushService.getActiveTokensForUser(comment.authorId);
+  if (tokens.length === 0) return;
+
+  const snippet =
+    comment.text.length > 80 ? `${comment.text.slice(0, 80)}…` : comment.text;
+  const title = isFirst
+    ? "Yorumun beğenildi"
+    : `Yorumun ${currentLikes} beğeni aldı`;
+
+  const result = await pushService.sendToTokens(tokens, {
+    title,
+    body: snippet,
+    data: {
+      type: "comment_like",
+      commentId,
+      pinId: comment.pinId,
+      count: currentLikes,
+    },
+  });
+
+  if (result.sent > 0) {
+    await db
+      .update(comments)
+      .set({ likeNotifiedCount: currentLikes, likeNotifiedAt: new Date() })
+      .where(eq(comments.id, commentId));
+  }
+}
 
 export const pinService = {
   async createPin(
@@ -426,6 +501,18 @@ export const pinService = {
         return { success: false, error: "Vote value must be 1 or -1" };
       }
 
+      // Pre-check: capture previous vote (if any) to detect 0→1 / -1→1 transitions
+      const [prevVote] = await db
+        .select({ value: commentVotes.value })
+        .from(commentVotes)
+        .where(
+          and(
+            eq(commentVotes.commentId, commentId),
+            eq(commentVotes.userId, userId)
+          )
+        );
+      const prevValue = prevVote?.value ?? null;
+
       // Use upsert (ON CONFLICT DO UPDATE) to avoid race conditions
       await db
         .insert(commentVotes)
@@ -438,6 +525,18 @@ export const pinService = {
           target: [commentVotes.commentId, commentVotes.userId],
           set: { value },
         });
+
+      // Fire-and-forget notification check; errors must not affect vote result
+      if (value === 1 && prevValue !== 1) {
+        try {
+          await maybeNotifyCommentLike({
+            commentId,
+            voterId: userId,
+          });
+        } catch (notifyError) {
+          console.error("maybeNotifyCommentLike error:", notifyError);
+        }
+      }
 
       return { success: true, error: null };
     } catch (error) {

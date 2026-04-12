@@ -68,6 +68,8 @@ export const comments = pgTable(
     isFirstComment: boolean("is_first_comment").notNull().default(false),
     photoUrl: text("photo_url"),
     photoMetadata: jsonb("photo_metadata").default(sql`'{}'::jsonb`),
+    likeNotifiedCount: integer("like_notified_count").notNull().default(0),
+    likeNotifiedAt: timestamp("like_notified_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },

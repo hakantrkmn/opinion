@@ -7,6 +7,7 @@ import { useMapStore } from "@/store/map-store";
 import { locationService } from "@/services/locationService";
 import type { Comment, CreatePinData, EnhancedComment, MapBounds, Pin } from "@/types";
 import {
+  MIN_PIN_TILE_ZOOM,
   TileCache,
   boundsToTiles,
   pinTileZoomFor,
@@ -59,6 +60,7 @@ export const usePinOperations = ({ map }: UsePinOperationsProps) => {
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const cacheRef = useRef<TileCache>(new TileCache());
   const inFlightRef = useRef<Set<string>>(new Set());
+  const lowZoomToastShownRef = useRef(false);
 
   const [pins, setPins] = useState<Pin[]>([]);
 
@@ -71,6 +73,16 @@ export const usePinOperations = ({ map }: UsePinOperationsProps) => {
       const m = map.current;
       if (!m) return;
 
+      const currentZoom = m.getZoom();
+      if (currentZoom < MIN_PIN_TILE_ZOOM) {
+        if (!lowZoomToastShownRef.current) {
+          toast.info("Zoom in to see pins");
+          lowZoomToastShownRef.current = true;
+        }
+        return;
+      }
+      lowZoomToastShownRef.current = false;
+
       const viewport = m.getBounds();
       const viewportBounds: MapBounds = {
         minLat: viewport.getSouth(),
@@ -79,7 +91,7 @@ export const usePinOperations = ({ map }: UsePinOperationsProps) => {
         maxLng: viewport.getEast(),
       };
 
-      const tileZoom = pinTileZoomFor(m.getZoom());
+      const tileZoom = pinTileZoomFor(currentZoom);
       const tiles = boundsToTiles(viewportBounds, tileZoom, MAX_TILES_PER_FETCH);
       if (tiles.length === 0) return;
 

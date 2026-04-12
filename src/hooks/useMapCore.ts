@@ -133,7 +133,6 @@ export const useMapCore = (initialCoordinates?: [number, number] | null) => {
         },
         center: defaultCenter,
         zoom: defaultZoom,
-        minZoom: 7,
         maxZoom: 20,
       });
 
