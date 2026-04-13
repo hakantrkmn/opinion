@@ -1,13 +1,85 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { Comment, Pin, UserStats } from "@/types";
+import type { Comment, FollowListResponse, Pin, UserStats } from "@/types";
 import { db, sql } from "@/db";
-import { pins, comments, commentVotes, userStats } from "@/db/schema/app";
+import {
+  pins,
+  comments,
+  commentVotes,
+  userStats,
+  userFollows,
+} from "@/db/schema/app";
 import { user } from "@/db/schema/auth";
-import { eq, desc, ilike, and, isNotNull } from "drizzle-orm";
+import { eq, desc, ilike, and, isNotNull, count } from "drizzle-orm";
 import { writeFile, unlink, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 import { UPLOAD_DIR } from "@/lib/storage";
+import { pushService } from "./pushService";
+
+const MAX_CONNECTION_PAGE_SIZE = 50;
+
+function normalizePagination(page: number, pageSize: number) {
+  const safePage = Math.max(1, page);
+  const safePageSize = Math.min(
+    Math.max(1, pageSize),
+    MAX_CONNECTION_PAGE_SIZE
+  );
+
+  return {
+    page: safePage,
+    pageSize: safePageSize,
+    offset: (safePage - 1) * safePageSize,
+    limit: safePageSize + 1,
+  };
+}
+
+async function getFollowCounts(userId: string) {
+  const [followersResult, followingResult] = await Promise.all([
+    db
+      .select({ total: count() })
+      .from(userFollows)
+      .where(eq(userFollows.followingId, userId)),
+    db
+      .select({ total: count() })
+      .from(userFollows)
+      .where(eq(userFollows.followerId, userId)),
+  ]);
+
+  return {
+    followersCount: Number(followersResult[0]?.total ?? 0),
+    followingCount: Number(followingResult[0]?.total ?? 0),
+  };
+}
+
+async function ensureUserExists(userId: string) {
+  const [row] = await db.select({ id: user.id }).from(user).where(eq(user.id, userId));
+  return !!row;
+}
+
+async function maybeNotifyUserFollowed(params: {
+  followerId: string;
+  followingId: string;
+}) {
+  const { followerId, followingId } = params;
+  const tokens = await pushService.getActiveTokensForUser(followingId);
+  if (tokens.length === 0) return;
+
+  const [follower] = await db
+    .select({ displayName: user.displayName, name: user.name })
+    .from(user)
+    .where(eq(user.id, followerId));
+
+  const followerName = follower?.displayName || follower?.name || "Birisi";
+
+  await pushService.sendToTokens(tokens, {
+    title: `${followerName} seni takip etmeye başladı`,
+    body: "Profiline göz at ve yeni pinlerini paylaş.",
+    data: {
+      type: "follow",
+      followerId,
+    },
+  });
+}
 
 export const userService = {
   async uploadAvatar(
@@ -283,17 +355,25 @@ export const userService = {
       totalLikes: number;
       totalDislikes: number;
       totalVotesGiven?: number;
+      followersCount: number;
+      followingCount: number;
       lastActivityAt?: string;
     } | null;
     error: string | null;
   }> {
     try {
-      const [stats] = await db
-        .select()
-        .from(userStats)
-        .where(eq(userStats.userId, userId));
+      const userExists = await ensureUserExists(userId);
+      if (!userExists) {
+        return { stats: null, error: "User not found" };
+      }
 
-      if (!stats) {
+      const [stats, followCounts] = await Promise.all([
+        db.select().from(userStats).where(eq(userStats.userId, userId)),
+        getFollowCounts(userId),
+      ]);
+      const currentStats = stats[0];
+
+      if (!currentStats) {
         // Create initial stats
         await db.insert(userStats).values({
           userId,
@@ -311,6 +391,8 @@ export const userService = {
             totalLikes: 0,
             totalDislikes: 0,
             totalVotesGiven: 0,
+            followersCount: followCounts.followersCount,
+            followingCount: followCounts.followingCount,
             lastActivityAt: new Date().toISOString(),
           },
           error: null,
@@ -319,12 +401,14 @@ export const userService = {
 
       return {
         stats: {
-          totalPins: stats.totalPins,
-          totalComments: stats.totalComments,
-          totalLikes: stats.totalLikesReceived,
-          totalDislikes: stats.totalDislikesReceived,
-          totalVotesGiven: stats.totalVotesGiven,
-          lastActivityAt: stats.lastActivityAt.toISOString(),
+          totalPins: currentStats.totalPins,
+          totalComments: currentStats.totalComments,
+          totalLikes: currentStats.totalLikesReceived,
+          totalDislikes: currentStats.totalDislikesReceived,
+          totalVotesGiven: currentStats.totalVotesGiven,
+          followersCount: followCounts.followersCount,
+          followingCount: followCounts.followingCount,
+          lastActivityAt: currentStats.lastActivityAt.toISOString(),
         },
         error: null,
       };
@@ -463,6 +547,212 @@ export const userService = {
     } catch (error) {
       console.error("getUserComments error:", error);
       return { comments: null, error: "Yorumlar yüklenirken hata oluştu" };
+    }
+  },
+
+  async isFollowing(
+    followerId: string,
+    followingId: string
+  ): Promise<{ isFollowing: boolean; error: string | null }> {
+    try {
+      if (followerId === followingId) {
+        return { isFollowing: false, error: null };
+      }
+
+      const [row] = await db
+        .select({ id: userFollows.id })
+        .from(userFollows)
+        .where(
+          and(
+            eq(userFollows.followerId, followerId),
+            eq(userFollows.followingId, followingId)
+          )
+        );
+
+      return { isFollowing: !!row, error: null };
+    } catch (error) {
+      console.error("isFollowing error:", error);
+      return { isFollowing: false, error: "Failed to load follow status" };
+    }
+  },
+
+  async followUser(
+    followerId: string,
+    followingId: string
+  ): Promise<{ success: boolean; error: string | null }> {
+    try {
+      if (followerId === followingId) {
+        return { success: false, error: "You cannot follow yourself" };
+      }
+
+      const targetExists = await ensureUserExists(followingId);
+      if (!targetExists) {
+        return { success: false, error: "User not found" };
+      }
+
+      const inserted = await db
+        .insert(userFollows)
+        .values({
+          followerId,
+          followingId,
+        })
+        .onConflictDoNothing()
+        .returning({ id: userFollows.id });
+
+      if (inserted.length > 0) {
+        void maybeNotifyUserFollowed({ followerId, followingId }).catch((error) => {
+          console.error("maybeNotifyUserFollowed error:", error);
+        });
+      }
+
+      return { success: true, error: null };
+    } catch (error) {
+      console.error("followUser error:", error);
+      return { success: false, error: "Failed to follow user" };
+    }
+  },
+
+  async unfollowUser(
+    followerId: string,
+    followingId: string
+  ): Promise<{ success: boolean; error: string | null }> {
+    try {
+      if (followerId === followingId) {
+        return { success: false, error: "You cannot unfollow yourself" };
+      }
+
+      const targetExists = await ensureUserExists(followingId);
+      if (!targetExists) {
+        return { success: false, error: "User not found" };
+      }
+
+      await db
+        .delete(userFollows)
+        .where(
+          and(
+            eq(userFollows.followerId, followerId),
+            eq(userFollows.followingId, followingId)
+          )
+        );
+
+      return { success: true, error: null };
+    } catch (error) {
+      console.error("unfollowUser error:", error);
+      return { success: false, error: "Failed to unfollow user" };
+    }
+  },
+
+  async getFollowers(
+    userId: string,
+    pagination: { page: number; pageSize: number }
+  ): Promise<FollowListResponse> {
+    try {
+      const userExists = await ensureUserExists(userId);
+      if (!userExists) {
+        return {
+          users: [],
+          page: pagination.page,
+          pageSize: pagination.pageSize,
+          hasMore: false,
+          error: "User not found",
+        };
+      }
+
+      const pageInfo = normalizePagination(pagination.page, pagination.pageSize);
+      const rows = await db
+        .select({
+          id: user.id,
+          displayName: user.displayName,
+          avatarUrl: user.avatarUrl,
+          createdAt: user.createdAt,
+        })
+        .from(userFollows)
+        .innerJoin(user, eq(userFollows.followerId, user.id))
+        .where(eq(userFollows.followingId, userId))
+        .orderBy(desc(userFollows.createdAt))
+        .limit(pageInfo.limit)
+        .offset(pageInfo.offset);
+
+      const users = rows.slice(0, pageInfo.pageSize).map((row) => ({
+        id: row.id,
+        display_name: row.displayName || undefined,
+        avatar_url: row.avatarUrl || undefined,
+        created_at: row.createdAt.toISOString(),
+      }));
+
+      return {
+        users,
+        page: pageInfo.page,
+        pageSize: pageInfo.pageSize,
+        hasMore: rows.length > pageInfo.pageSize,
+        error: null,
+      };
+    } catch (error) {
+      console.error("getFollowers error:", error);
+      return {
+        users: [],
+        page: pagination.page,
+        pageSize: pagination.pageSize,
+        hasMore: false,
+        error: "Failed to load followers",
+      };
+    }
+  },
+
+  async getFollowing(
+    userId: string,
+    pagination: { page: number; pageSize: number }
+  ): Promise<FollowListResponse> {
+    try {
+      const userExists = await ensureUserExists(userId);
+      if (!userExists) {
+        return {
+          users: [],
+          page: pagination.page,
+          pageSize: pagination.pageSize,
+          hasMore: false,
+          error: "User not found",
+        };
+      }
+
+      const pageInfo = normalizePagination(pagination.page, pagination.pageSize);
+      const rows = await db
+        .select({
+          id: user.id,
+          displayName: user.displayName,
+          avatarUrl: user.avatarUrl,
+          createdAt: user.createdAt,
+        })
+        .from(userFollows)
+        .innerJoin(user, eq(userFollows.followingId, user.id))
+        .where(eq(userFollows.followerId, userId))
+        .orderBy(desc(userFollows.createdAt))
+        .limit(pageInfo.limit)
+        .offset(pageInfo.offset);
+
+      const users = rows.slice(0, pageInfo.pageSize).map((row) => ({
+        id: row.id,
+        display_name: row.displayName || undefined,
+        avatar_url: row.avatarUrl || undefined,
+        created_at: row.createdAt.toISOString(),
+      }));
+
+      return {
+        users,
+        page: pageInfo.page,
+        pageSize: pageInfo.pageSize,
+        hasMore: rows.length > pageInfo.pageSize,
+        error: null,
+      };
+    } catch (error) {
+      console.error("getFollowing error:", error);
+      return {
+        users: [],
+        page: pagination.page,
+        pageSize: pagination.pageSize,
+        hasMore: false,
+        error: "Failed to load following",
+      };
     }
   },
 };

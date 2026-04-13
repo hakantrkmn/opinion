@@ -36,6 +36,13 @@
       "when": 1776200000000,
       "tag": "0004_regular_tarot",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1776300000000,
+      "tag": "0005_follow_graph",
+      "breakpoints": true
     }
   ]
 }

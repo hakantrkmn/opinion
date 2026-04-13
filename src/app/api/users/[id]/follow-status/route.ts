@@ -20,25 +20,32 @@ export async function GET(
 
     const rl = enforceRateLimit(
       request,
-      "users:stats",
+      "users:follow-status",
       RATE_LIMITS.read,
       session.user.id
     );
     if (rl) return rl;
 
     const parsed = idParamSchema.safeParse(await params);
-    if (!parsed.success)
+    if (!parsed.success) {
       return errorResponse(400, ApiErrorCode.BAD_REQUEST, "Invalid id");
+    }
 
-    const result = await userService.getUserStatsWithPerformanceInfo(
+    const result = await userService.isFollowing(
+      session.user.id,
       parsed.data.id
     );
-    if (result.error === "User not found") {
-      return errorResponse(404, ApiErrorCode.NOT_FOUND, result.error);
+    if (result.error) {
+      return errorResponse(400, ApiErrorCode.BAD_REQUEST, result.error);
     }
-    return json(result);
+
+    return json({ isFollowing: result.isFollowing });
   } catch (error) {
-    console.error("Public user stats error:", error);
-    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Failed to get stats");
+    console.error("Follow status GET error:", error);
+    return errorResponse(
+      500,
+      ApiErrorCode.INTERNAL_ERROR,
+      "Failed to load follow status"
+    );
   }
 }

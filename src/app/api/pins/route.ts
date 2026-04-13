@@ -5,23 +5,33 @@ import {
   errorResponse,
   json,
   parseFormData,
+  getSession,
   parseQuery,
   requireSession,
   enforceRateLimit,
   checkCsrfOrigin,
 } from "@/lib/api-helpers";
-import { createPinFormSchema, pinBoundsSchema } from "@/lib/validation/schemas";
+import { createPinFormSchema, pinsQuerySchema } from "@/lib/validation/schemas";
 import { RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
   try {
-    const rl = enforceRateLimit(request, "pins:get", RATE_LIMITS.read);
+    const session = await getSession();
+    const userId = session?.user?.id;
+    const rl = enforceRateLimit(request, "pins:get", RATE_LIMITS.read, userId);
     if (rl) return rl;
 
-    const parsed = parseQuery(request, pinBoundsSchema);
+    const parsed = parseQuery(request, pinsQuerySchema);
     if (parsed.error) return parsed.error;
 
-    const { pins, error } = await pinService.getPins(parsed.data);
+    if (parsed.data.scope === "following" && !userId) {
+      return json({ pins: [] });
+    }
+
+    const { pins, error } = await pinService.getPins(parsed.data, {
+      requesterUserId: userId,
+      scope: parsed.data.scope,
+    });
     if (error) return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, error);
     return json({ pins });
   } catch (error) {

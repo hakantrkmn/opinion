@@ -39,6 +39,12 @@ export const pinBoundsSchema = z.object({
   maxLng: z.coerce.number().min(-180).max(180),
 });
 
+export const pinQueryScopeSchema = z.enum(["all", "following"]).default("all");
+
+export const pinsQuerySchema = pinBoundsSchema.extend({
+  scope: pinQueryScopeSchema.optional().default("all"),
+});
+
 export const createPinFormSchema = z.object({
   pinName: z.string().trim().min(1).max(MAX_PIN_NAME_LEN),
   comment: z.string().trim().min(1).max(MAX_COMMENT_LEN),

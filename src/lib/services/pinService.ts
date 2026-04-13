@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Comment, CreatePinData, MapBounds, Pin } from "@/types";
 import { db, sql } from "@/db";
-import { pins, comments, commentVotes } from "@/db/schema/app";
+import { pins, comments, commentVotes, userFollows } from "@/db/schema/app";
 import { user } from "@/db/schema/auth";
 import { eq, and, inArray, asc, count } from "drizzle-orm";
 import { pushService } from "./pushService";
@@ -98,6 +98,41 @@ async function maybeNotifyCommentLike(params: {
   }
 }
 
+async function maybeNotifyFollowersOfNewPin(params: {
+  authorId: string;
+  authorName: string;
+  pinId: string;
+  pinName: string;
+  latitude: number;
+  longitude: number;
+}) {
+  const followerRows = await db
+    .select({ followerId: userFollows.followerId })
+    .from(userFollows)
+    .where(eq(userFollows.followingId, params.authorId));
+
+  if (followerRows.length === 0) return;
+
+  const tokenSets = await Promise.all(
+    followerRows.map((row) => pushService.getActiveTokensForUser(row.followerId))
+  );
+  const tokens = [...new Set(tokenSets.flat().filter(Boolean))];
+  if (tokens.length === 0) return;
+
+  await pushService.sendToTokens(tokens, {
+    title: `${params.authorName} yeni bir pin bıraktı`,
+    body: params.pinName,
+    data: {
+      type: "followed_user_pin",
+      authorId: params.authorId,
+      pinId: params.pinId,
+      pinName: params.pinName,
+      latitude: params.latitude,
+      longitude: params.longitude,
+    },
+  });
+}
+
 export const pinService = {
   async createPin(
     data: CreatePinData,
@@ -174,6 +209,17 @@ export const pinService = {
         comments_count: 1,
       };
 
+      void maybeNotifyFollowersOfNewPin({
+        authorId: userId,
+        authorName: result.user?.displayName || "Birisi",
+        pinId: result.pin.id,
+        pinName: result.pin.name,
+        latitude: data.lat,
+        longitude: data.lng,
+      }).catch((error) => {
+        console.error("maybeNotifyFollowersOfNewPin error:", error);
+      });
+
       return { pin: pinWithInfo, error: null };
     } catch (error) {
       console.error("createPin error:", error);
@@ -182,12 +228,20 @@ export const pinService = {
   },
 
   async getPins(
-    bounds: MapBounds
+    bounds: MapBounds,
+    options?: { requesterUserId?: string | null; scope?: "all" | "following" }
   ): Promise<{ pins: Pin[] | null; error: string | null }> {
     try {
-      const result = await db.execute(
-        sql`SELECT * FROM get_pins_in_bounds(${bounds.minLat}, ${bounds.maxLat}, ${bounds.minLng}, ${bounds.maxLng})`
-      );
+      const scope = options?.scope ?? "all";
+      const requesterUserId = options?.requesterUserId ?? null;
+      const result =
+        scope === "following" && requesterUserId
+          ? await db.execute(
+              sql`SELECT * FROM get_followed_pins_in_bounds(${requesterUserId}, ${bounds.minLat}, ${bounds.maxLat}, ${bounds.minLng}, ${bounds.maxLng})`
+            )
+          : await db.execute(
+              sql`SELECT * FROM get_pins_in_bounds(${bounds.minLat}, ${bounds.maxLat}, ${bounds.minLng}, ${bounds.maxLng})`
+            );
 
       const rows = result as any[];
       const formattedPins: Pin[] = (rows || []).map((pin: any) => ({

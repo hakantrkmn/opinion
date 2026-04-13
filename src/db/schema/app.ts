@@ -9,6 +9,7 @@ import {
   uniqueIndex,
   index,
   customType,
+  check,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { user } from "./auth";
@@ -167,6 +168,37 @@ export const pushTokens = pgTable(
     uniqueIndex("unique_push_token").on(table.token),
     index("idx_push_tokens_user").on(table.userId),
     index("idx_push_tokens_active").on(table.isActive),
+  ]
+);
+
+export const userFollows = pgTable(
+  "user_follows",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    followerId: text("follower_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    followingId: text("following_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("unique_user_follow").on(table.followerId, table.followingId),
+    index("idx_user_follows_follower_created").on(
+      table.followerId,
+      table.createdAt.desc()
+    ),
+    index("idx_user_follows_following_created").on(
+      table.followingId,
+      table.createdAt.desc()
+    ),
+    check(
+      "user_follows_no_self",
+      sql`${table.followerId} <> ${table.followingId}`
+    ),
   ]
 );
 

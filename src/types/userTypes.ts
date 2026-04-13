@@ -5,6 +5,8 @@ export interface UserStats {
     totalLikes: number;
     totalDislikes: number;
     totalVotesGiven?: number;
+    followersCount: number;
+    followingCount: number;
     lastActivityAt?: string;
   } | null;
   performanceInfo: {
@@ -12,5 +14,20 @@ export interface UserStats {
     method: string;
     improvement?: string;
   };
+  error: string | null;
+}
+
+export interface FollowListUser {
+  id: string;
+  display_name?: string;
+  avatar_url?: string;
+  created_at: string;
+}
+
+export interface FollowListResponse {
+  users: FollowListUser[];
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
   error: string | null;
 }
