@@ -3,7 +3,7 @@ import type { Comment, Pin, UserStats } from "@/types";
 import { db, sql } from "@/db";
 import { pins, comments, commentVotes, userStats } from "@/db/schema/app";
 import { user } from "@/db/schema/auth";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, ilike, and, isNotNull } from "drizzle-orm";
 import { writeFile, unlink, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
@@ -182,6 +182,97 @@ export const userService = {
     } catch (error) {
       console.error("getUserProfile error:", error);
       return { profile: null, error: "Failed to load profile" };
+    }
+  },
+
+  async getPublicUserProfile(userId: string): Promise<{
+    profile: {
+      id: string;
+      display_name?: string;
+      avatar_url?: string;
+      created_at: string;
+    } | null;
+    error: string | null;
+  }> {
+    try {
+      const [row] = await db
+        .select({
+          id: user.id,
+          displayName: user.displayName,
+          avatarUrl: user.avatarUrl,
+          createdAt: user.createdAt,
+        })
+        .from(user)
+        .where(eq(user.id, userId));
+
+      if (!row) {
+        return { profile: null, error: "User not found" };
+      }
+
+      return {
+        profile: {
+          id: row.id,
+          display_name: row.displayName || undefined,
+          avatar_url: row.avatarUrl || undefined,
+          created_at: row.createdAt.toISOString(),
+        },
+        error: null,
+      };
+    } catch (error) {
+      console.error("getPublicUserProfile error:", error);
+      return { profile: null, error: "Failed to load profile" };
+    }
+  },
+
+  async searchUsersByDisplayName(
+    query: string,
+    limit = 20,
+    offset = 0
+  ): Promise<{
+    users: Array<{
+      id: string;
+      display_name?: string;
+      avatar_url?: string;
+      created_at: string;
+    }> | null;
+    error: string | null;
+  }> {
+    try {
+      const trimmed = query.trim();
+      if (trimmed.length < 2) {
+        return { users: [], error: null };
+      }
+      // Escape LIKE wildcards so user input can't alter the pattern.
+      const escaped = trimmed.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+      const pattern = `%${escaped}%`;
+
+      const rows = await db
+        .select({
+          id: user.id,
+          displayName: user.displayName,
+          avatarUrl: user.avatarUrl,
+          createdAt: user.createdAt,
+        })
+        .from(user)
+        .where(
+          and(isNotNull(user.displayName), ilike(user.displayName, pattern))
+        )
+        .orderBy(desc(user.createdAt))
+        .limit(Math.min(Math.max(limit, 1), 50))
+        .offset(Math.max(offset, 0));
+
+      return {
+        users: rows.map((row) => ({
+          id: row.id,
+          display_name: row.displayName || undefined,
+          avatar_url: row.avatarUrl || undefined,
+          created_at: row.createdAt.toISOString(),
+        })),
+        error: null,
+      };
+    } catch (error) {
+      console.error("searchUsersByDisplayName error:", error);
+      return { users: null, error: "Failed to search users" };
     }
   },
 
