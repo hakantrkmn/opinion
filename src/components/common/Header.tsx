@@ -1,21 +1,28 @@
 "use client";
 
 import { Avatar } from "@/components/ui/Avatar";
+import { UserSearchDialog } from "@/components/users/UserSearchDialog";
 import { useSession } from "@/hooks/useSession";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { Loader2, LogOut, Shield, User } from "lucide-react";
+import { Loader2, LogOut, Search, Shield, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 
 export default function Header() {
   const { user, signOut, isSigningOut } = useSession();
   const { profile } = useUserProfile();
   const pathname = usePathname();
+  const [showUserSearch, setShowUserSearch] = useState(false);
 
   return (
-    <header className="bg-background/80 backdrop-blur-xl border-b border-border/40 sticky top-0 z-20 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
+    <>
+    <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-14">
+        <div
+          className="flex items-center justify-between"
+          style={{ height: "var(--header-height)" }}
+        >
           {/* Logo */}
           <Link
             href="/"
@@ -31,6 +38,15 @@ export default function Header() {
           <div className="flex items-center gap-1.5">
             {user ? (
               <>
+                <button
+                  type="button"
+                  onClick={() => setShowUserSearch(true)}
+                  className="flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground transition-all duration-300 hover:bg-muted/50 hover:text-foreground active:scale-[0.96]"
+                  aria-label="Search users"
+                >
+                  <Search className="h-4 w-4" />
+                </button>
+
                 {/* Desktop user pill */}
                 <div className="hidden lg:flex items-center gap-2 bg-muted/40 backdrop-blur-md border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] rounded-full px-3 py-1.5 mr-1">
                   <Avatar
@@ -98,5 +114,7 @@ export default function Header() {
         </div>
       </div>
     </header>
+      <UserSearchDialog open={showUserSearch} onOpenChange={setShowUserSearch} />
+    </>
   );
 }

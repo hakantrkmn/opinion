@@ -5,6 +5,7 @@ interface MapStyleToggleProps {
   currentStyle: string;
   onStyleChange: (style: string) => void;
   isMobile?: boolean;
+  className?: string;
 }
 
 const styles = [
@@ -17,12 +18,13 @@ export const MapStyleToggle = ({
   currentStyle,
   onStyleChange,
   isMobile = false,
+  className = "",
 }: MapStyleToggleProps) => {
   const [expanded, setExpanded] = useState(false);
 
   if (isMobile) {
     return (
-      <div className="fixed bottom-16 right-4 z-[9999] pb-safe">
+      <div className={className}>
         <div className="relative">
           {/* Expanded options */}
           <div
@@ -47,6 +49,7 @@ export const MapStyleToggle = ({
                       ? "bg-primary/10 border-primary/40 text-primary"
                       : "bg-background/90 border-border/50 text-foreground hover:border-border"
                   }`}
+                  aria-label={`Use ${style.label} map style`}
                 >
                   <Icon className="h-3.5 w-3.5" />
                   <span className="text-xs font-medium">{style.label}</span>
@@ -64,6 +67,7 @@ export const MapStyleToggle = ({
                 : "bg-background/90 border-border/50 text-foreground hover:border-border hover:scale-105"
             }`}
             title="Change map style"
+            aria-label="Change map style"
           >
             <Layers className="h-4 w-4" />
           </button>
@@ -73,7 +77,7 @@ export const MapStyleToggle = ({
   }
 
   return (
-    <div className="absolute bottom-4 right-4 z-50">
+    <div className={className}>
       <div className="flex rounded-xl overflow-hidden backdrop-blur-md border border-border/50 shadow-lg bg-background/90">
         {styles.map((style, index) => {
           const Icon = style.icon;
@@ -90,6 +94,7 @@ export const MapStyleToggle = ({
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
               }`}
               title={`${style.label} Map Style`}
+              aria-label={`Use ${style.label} map style`}
             >
               <Icon className="h-3 w-3" />
               <span>{style.label}</span>

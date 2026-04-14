@@ -1,16 +1,14 @@
 "use client";
 
 import { USER_LOCATION_CIRCLE_RADIUS } from "@/constants/mapConstants";
+import { useMapScope } from "@/hooks/map/use-map-scope";
 import { useMap } from "@/hooks/useMap";
 import { usePinClustering } from "@/hooks/usePinClustering";
 
 import { useEffect } from "react";
-import { RefreshButton } from "../common/RefreshButton";
 import PinDetailModal from "../pin/PinDetailModal";
 import PinModal from "../pin/PinModal";
-import { LocationButton } from "./LocationButton";
-import { MapStyleToggle } from "./MapStyleToggle";
-import { ThemeToggle } from "./ThemeToggle";
+import { MapControlLayer } from "./controls/MapControlLayer";
 import { UserLocationCircle } from "./UserLocationCircle";
 
 interface MapProps {
@@ -18,6 +16,7 @@ interface MapProps {
 }
 
 export default function Map({ initialCoordinates }: MapProps) {
+  const { scope, setScope } = useMapScope();
   const {
     mapContainer,
     currentStyle,
@@ -50,7 +49,7 @@ export default function Map({ initialCoordinates }: MapProps) {
     getPinComments,
     currentZoom,
     commentsLoading,
-  } = useMap(initialCoordinates);
+  } = useMap(initialCoordinates, scope);
 
   // Clustering: cluster layer + DOM marker hybrid
   usePinClustering(map, mapPins, handlePinClick, currentZoom > 0);
@@ -60,13 +59,20 @@ export default function Map({ initialCoordinates }: MapProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!user && scope === "following") {
+      setScope("all");
+    }
+  }, [scope, setScope, user]);
+
   const isLoading = locationPermission === "loading";
+  const controlsHidden = showPinDetailModal || showPinModal;
 
   return (
     <div className="relative w-full h-full">
       <div
         ref={mapContainer}
-        className="w-full h-full min-h-dvh"
+        className="h-full w-full"
         {...longPressBind()}
       />
 
@@ -90,31 +96,20 @@ export default function Map({ initialCoordinates }: MapProps) {
         </div>
       )}
 
-      <div className="fixed top-20 right-4 z-30 flex flex-col gap-1.5">
-        <ThemeToggle isMobile={false} />
-        <LocationButton
-          userLocation={userLocation}
-          locationPermission={locationPermission}
-          onGetLocation={getUserLocation}
-          onGoToLocation={goToUserLocation}
-          isMobile={false}
-        />
-      </div>
-
-      <div className="hidden sm:block">
-        <MapStyleToggle
-          currentStyle={currentStyle}
-          onStyleChange={changeMapStyle}
-          isMobile={false}
-        />
-      </div>
-      <div className="sm:hidden">
-        <MapStyleToggle
-          currentStyle={currentStyle}
-          onStyleChange={changeMapStyle}
-          isMobile={true}
-        />
-      </div>
+      <MapControlLayer
+        hidden={controlsHidden}
+        currentStyle={currentStyle}
+        onStyleChange={changeMapStyle}
+        scope={scope}
+        onScopeChange={setScope}
+        userLocation={userLocation}
+        locationPermission={locationPermission}
+        onGetLocation={getUserLocation}
+        onGoToLocation={goToUserLocation}
+        onRefresh={refreshPins}
+        isRefreshing={isRefreshing}
+        currentZoom={currentZoom}
+      />
 
       <PinModal
         isOpen={showPinModal}
@@ -175,14 +170,11 @@ export default function Map({ initialCoordinates }: MapProps) {
 
       {/* Pin'ler tamamen MapLibre layer-based - DOM marker yok */}
 
-      <RefreshButton
-        onRefresh={refreshPins}
-        isRefreshing={isRefreshing}
-        currentZoom={currentZoom}
-        minZoomLevel={0}
-      />
-
-      <div className="fixed bottom-16 left-4 z-[50] pb-safe">
+      <div
+        className={`fixed bottom-4 left-4 z-[20] pb-safe transition-opacity duration-200 ${
+          controlsHidden ? "pointer-events-none opacity-0" : "opacity-100"
+        }`}
+      >
         <a
           href="https://www.buymeacoffee.com/hakantrkmndev"
           target="_blank"

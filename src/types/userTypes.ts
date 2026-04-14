@@ -17,6 +17,19 @@ export interface UserStats {
   error: string | null;
 }
 
+export interface UserProfileSummary {
+  id: string;
+  display_name?: string;
+  avatar_url?: string;
+  created_at: string;
+}
+
+export interface OwnUserProfile extends UserProfileSummary {
+  email: string;
+}
+
+export type PublicUserProfile = UserProfileSummary;
+
 export interface FollowListUser {
   id: string;
   display_name?: string;
@@ -30,4 +43,12 @@ export interface FollowListResponse {
   pageSize: number;
   hasMore: boolean;
   error: string | null;
+}
+
+export interface FollowStatusResponse {
+  isFollowing: boolean;
+}
+
+export interface UserSearchResponse {
+  users: FollowListUser[];
 }

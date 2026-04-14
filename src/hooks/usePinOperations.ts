@@ -1,4 +1,5 @@
 import { USER_LOCATION_CIRCLE_RADIUS } from "@/constants";
+import type { MapScope } from "@/hooks/map/use-map-scope";
 import { useSession } from "@/hooks/useSession";
 import { useCreatePin, useDeletePin } from "@/hooks/mutations/use-pin-mutations";
 import { apiClient } from "@/lib/api/client";
@@ -21,6 +22,7 @@ import { toast } from "sonner";
 
 interface UsePinOperationsProps {
   map: React.MutableRefObject<maplibregl.Map | null>;
+  scope: MapScope;
 }
 
 // Low-zoom safety: if viewport covers more than this many z14 tiles, skip fetch.
@@ -39,18 +41,19 @@ function enrichComments(comments: Comment[], userId?: string): EnhancedComment[]
   }));
 }
 
-async function fetchTilePins(bounds: MapBounds): Promise<Pin[]> {
+async function fetchTilePins(bounds: MapBounds, scope: MapScope): Promise<Pin[]> {
   const params = new URLSearchParams({
     minLat: String(bounds.minLat),
     maxLat: String(bounds.maxLat),
     minLng: String(bounds.minLng),
     maxLng: String(bounds.maxLng),
   });
+  if (scope === "following") params.set("scope", scope);
   const data = await apiClient<{ pins: Pin[] }>(`/api/pins?${params}`);
   return data.pins || [];
 }
 
-export const usePinOperations = ({ map }: UsePinOperationsProps) => {
+export const usePinOperations = ({ map, scope }: UsePinOperationsProps) => {
   const { user } = useSession();
   const queryClient = useQueryClient();
   const createPinMutation = useCreatePin();
@@ -112,7 +115,7 @@ export const usePinOperations = ({ map }: UsePinOperationsProps) => {
       for (const t of missing) inFlightRef.current.add(t.key);
 
       const results = await Promise.allSettled(
-        missing.map((t) => fetchTilePins(tileToBounds(t.x, t.y, tileZoom)))
+        missing.map((t) => fetchTilePins(tileToBounds(t.x, t.y, tileZoom), scope))
       );
 
       results.forEach((res, i) => {
@@ -127,7 +130,7 @@ export const usePinOperations = ({ map }: UsePinOperationsProps) => {
 
       syncPinsState();
     },
-    [map, syncPinsState]
+    [map, scope, syncPinsState]
   );
 
   const loadPinsFromMapWithCache = useCallback(
@@ -265,6 +268,16 @@ export const usePinOperations = ({ map }: UsePinOperationsProps) => {
     [removeFromCache]
   );
 
+  const refreshPins = useCallback(() => {
+    cacheRef.current.clear();
+    setPins([]);
+    loadPinsFromMapWithCache(true);
+  }, [loadPinsFromMapWithCache]);
+
+  const invalidateCache = useCallback(() => {
+    cacheRef.current.clear();
+  }, []);
+
   return {
     pins,
     removePin,
@@ -287,17 +300,11 @@ export const usePinOperations = ({ map }: UsePinOperationsProps) => {
       } catch { return false; }
     },
     loadPinsFromMapWithCache,
-    refreshPins: () => {
-      cacheRef.current.clear();
-      setPins([]);
-      loadPinsFromMapWithCache(true);
-    },
+    refreshPins,
     clearMapPins,
     getPinComments,
     getBatchComments,
-    invalidateCache: () => {
-      cacheRef.current.clear();
-    },
+    invalidateCache,
     loadingTimeoutRef,
   };
 };

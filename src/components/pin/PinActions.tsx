@@ -62,7 +62,7 @@ export default function PinActions({
   };
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex flex-wrap items-center gap-2">
       {pinCoordinates && (
         <>
           <Button
@@ -70,20 +70,22 @@ export default function PinActions({
             size="sm"
             onClick={handleDirections}
             title="Get directions in Google Maps"
-            className="h-8 px-3 rounded-lg text-xs font-medium gap-1.5 shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96]"
+            className="h-10 rounded-xl px-3 text-xs font-medium gap-1.5 shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96]"
+            aria-label="Get directions"
           >
             <Navigation className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Directions</span>
+            <span>Directions</span>
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={handleShare}
             title="Share this location"
-            className="h-8 px-3 rounded-lg text-xs font-medium gap-1.5 border-border/60 hover:bg-muted/60 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96]"
+            className="h-10 rounded-xl px-3 text-xs font-medium gap-1.5 border-border/60 hover:bg-muted/60 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96]"
+            aria-label="Share this location"
           >
             <Share2 className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Share</span>
+            <span>Share</span>
           </Button>
         </>
       )}
@@ -94,7 +96,8 @@ export default function PinActions({
           onClick={handleRefresh}
           disabled={refreshing}
           title="Refresh comments"
-          className="h-8 w-8 p-0 rounded-lg border-border/60 hover:bg-muted/60 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96]"
+          className="h-10 w-10 rounded-xl border-border/60 p-0 hover:bg-muted/60 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96]"
+          aria-label="Refresh comments"
         >
           <RefreshCcw
             className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`}

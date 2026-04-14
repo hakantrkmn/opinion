@@ -13,6 +13,20 @@ export const queryKeys = {
     pins: ["profile", "pins"] as const,
     comments: ["profile", "comments"] as const,
   },
+  users: {
+    profile: (userId: string) => ["users", "profile", userId] as const,
+    stats: (userId: string) => ["users", "stats", userId] as const,
+    pins: (userId: string) => ["users", "pins", userId] as const,
+    comments: (userId: string) => ["users", "comments", userId] as const,
+    followStatus: (userId: string) =>
+      ["users", "follow-status", userId] as const,
+    followers: (userId: string, page = 1, pageSize = 20) =>
+      ["users", "followers", userId, page, pageSize] as const,
+    following: (userId: string, page = 1, pageSize = 20) =>
+      ["users", "following", userId, page, pageSize] as const,
+    search: (query: string, limit = 10, offset = 0) =>
+      ["users", "search", query, limit, offset] as const,
+  },
   admin: {
     users: (page = 1) => ["admin", "users", page] as const,
     pins: (page = 1) => ["admin", "pins", page] as const,

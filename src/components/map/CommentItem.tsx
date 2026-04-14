@@ -1,8 +1,10 @@
 "use client";
 
 import { Avatar } from "@/components/ui/Avatar";
+import { formatRelativeDateTime } from "@/lib/formatters";
 import type { Comment, EnhancedComment } from "@/types";
 import { Calendar } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import CommentActions from "./comment/CommentActions";
 import CommentEditForm from "./comment/CommentEditForm";
@@ -71,7 +73,10 @@ export default function CommentItem({
       <div className="p-4 min-w-0">
         {/* Header: avatar, name, date */}
         <div className="flex items-center justify-between gap-3 mb-3">
-          <div className="flex items-center gap-2.5 min-w-0">
+          <Link
+            href={`/u/${comment.user_id}`}
+            className="flex items-center gap-2.5 min-w-0 rounded-lg -m-1 p-1 transition-colors hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+          >
             <Avatar
               src={userAvatarUrl}
               alt={userDisplayName}
@@ -79,26 +84,21 @@ export default function CommentItem({
               fallbackText={userDisplayName}
             />
             <div className="min-w-0">
-              <span className="font-semibold text-sm text-foreground truncate block leading-tight">
+              <span className="font-semibold text-sm text-foreground truncate block leading-tight hover:underline">
                 {userDisplayName}
               </span>
               <div className="flex items-center gap-1 text-[11px] text-muted-foreground/60 mt-0.5">
                 <Calendar className="h-2.5 w-2.5" />
-                <span>
-                  {new Date(comment.created_at).toLocaleDateString("en-US", {
-                    day: "numeric",
-                    month: "short",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  <span>
+                  {formatRelativeDateTime(comment.created_at)}
                 </span>
               </div>
             </div>
-          </div>
+          </Link>
 
           {/* Own comment actions - visible on hover */}
           {isOwnComment && !isOptimistic && !isEditing && (
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+            <div className="opacity-100 transition-opacity flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
               <CommentActions
                 isOwner={isOwnComment}
                 onEdit={() => setIsEditing(true)}

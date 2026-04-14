@@ -7,7 +7,10 @@ import { useEffect, useState } from "react";
 // Use normal header always
 const Header = dynamic(() => import("../common/Header"), {
   loading: () => (
-    <div className="h-16 bg-background border-b flex items-center justify-center">
+    <div
+      className="border-b bg-background flex items-center justify-center"
+      style={{ height: "var(--header-height)" }}
+    >
       <Loader2 className="h-4 w-4 animate-spin" />
     </div>
   ),
@@ -15,7 +18,10 @@ const Header = dynamic(() => import("../common/Header"), {
 
 const WelcomeScreen = dynamic(() => import("../common/WelcomeScreen"), {
   loading: () => (
-    <div className="h-[calc(100vh-64px)] bg-background flex items-center justify-center">
+    <div
+      className="bg-background flex items-center justify-center"
+      style={{ height: "calc(100dvh - var(--header-height))" }}
+    >
       <Loader2 className="h-6 w-6 animate-spin" />
     </div>
   ),
@@ -26,7 +32,10 @@ const WelcomeScreen = dynamic(() => import("../common/WelcomeScreen"), {
 // Lazy load map and all related components only when user clicks "Load Map"
 const ClientMapWrapper = dynamic(() => import("./ClientMapWrapper"), {
   loading: () => (
-    <div className="h-[calc(100vh-64px)] bg-background flex items-center justify-center">
+    <div
+      className="bg-background flex items-center justify-center"
+      style={{ height: "calc(100dvh - var(--header-height))" }}
+    >
       <div className="flex flex-col items-center gap-4">
         <Loader2 className="h-6 w-6 animate-spin" />
         <span className="text-sm text-muted-foreground">
@@ -93,10 +102,10 @@ export default function DynamicHomeContent({
     );
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <main className="h-[calc(100vh-64px)]">
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+      <main style={{ height: "calc(100dvh - var(--header-height))" }}>
         {showMap ? (
           <ClientMapWrapper initialCoordinates={initialCoordinates} />
         ) : (

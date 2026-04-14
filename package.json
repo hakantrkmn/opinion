@@ -7,7 +7,7 @@
     "build": "next build",
     "build:analyze": "ANALYZE=true next build",
     "start": "drizzle-kit migrate && next start",
-    "lint": "eslint",
+    "lint": "eslint src --ext .ts,.tsx",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "docker:up": "docker compose up -d",

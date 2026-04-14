@@ -3,12 +3,10 @@
 import CameraCapture from "@/components/CameraCapture";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogPanel,
+} from "@/components/ui/responsive-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -103,21 +101,20 @@ export default function PinModal({
   // Non-authenticated user UI
   if (!user) {
     return (
-      <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden border-none shadow-2xl">
-          <div className="p-6">
-            <DialogHeader className="space-y-0 mb-6">
-              <DialogTitle className="flex items-center gap-2.5 text-lg font-bold">
+      <ResponsiveDialog open={isOpen} onOpenChange={handleClose}>
+        <ResponsiveDialogContent desktopClassName="max-w-md">
+          <ResponsiveDialogPanel
+            title={
+              <span className="flex items-center gap-2.5 text-lg font-bold">
                 <div className="w-9 h-9 rounded-xl bg-foreground flex items-center justify-center">
                   <LogIn className="h-4.5 w-4.5 text-background" />
                 </div>
                 Sign In Required
-              </DialogTitle>
-              <DialogDescription className="mt-1.5 text-sm">
-                Create an account or sign in to share your thoughts
-              </DialogDescription>
-            </DialogHeader>
-
+              </span>
+            }
+            description="Create an account or sign in to share your thoughts"
+          >
+          <div className="px-5 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6">
             <div className="text-center py-4 mb-4">
               <div className="w-16 h-16 rounded-2xl bg-muted/30 flex items-center justify-center mx-auto mb-3">
                 <PinIcon className="h-8 w-8 text-muted-foreground/40" />
@@ -145,28 +142,31 @@ export default function PinModal({
               </Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogPanel>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
     );
   }
 
   // Authenticated user UI
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden border-none shadow-2xl">
-        <div className="p-6">
-          <DialogHeader className="space-y-0 mb-5">
-            <DialogTitle className="flex items-center gap-2.5 text-lg font-bold">
+    <ResponsiveDialog open={isOpen} onOpenChange={handleClose}>
+      <ResponsiveDialogContent
+        mobileClassName="max-h-[92dvh] overflow-y-auto"
+        desktopClassName="max-w-md"
+      >
+        <ResponsiveDialogPanel
+          title={
+            <span className="flex items-center gap-2.5 text-lg font-bold">
               <div className="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center shadow-[0_2px_8px_-2px_rgba(16,185,129,0.4)]">
                 <PinIcon className="h-4.5 w-4.5 text-white" />
               </div>
               What is your oPINion?
-            </DialogTitle>
-            <DialogDescription className="mt-1.5 text-sm">
-              Share your thoughts about this location
-            </DialogDescription>
-          </DialogHeader>
-
+            </span>
+          }
+          description="Share your thoughts about this location"
+        >
+        <div className="px-5 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="pinName" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -261,7 +261,7 @@ export default function PinModal({
                 {isUploading ? (
                   <>
                     <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2" />
-                    Creating...
+                    Creating…
                   </>
                 ) : (
                   "Create Pin"
@@ -270,7 +270,8 @@ export default function PinModal({
             </div>
           </form>
         </div>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveDialogPanel>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

@@ -3,9 +3,13 @@ import { Moon, Sun } from "lucide-react";
 
 interface ThemeToggleProps {
   isMobile?: boolean;
+  className?: string;
 }
 
-export const ThemeToggle = ({ isMobile = false }: ThemeToggleProps) => {
+export const ThemeToggle = ({
+  isMobile = false,
+  className = "",
+}: ThemeToggleProps) => {
   const { theme, setTheme } = useTheme();
   const isDark = theme === "dark";
 
@@ -18,8 +22,9 @@ export const ThemeToggle = ({ isMobile = false }: ThemeToggleProps) => {
   return (
     <button
       onClick={handleThemeToggle}
-      className={`${size} rounded-xl bg-background/90 backdrop-blur-md border border-border/50 shadow-lg flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-xl hover:border-border active:scale-95`}
+      className={`${size} ${className} rounded-xl bg-background/90 backdrop-blur-md border border-border/50 shadow-lg flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-xl hover:border-border active:scale-95`}
       title={`Switch to ${isDark ? "Light" : "Dark"} Theme`}
+      aria-label={`Switch to ${isDark ? "light" : "dark"} theme`}
     >
       <div className="relative w-4 h-4">
         <Sun

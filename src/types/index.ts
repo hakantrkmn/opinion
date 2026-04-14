@@ -67,6 +67,9 @@ export interface Comment {
     display_name: string;
     avatar_url?: string;
   };
+  pins?: {
+    name: string;
+  };
   // Yeni alanlar
   is_editing?: boolean;
   vote_count?: number;

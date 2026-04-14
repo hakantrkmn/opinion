@@ -6,6 +6,7 @@ interface LocationButtonProps {
   onGetLocation: () => void;
   onGoToLocation: () => void;
   isMobile?: boolean;
+  className?: string;
 }
 
 export const LocationButton = ({
@@ -14,6 +15,7 @@ export const LocationButton = ({
   onGetLocation,
   onGoToLocation,
   isMobile = false,
+  className = "",
 }: LocationButtonProps) => {
   const handleClick = () => {
     if (userLocation) {
@@ -44,7 +46,7 @@ export const LocationButton = ({
   return (
     <button
       onClick={handleClick}
-      className={`${size} rounded-xl backdrop-blur-md border shadow-lg flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 ${
+      className={`${size} ${className} rounded-xl backdrop-blur-md border shadow-lg flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 ${
         hasLocation
           ? "bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/15 hover:border-emerald-500/50"
           : isDenied
@@ -53,6 +55,7 @@ export const LocationButton = ({
       }`}
       title={getButtonTitle()}
       disabled={isDisabled}
+      aria-label={getButtonTitle()}
     >
       {isDisabled ? (
         <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />

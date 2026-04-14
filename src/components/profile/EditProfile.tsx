@@ -3,12 +3,10 @@
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogPanel,
+} from "@/components/ui/responsive-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUserProfile } from "@/hooks/useUserProfile";
@@ -107,17 +105,16 @@ export function EditProfile({
     avatarUrl !== (profile?.avatar_url || "");
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden border-none shadow-2xl">
-
-        <div className="p-6">
-          <DialogHeader className="space-y-0 mb-6">
-            <DialogTitle className="text-lg font-bold">Edit Profile</DialogTitle>
-            <DialogDescription className="text-sm mt-1">
-              Update your profile information
-            </DialogDescription>
-          </DialogHeader>
-
+    <ResponsiveDialog open={isOpen} onOpenChange={onClose}>
+      <ResponsiveDialogContent
+        mobileClassName="max-h-[92dvh] overflow-y-auto"
+        desktopClassName="max-w-md"
+      >
+        <ResponsiveDialogPanel
+          title="Edit Profile"
+          description="Update your profile information"
+        >
+        <div className="px-5 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6">
           <div className="space-y-6">
             {/* Avatar Section */}
             <div className="flex flex-col items-center gap-3">
@@ -222,7 +219,7 @@ export function EditProfile({
                 {saving ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Saving...
+                    Saving…
                   </>
                 ) : (
                   <>
@@ -234,7 +231,8 @@ export function EditProfile({
             </div>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveDialogPanel>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

@@ -1,3 +1,4 @@
+import type { MapScope } from "@/hooks/map/use-map-scope";
 import { useEffect } from "react";
 import { LongPressEventType, useLongPress } from "use-long-press";
 import { useMapStore } from "@/store/map-store";
@@ -5,19 +6,32 @@ import { useCommentOperations } from "./useCommentOperations";
 import { useMapCore } from "./useMapCore";
 import { usePinOperations } from "./usePinOperations";
 
-export const useMap = (initialCoordinates?: [number, number] | null) => {
+export const useMap = (
+  initialCoordinates?: [number, number] | null,
+  scope: MapScope = "all"
+) => {
   const mapCore = useMapCore(initialCoordinates);
   const store = useMapStore();
 
-  const pinOps = usePinOperations({ map: mapCore.map });
-  const loadPinsFromMapWithCache = pinOps.loadPinsFromMapWithCache;
+  const pinOps = usePinOperations({ map: mapCore.map, scope });
+  const {
+    createPin,
+    getPinComments,
+    loadPinsFromMapWithCache,
+    loading,
+    loadingTimeoutRef,
+    onLongPress,
+    pins,
+    refreshPins,
+    removePin,
+  } = pinOps;
 
   const commentOps = useCommentOperations({
-    getPinComments: pinOps.getPinComments,
-    removePin: pinOps.removePin,
+    getPinComments,
+    removePin,
   });
 
-  const longPressBind = useLongPress(pinOps.onLongPress, {
+  const longPressBind = useLongPress(onLongPress, {
     onCancel: () => {},
     threshold: 500,
     cancelOnMovement: true,
@@ -39,12 +53,18 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
 
   // Cleanup
   useEffect(() => {
+    const timeoutRef = loadingTimeoutRef;
     return () => {
-      if (pinOps.loadingTimeoutRef.current) clearTimeout(pinOps.loadingTimeoutRef.current);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
       try { mapCore.userMarker.current?.remove(); } catch {}
       try { mapCore.map.current?.remove(); } catch {}
     };
-  }, [pinOps.loadingTimeoutRef, mapCore.userMarker, mapCore.map]);
+  }, [loadingTimeoutRef, mapCore.userMarker, mapCore.map]);
+
+  useEffect(() => {
+    if (!mapCore.map.current) return;
+    refreshPins();
+  }, [mapCore.map, refreshPins, scope]);
 
   return {
     // Refs
@@ -67,8 +87,8 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
     setSelectedPin: store.setSelectedPin,
     isRefreshing: store.isRefreshing,
     commentsLoading: store.commentsLoading,
-    mapPins: pinOps.pins,
-    pinsLoading: pinOps.loading,
+    mapPins: pins,
+    pinsLoading: loading,
 
     // Actions
     getUserLocation: mapCore.getUserLocation,
@@ -76,9 +96,9 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
       mapCore.changeMapStyle(styleName, loadPinsFromMapWithCache),
     goToUserLocation: mapCore.goToUserLocation,
     initializeMap: () => mapCore.initializeMap(loadPinsFromMapWithCache),
-    createPin: pinOps.createPin,
+    createPin,
     longPressBind,
-    refreshPins: pinOps.refreshPins,
+    refreshPins,
     // Comment operations
     handlePinClick: commentOps.handlePinClick,
     handleAddComment: commentOps.handleAddComment,
@@ -86,7 +106,7 @@ export const useMap = (initialCoordinates?: [number, number] | null) => {
     handleDeleteComment: commentOps.handleDeleteComment,
     handleVoteComment: commentOps.handleVoteComment,
     invalidatePinCommentsCache: commentOps.invalidatePinCommentsCache,
-    getPinComments: pinOps.getPinComments,
+    getPinComments,
 
     hasUserCommented: async () => ({ hasCommented: false, commentId: undefined }),
   };

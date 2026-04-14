@@ -1,6 +1,6 @@
 "use client";
 
-import { useProfile, type UserProfile } from "@/hooks/queries/use-profile";
+import { useOwnProfile, type UserProfile } from "@/hooks/queries/use-user-profile";
 import { apiClient } from "@/lib/api/client";
 import type { UserStats } from "@/types";
 import { useSession } from "./useSession";
@@ -15,7 +15,7 @@ export function useUserProfile() {
     isLoading,
     error,
     refetch,
-  } = useProfile(user?.id);
+  } = useOwnProfile(user?.id);
 
   const updateProfile = (
     updates: Partial<Pick<UserProfile, "display_name" | "avatar_url">>
