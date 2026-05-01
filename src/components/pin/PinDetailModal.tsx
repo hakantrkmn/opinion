@@ -20,6 +20,7 @@ interface PinDetailModalProps {
   onClose: () => void;
   pinName: string;
   pinId: string;
+  pinOwnerId?: string;
   pinCoordinates?: { lat: number; lng: number };
   comments: (Comment | EnhancedComment)[];
   onAddComment: (
@@ -49,6 +50,7 @@ export default function PinDetailModal({
   onClose,
   pinName,
   pinId,
+  pinOwnerId,
   pinCoordinates,
   comments,
   onAddComment,
@@ -83,6 +85,7 @@ export default function PinDetailModal({
             <PinDetailHeader
               pinId={pinId}
               pinName={pinName}
+              pinOwnerId={pinOwnerId}
               pinCoordinates={pinCoordinates}
               commentCount={commentCount}
               sortBy={sortBy}

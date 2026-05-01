@@ -9,6 +9,7 @@ import {
 import { ProfileStatsGrid } from "@/components/profile/sections/ProfileStatsGrid";
 import { ConnectionListDialog } from "@/components/profile/social/ConnectionListDialog";
 import { UserSearchDialog } from "@/components/users/UserSearchDialog";
+import { BlockedUsersDialog } from "@/components/moderation/BlockedUsersDialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,7 +21,7 @@ import {
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { UserStats } from "@/types";
-import { MessageCircle, Search, TrendingUp } from "lucide-react";
+import { MessageCircle, Search, ShieldOff, TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -44,6 +45,7 @@ export function ProfileClient({ user, userStats }: ProfileClientProps) {
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
   const [showUserSearch, setShowUserSearch] = useState(false);
+  const [showBlockedUsers, setShowBlockedUsers] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const pinsQuery = useOwnProfilePins(activeTab === "pins");
@@ -102,14 +104,24 @@ export function ProfileClient({ user, userStats }: ProfileClientProps) {
         onOpenFollowers={() => setShowFollowers(true)}
         onOpenFollowing={() => setShowFollowing(true)}
         primaryAction={
-          <Button
-            variant="outline"
-            className="h-11 rounded-xl"
-            onClick={() => setShowUserSearch(true)}
-          >
-            <Search className="h-4 w-4" />
-            Find People
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              className="h-11 rounded-xl"
+              onClick={() => setShowUserSearch(true)}
+            >
+              <Search className="h-4 w-4" />
+              Find People
+            </Button>
+            <Button
+              variant="outline"
+              className="h-11 rounded-xl"
+              onClick={() => setShowBlockedUsers(true)}
+            >
+              <ShieldOff className="h-4 w-4" />
+              Blocked
+            </Button>
+          </div>
         }
       />
 
@@ -175,6 +187,10 @@ export function ProfileClient({ user, userStats }: ProfileClientProps) {
         type="following"
       />
       <UserSearchDialog open={showUserSearch} onOpenChange={setShowUserSearch} />
+      <BlockedUsersDialog
+        onOpenChange={setShowBlockedUsers}
+        open={showBlockedUsers}
+      />
     </div>
   );
 }

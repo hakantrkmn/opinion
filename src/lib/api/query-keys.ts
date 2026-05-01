@@ -27,6 +27,9 @@ export const queryKeys = {
     search: (query: string, limit = 10, offset = 0) =>
       ["users", "search", query, limit, offset] as const,
   },
+  blocks: {
+    list: ["blocks", "list"] as const,
+  },
   admin: {
     users: (page = 1) => ["admin", "users", page] as const,
     pins: (page = 1) => ["admin", "pins", page] as const,

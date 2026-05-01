@@ -8,6 +8,7 @@ import {
 import { ProfileStatsGrid } from "@/components/profile/sections/ProfileStatsGrid";
 import { ConnectionListDialog } from "@/components/profile/social/ConnectionListDialog";
 import { FollowButton } from "@/components/profile/social/FollowButton";
+import { UserModerationActions } from "@/components/moderation/UserModerationActions";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -43,7 +44,12 @@ export function PublicProfileClient({ userId }: { userId: string }) {
       <ProfileHero
         profile={profileQuery.data || null}
         stats={statsQuery.data?.stats}
-        primaryAction={<FollowButton userId={userId} />}
+        primaryAction={
+          <div className="flex flex-wrap gap-2">
+            <FollowButton userId={userId} />
+            <UserModerationActions userId={userId} />
+          </div>
+        }
         onOpenFollowers={() => setShowFollowers(true)}
         onOpenFollowing={() => setShowFollowing(true)}
       />

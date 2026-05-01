@@ -1,5 +1,6 @@
 "use client";
 
+import { ReportContentButton } from "@/components/moderation/ReportContentButton";
 import { Avatar } from "@/components/ui/Avatar";
 import { formatRelativeDateTime } from "@/lib/formatters";
 import type { Comment, EnhancedComment } from "@/types";
@@ -104,6 +105,17 @@ export default function CommentItem({
                 onEdit={() => setIsEditing(true)}
                 onDelete={() => onDelete(comment.id)}
                 isEditing={isEditing}
+              />
+            </div>
+          )}
+
+          {!isOwnComment && !isOptimistic && (
+            <div className="flex-shrink-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+              <ReportContentButton
+                compact
+                ownerId={comment.user_id}
+                targetId={comment.id}
+                targetType="comment"
               />
             </div>
           )}

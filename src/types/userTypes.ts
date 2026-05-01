@@ -30,6 +30,22 @@ export interface OwnUserProfile extends UserProfileSummary {
 
 export type PublicUserProfile = UserProfileSummary;
 
+export interface BlockedUser {
+  id: string;
+  displayName?: string | null;
+  name?: string | null;
+  avatarUrl?: string | null;
+  image?: string | null;
+  createdAt: string;
+}
+
+export type ReportTargetType = "pin" | "comment" | "user";
+export type ReportReason =
+  | "spam"
+  | "harassment"
+  | "inappropriate"
+  | "other";
+
 export interface FollowListUser {
   id: string;
   display_name?: string;

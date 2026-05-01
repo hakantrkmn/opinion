@@ -1,6 +1,7 @@
 "use client";
 
 import { PinIcon } from "@/components/icons/PinIcon";
+import { ReportContentButton } from "@/components/moderation/ReportContentButton";
 import type { SortCriteria } from "@/lib/comment-sort-manager";
 import { MessageCircle } from "lucide-react";
 import CommentSortDropdown from "../CommentSortDropdown";
@@ -9,6 +10,7 @@ import PinActions from "@/components/pin/PinActions";
 interface PinDetailHeaderProps {
   pinId: string;
   pinName: string;
+  pinOwnerId?: string;
   pinCoordinates?: { lat: number; lng: number };
   commentCount: number;
   sortBy: SortCriteria;
@@ -19,6 +21,7 @@ interface PinDetailHeaderProps {
 export function PinDetailHeader({
   pinId,
   pinName,
+  pinOwnerId,
   pinCoordinates,
   commentCount,
   sortBy,
@@ -56,12 +59,21 @@ export function PinDetailHeader({
       </div>
 
       <div className="mt-4 flex flex-col gap-3 sm:mt-5 lg:flex-row lg:items-center lg:justify-between">
-        <PinActions
-          pinCoordinates={pinCoordinates}
-          pinId={pinId}
-          pinName={pinName}
-          onRefresh={onRefresh}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <PinActions
+            pinCoordinates={pinCoordinates}
+            pinId={pinId}
+            pinName={pinName}
+            onRefresh={onRefresh}
+          />
+          {pinOwnerId ? (
+            <ReportContentButton
+              ownerId={pinOwnerId}
+              targetId={pinId}
+              targetType="pin"
+            />
+          ) : null}
+        </div>
         {commentCount > 1 ? (
           <CommentSortDropdown
             currentSort={sortBy}

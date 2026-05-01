@@ -136,6 +136,7 @@ export default function Map({ initialCoordinates }: MapProps) {
               }}
               pinName={selectedPin?.pinName || ""}
               pinId={selectedPin?.pinId || ""}
+              pinOwnerId={actualPin?.user_id}
               pinCoordinates={coordinates}
               comments={selectedPin?.comments || []}
               onAddComment={handleAddComment}
