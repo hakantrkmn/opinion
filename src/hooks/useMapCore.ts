@@ -8,6 +8,41 @@ import { toast } from "sonner";
 import { useSession } from "./useSession";
 import { useUserProfile } from "./useUserProfile";
 
+const MAP_POSITION_KEY = "mapPosition";
+
+type CachedMapPosition = { center: [number, number]; zoom: number };
+
+const readCachedMapPosition = (): CachedMapPosition | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(MAP_POSITION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (
+      Array.isArray(parsed?.center) &&
+      parsed.center.length === 2 &&
+      typeof parsed.center[0] === "number" &&
+      typeof parsed.center[1] === "number" &&
+      typeof parsed.zoom === "number"
+    ) {
+      return parsed as CachedMapPosition;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const writeCachedMapPosition = (center: [number, number], zoom: number) => {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(
+      MAP_POSITION_KEY,
+      JSON.stringify({ center, zoom })
+    );
+  } catch {}
+};
+
 export const useMapCore = (initialCoordinates?: [number, number] | null) => {
   const { user: userSession } = useSession();
   const { profile } = useUserProfile();
@@ -112,8 +147,12 @@ export const useMapCore = (initialCoordinates?: [number, number] | null) => {
     (loadPinsCallback?: (forceRefresh?: boolean) => void) => {
       if (!mapContainer.current) return;
 
-      const defaultCenter: [number, number] = initialCoordinates || [29.0322, 41.0082];
-      const defaultZoom = initialCoordinates ? 16 : 10;
+      const cachedPosition = initialCoordinates ? null : readCachedMapPosition();
+      const defaultCenter: [number, number] =
+        initialCoordinates || cachedPosition?.center || [29.0322, 41.0082];
+      const defaultZoom = initialCoordinates
+        ? 16
+        : cachedPosition?.zoom ?? 10;
       const mapStyle = localStorage.getItem("mapStyle") || "voyager";
 
       map.current = new maplibregl.Map({
@@ -147,9 +186,19 @@ export const useMapCore = (initialCoordinates?: [number, number] | null) => {
         loadPinsCallback?.();
       });
 
-      map.current.on("moveend", () => loadPinsCallback?.());
+      map.current.on("moveend", () => {
+        if (map.current) {
+          const c = map.current.getCenter();
+          writeCachedMapPosition([c.lng, c.lat], map.current.getZoom());
+        }
+        loadPinsCallback?.();
+      });
       map.current.on("zoomend", () => {
-        if (map.current) setCurrentZoom(map.current.getZoom());
+        if (map.current) {
+          setCurrentZoom(map.current.getZoom());
+          const c = map.current.getCenter();
+          writeCachedMapPosition([c.lng, c.lat], map.current.getZoom());
+        }
         loadPinsCallback?.();
       });
     },
