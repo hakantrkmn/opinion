@@ -1,4 +1,4 @@
-# oPINion Design System
+# droPINion Design System
 
 ## Design Principles
 
@@ -95,7 +95,7 @@
 
 - Height: 64px (h-16)
 - Background: Clean white with subtle border
-- Branding: "oPINion" in serif font
+- Branding: "droPINion" in serif font
 - Search: Centered with max-width constraint
 - User actions: Right-aligned with consistent spacing
 

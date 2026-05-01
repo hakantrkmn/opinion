@@ -42,11 +42,10 @@ export function generateOrganizationSchema(config: StructuredDataConfig) {
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "oPINion",
+    name: "droPINion",
     description:
       "Interactive map platform where you can share opinions and discover what others think about different locations around the world.",
     url: config.baseUrl,
-    logo: `${config.baseUrl}/logo.png`,
     sameAs: ["https://twitter.com/opinion_map"],
     contactPoint: {
       "@type": "ContactPoint",
@@ -205,17 +204,6 @@ export function generateLocationSchema(
       "@type": "GeoCoordinates",
       latitude: avgLat,
       longitude: avgLng,
-    };
-  }
-
-  // Add aggregate rating based on all pins in location
-  if (pins.length > 0) {
-    schema.aggregateRating = {
-      "@type": "AggregateRating",
-      ratingValue: 4,
-      reviewCount: pins.length,
-      bestRating: 5,
-      worstRating: 1,
     };
   }
 

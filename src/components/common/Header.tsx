@@ -28,7 +28,7 @@ export default function Header() {
             href="/"
             className="text-lg font-bold text-foreground hover:text-foreground/80 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.97]"
           >
-            <span className="tracking-tight">oPINion</span>
+            <span className="tracking-tight">droPINion</span>
           </Link>
 
           {/* Spacer */}

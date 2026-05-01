@@ -54,7 +54,7 @@ export default function AuthForm() {
       <div className="hidden md:flex flex-col justify-between bg-zinc-950 dark:bg-zinc-900/50 p-10 lg:p-14">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white">
-            oPINion
+            droPINion
           </h1>
         </div>
         <div className="space-y-4">
@@ -67,7 +67,7 @@ export default function AuthForm() {
           </p>
         </div>
         <p className="text-xs text-zinc-600">
-          &copy; {new Date().getFullYear()} oPINion
+          &copy; {new Date().getFullYear()} droPINion
         </p>
       </div>
 
@@ -76,7 +76,7 @@ export default function AuthForm() {
         {/* Mobile branding */}
         <div className="md:hidden mb-10">
           <h1 className="text-xl font-bold tracking-tight text-foreground">
-            oPINion
+            droPINion
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Drop your thoughts on the map.

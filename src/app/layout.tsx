@@ -1,6 +1,7 @@
 import { ThemeProvider } from "@/components/common/theme-provider";
 import { LazyToaster } from "@/components/LazyToaster";
 import { QueryProvider } from "@/components/providers/QueryProvider";
+import { getBaseUrl } from "@/lib/site-url";
 import {
   createJsonLdScript,
   generateOrganizationSchema,
@@ -38,35 +39,16 @@ export const metadata: Metadata = {
     shortcut: "/favicon.svg",
     apple: "/favicon.svg",
   },
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "https://opinion-xi.vercel.app"
-  ),
+  metadataBase: new URL(getBaseUrl()),
   title: {
-    default: "oPINion - Share Your Thoughts on the Map",
-    template: "%s | oPINion",
+    default: "droPINion — Discover & Share Place Reviews on the Map",
+    template: "%s | droPINion",
   },
   description:
-    "Interactive map platform where you can share opinions and discover what others think about different locations around the world. Join our community to explore local insights, reviews, and experiences.",
-  keywords: [
-    "opinion",
-    "map",
-    "location",
-    "thoughts",
-    "community",
-    "interactive",
-    "share",
-    "feedback",
-    "reviews",
-    "local insights",
-    "travel",
-    "places",
-    "experiences",
-    "social map",
-    "location reviews",
-  ],
-  authors: [{ name: "oPINion Team" }],
-  creator: "oPINion Team",
-  publisher: "oPINion",
+    "Drop a pin, share your honest opinion on any location, and discover what locals think. Reviews, ratings, and stories from a global community.",
+  authors: [{ name: "droPINion Team" }],
+  creator: "droPINion Team",
+  publisher: "droPINion",
   formatDetection: {
     email: false,
     address: false,
@@ -79,27 +61,27 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: "/",
-    siteName: "oPINion",
-    title: "oPINion - Share Your Thoughts on the Map",
+    siteName: "droPINion",
+    title: "droPINion — Discover & Share Place Reviews on the Map",
     description:
-      "Interactive map platform where you can share opinions and discover what others think about different locations. Join our global community of explorers.",
+      "Drop a pin, share your honest opinion on any location, and discover what locals think. Reviews, ratings, and stories from a global community.",
     images: [
       {
-        url: "/api/og?title=oPINion&description=Share Your Thoughts on the Map&type=default",
+        url: "/api/og?title=droPINion&description=Discover%20%26%20Share%20Place%20Reviews&type=default",
         width: 1200,
         height: 630,
-        alt: "oPINion - Interactive Opinion Map",
+        alt: "droPINion - Interactive Opinion Map",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "oPINion - Share Your Thoughts on the Map",
+    title: "droPINion — Discover & Share Place Reviews on the Map",
     description:
-      "Interactive map platform where you can share opinions and discover what others think about different locations.",
+      "Drop a pin, share your honest opinion on any location, and discover what locals think.",
     creator: "@opinion_map",
     images: [
-      "/api/og?title=oPINion&description=Share Your Thoughts on the Map&type=default",
+      "/api/og?title=droPINion&description=Discover%20%26%20Share%20Place%20Reviews&type=default",
     ],
   },
   robots: {
@@ -121,7 +103,7 @@ export const metadata: Metadata = {
   other: {
     "mobile-web-app-capable": "yes",
     "apple-mobile-web-app-capable": "yes",
-    "application-name": "oPINion",
+    "application-name": "droPINion",
   },
 };
 
@@ -130,8 +112,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL || "https://opinion-xi.vercel.app";
+  const baseUrl = getBaseUrl();
   const organizationSchema = generateOrganizationSchema({ baseUrl });
 
   return (

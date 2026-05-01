@@ -1,6 +1,6 @@
-# oPINion - Share Your Thoughts on the Map
+# droPINion - Share Your Thoughts on the Map
 
-![oPINion Banner](https://img.shields.io/badge/oPINion-Interactive%20Map%20Platform-blue?style=for-the-badge&logo=mapbox&logoColor=white)
+![droPINion Banner](https://img.shields.io/badge/droPINion-Interactive%20Map%20Platform-blue?style=for-the-badge&logo=mapbox&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js-15.5.0-black?style=flat&logo=next.js)
 ![React](https://img.shields.io/badge/React-19.1.0-61DAFB?style=flat&logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat&logo=typescript)

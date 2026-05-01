@@ -3,6 +3,7 @@ import {
   generateOGMetadata,
   generateTwitterMetadata,
 } from "@/lib/og-utils";
+import { getBaseUrl } from "@/lib/site-url";
 import {
   createJsonLdScript,
   generateBreadcrumbSchema,
@@ -14,6 +15,7 @@ import { user } from "@/db/schema/auth";
 import { eq, ilike, desc } from "drizzle-orm";
 import { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
 export async function generateMetadata({
   params,
@@ -22,10 +24,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const locationName = decodeURIComponent(slug);
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL || "https://opinion-xi.vercel.app";
+  const baseUrl = getBaseUrl();
 
-  const title = `Opinions in ${locationName} | oPINion`;
+  const title = `Opinions in ${locationName}`;
   const description = `Discover what people think about ${locationName}. Read ${locationName} opinions, reviews, and community thoughts about locations, restaurants, attractions and more.`;
 
   const ogMetadata = generateOGMetadata({
@@ -82,8 +83,7 @@ export default async function LocationPage({
 }) {
   const { slug } = await params;
   const locationName = decodeURIComponent(slug);
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL || "https://opinion-xi.vercel.app";
+  const baseUrl = getBaseUrl();
 
   // Search pins by name containing the location
   const locationPins = await db
@@ -102,6 +102,10 @@ export default async function LocationPage({
     .orderBy(desc(pins.createdAt))
     .limit(50);
 
+  if (locationPins.length === 0) {
+    notFound();
+  }
+
   const locationSchema = generateLocationSchema(
     locationName,
     locationPins.map((p) => ({
@@ -115,7 +119,6 @@ export default async function LocationPage({
   const breadcrumbSchema = generateBreadcrumbSchema(
     [
       { name: "Home", url: "/" },
-      { name: "Locations", url: "/locations" },
       {
         name: locationName,
         url: `/location/${encodeURIComponent(locationName)}`,
@@ -123,9 +126,6 @@ export default async function LocationPage({
     ],
     { baseUrl }
   );
-
-  const totalPins = locationPins.length;
-  const hasContent = totalPins > 0;
 
   return (
     <>
@@ -157,61 +157,44 @@ export default async function LocationPage({
             </p>
           </header>
 
-          {hasContent ? (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {locationPins.map((pin) => (
-                <article
-                  key={pin.id}
-                  className="bg-card rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow border"
-                >
-                  <h3 className="text-xl font-semibold mb-2">
-                    <Link
-                      href={`/pin/${pin.id}`}
-                      className="hover:text-primary transition-colors"
-                    >
-                      {pin.name}
-                    </Link>
-                  </h3>
-                  <footer className="flex justify-between items-center text-sm mt-4">
-                    {pin.displayName && (
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        {pin.avatarUrl && (
-                          <img
-                            src={pin.avatarUrl}
-                            alt={pin.displayName}
-                            width={24}
-                            height={24}
-                            className="w-6 h-6 rounded-full"
-                            loading="lazy"
-                            decoding="async"
-                          />
-                        )}
-                        <span>By {pin.displayName}</span>
-                      </div>
-                    )}
-                    <time className="text-muted-foreground">
-                      {new Date(pin.createdAt).toLocaleDateString()}
-                    </time>
-                  </footer>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <h2 className="text-2xl font-semibold mb-4">
-                No opinions yet in {locationName}
-              </h2>
-              <p className="text-muted-foreground mb-8">
-                Be the first to share your thoughts!
-              </p>
-              <Link
-                href="/"
-                className="inline-block bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors"
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {locationPins.map((pin) => (
+              <article
+                key={pin.id}
+                className="bg-card rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow border"
               >
-                Share Your Opinion
-              </Link>
-            </div>
-          )}
+                <h3 className="text-xl font-semibold mb-2">
+                  <Link
+                    href={`/pin/${pin.id}`}
+                    className="hover:text-primary transition-colors"
+                  >
+                    {pin.name}
+                  </Link>
+                </h3>
+                <footer className="flex justify-between items-center text-sm mt-4">
+                  {pin.displayName && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      {pin.avatarUrl && (
+                        <img
+                          src={pin.avatarUrl}
+                          alt={pin.displayName}
+                          width={24}
+                          height={24}
+                          className="w-6 h-6 rounded-full"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      )}
+                      <span>By {pin.displayName}</span>
+                    </div>
+                  )}
+                  <time className="text-muted-foreground">
+                    {new Date(pin.createdAt).toLocaleDateString()}
+                  </time>
+                </footer>
+              </article>
+            ))}
+          </div>
         </div>
       </div>
     </>

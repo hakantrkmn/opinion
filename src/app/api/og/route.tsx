@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
 
-    const title = searchParams.get("title") || "oPINion";
+    const title = searchParams.get("title") || "droPINion";
     const description =
       searchParams.get("description") || "Share your thoughts on the map";
     const location = searchParams.get("location");
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
                 fontWeight: "bold",
               }}
             >
-              oPINion
+              droPINion
             </div>
           </div>
 
@@ -181,7 +181,7 @@ export async function GET(request: NextRequest) {
             fontWeight: "bold",
           }}
         >
-          oPINion - Share Your Thoughts
+          droPINion - Share Your Thoughts
         </div>
       ),
       {

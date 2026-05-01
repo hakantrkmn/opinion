@@ -1,11 +1,11 @@
 import { db } from "@/db";
 import { pins } from "@/db/schema/app";
+import { getBaseUrl } from "@/lib/site-url";
 import { desc } from "drizzle-orm";
 import { MetadataRoute } from "next";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL || "https://opinion-xi.vercel.app";
+  const baseUrl = getBaseUrl();
 
   const staticPages: MetadataRoute.Sitemap = [
     {
@@ -13,12 +13,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
       changeFrequency: "daily" as const,
       priority: 1.0,
-    },
-    {
-      url: `${baseUrl}/auth`,
-      lastModified: new Date(),
-      changeFrequency: "monthly" as const,
-      priority: 0.6,
     },
   ];
 
@@ -64,7 +58,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       };
     });
   } catch (error) {
-    console.error("Sitemap pin fetch error:", error);
+    console.error(
+      "[sitemap] Failed to fetch pins for sitemap, returning static pages only:",
+      error
+    );
   }
 
   return [...staticPages, ...pinPages];

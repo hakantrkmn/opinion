@@ -3,6 +3,7 @@ import {
   generateOGMetadata,
   generateTwitterMetadata,
 } from "@/lib/og-utils";
+import { getBaseUrl } from "@/lib/site-url";
 import {
   createJsonLdScript,
   generateBreadcrumbSchema,
@@ -34,8 +35,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL || "https://opinion-xi.vercel.app";
+  const baseUrl = getBaseUrl();
 
   const [pin] = await db
     .select({
@@ -50,13 +50,15 @@ export async function generateMetadata({
 
   if (!pin) {
     return {
-      title: "Pin Not Found | oPINion",
+      title: "Pin Not Found",
       description: "The requested pin could not be found.",
+      robots: { index: false, follow: false },
     };
   }
 
-  const title = pin.name || "Pin Details";
-  const description = `Discover opinions and thoughts about ${pin.name}. Read what the community thinks about this location on oPINion.`;
+  const pinName = pin.name || "this place";
+  const title = `Reviews of ${pinName}`;
+  const description = `Discover opinions and thoughts about ${pinName}. Read what the community thinks about this location on droPINion.`;
   const locationName = pin.name || "Unknown Location";
 
   const ogMetadata = generateOGMetadata({
@@ -93,13 +95,13 @@ export async function generateMetadata({
       ...ogMetadata,
       url: `/pin/${id}`,
       publishedTime: pin.createdAt.toISOString(),
-      authors: ["oPINion Community"],
+      authors: ["droPINion Community"],
     },
     twitter: twitterMetadata,
     other: {
       "geo.placename": locationName,
       "geo.region": locationName,
-      "article:author": "oPINion Community",
+      "article:author": "droPINion Community",
       "article:published_time": pin.createdAt.toISOString(),
       "og:locality": locationName,
     },
@@ -115,8 +117,7 @@ export default async function PinPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL || "https://opinion-xi.vercel.app";
+  const baseUrl = getBaseUrl();
 
   const [pin] = await db
     .select({
@@ -173,7 +174,6 @@ export default async function PinPage({
   const breadcrumbSchema = generateBreadcrumbSchema(
     [
       { name: "Home", url: "/" },
-      { name: "Pins", url: "/pins" },
       { name: pin.name || "Pin Details", url: `/pin/${id}` },
     ],
     { baseUrl }
@@ -211,7 +211,7 @@ export default async function PinPage({
               </div>
               <div className="flex-1 min-w-0">
                 <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground leading-tight">
-                  {pin.name || "Untitled Pin"}
+                  Reviews of {pin.name || "Untitled Pin"}
                 </h1>
                 <div className="flex items-center gap-3 mt-2">
                   <span className="text-sm text-muted-foreground/60 flex items-center gap-1.5">

@@ -59,7 +59,7 @@ export function generateOGMetadata(config: OGImageConfig) {
 
   return {
     title: config.title,
-    description: config.description || `Discover opinions on oPINion map`,
+    description: config.description || `Discover opinions on droPINion map`,
     images: [
       {
         url: ogImage,
@@ -87,7 +87,7 @@ export function generateTwitterMetadata(config: OGImageConfig) {
   return {
     card: "summary_large_image" as const,
     title: config.title,
-    description: config.description || `Discover opinions on oPINion map`,
+    description: config.description || `Discover opinions on droPINion map`,
     images: [ogImage],
     creator: "@opinion_map",
   };

@@ -161,7 +161,7 @@ export default function PinModal({
               <div className="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center shadow-[0_2px_8px_-2px_rgba(16,185,129,0.4)]">
                 <PinIcon className="h-4.5 w-4.5 text-white" />
               </div>
-              What is your oPINion?
+              What is your droPINion?
             </span>
           }
           description="Share your thoughts about this location"
