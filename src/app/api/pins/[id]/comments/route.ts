@@ -12,6 +12,7 @@ import {
 } from "@/lib/api-helpers";
 import { idParamSchema, createCommentSchema } from "@/lib/validation/schemas";
 import { RATE_LIMITS } from "@/lib/rate-limit";
+import { getInvisibleUserIds } from "@/lib/blocked-users";
 
 export async function GET(
   request: NextRequest,
@@ -27,7 +28,12 @@ export async function GET(
     const parsed = idParamSchema.safeParse(await params);
     if (!parsed.success) return errorResponse(400, ApiErrorCode.BAD_REQUEST, "Invalid id");
 
-    const { comments, error } = await pinService.getPinComments(parsed.data.id, userId);
+    const excludedUserIds = await getInvisibleUserIds(userId ?? null);
+    const { comments, error } = await pinService.getPinComments(
+      parsed.data.id,
+      userId,
+      excludedUserIds
+    );
     return json({ comments, error });
   } catch (error) {
     console.error("Pin comments GET error:", error);

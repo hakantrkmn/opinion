@@ -10,6 +10,7 @@ import {
 } from "@/lib/api-helpers";
 import { batchCommentsSchema } from "@/lib/validation/schemas";
 import { RATE_LIMITS } from "@/lib/rate-limit";
+import { getInvisibleUserIds } from "@/lib/blocked-users";
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,7 +23,12 @@ export async function POST(request: NextRequest) {
     const body = await parseBody(request, batchCommentsSchema);
     if (body.error) return body.error;
 
-    const { comments, error } = await pinService.getBatchComments(body.data.pinIds, userId);
+    const excludedUserIds = await getInvisibleUserIds(userId ?? null);
+    const { comments, error } = await pinService.getBatchComments(
+      body.data.pinIds,
+      userId,
+      excludedUserIds
+    );
     if (error) return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, error);
     return json({ comments });
   } catch (error) {

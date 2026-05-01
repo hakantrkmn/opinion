@@ -112,6 +112,35 @@ export function useSendNotification() {
   });
 }
 
+type ReportAction = "resolve" | "dismiss" | "delete_target";
+
+export function useReportAction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { reportId: string; action: ReportAction }) => {
+      return apiClient(`/api/admin/reports/${input.reportId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ action: input.action }),
+      });
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "reports"] });
+      if (variables.action === "delete_target") {
+        invalidateAdminAndContent(queryClient);
+      }
+      const messages: Record<ReportAction, string> = {
+        resolve: "Report resolved",
+        dismiss: "Report dismissed",
+        delete_target: "Target removed",
+      };
+      toast.success(messages[variables.action]);
+    },
+    onError: (error) => {
+      toast.error("Action failed", { description: error.message });
+    },
+  });
+}
+
 export function useRefreshStats() {
   const queryClient = useQueryClient();
   return useMutation({

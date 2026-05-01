@@ -44,7 +44,13 @@ export interface AdminAnalytics {
   }[];
 }
 
-export type AdminTab = "overview" | "users" | "pins" | "comments" | "notifications";
+export type AdminTab =
+  | "overview"
+  | "users"
+  | "pins"
+  | "comments"
+  | "reports"
+  | "notifications";
 
 export interface ConfirmState {
   title: string;

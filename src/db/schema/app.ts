@@ -10,6 +10,7 @@ import {
   index,
   customType,
   check,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { user } from "./auth";
@@ -199,6 +200,72 @@ export const userFollows = pgTable(
       "user_follows_no_self",
       sql`${table.followerId} <> ${table.followingId}`
     ),
+  ]
+);
+
+// Reports — user-submitted moderation flags on pins, comments, or users
+export const reports = pgTable(
+  "reports",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    reporterId: text("reporter_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    targetType: text("target_type").notNull(),
+    targetId: text("target_id").notNull(),
+    reason: text("reason").notNull(),
+    note: text("note"),
+    status: text("status").notNull().default("open"),
+    resolvedBy: text("resolved_by").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    resolvedAt: timestamp("resolved_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("uniq_report_per_reporter_target").on(
+      table.reporterId,
+      table.targetType,
+      table.targetId
+    ),
+    index("idx_reports_status_created").on(
+      table.status,
+      table.createdAt.desc()
+    ),
+    index("idx_reports_target").on(table.targetType, table.targetId),
+    check(
+      "reports_target_type_check",
+      sql`${table.targetType} in ('pin', 'comment', 'user')`
+    ),
+    check(
+      "reports_status_check",
+      sql`${table.status} in ('open', 'resolved', 'dismissed')`
+    ),
+  ]
+);
+
+// User blocks — bidirectional content visibility cut
+export const userBlocks = pgTable(
+  "user_blocks",
+  {
+    blockerId: text("blocker_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    blockedId: text("blocked_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.blockerId, table.blockedId] }),
+    check(
+      "user_blocks_no_self",
+      sql`${table.blockerId} <> ${table.blockedId}`
+    ),
+    index("idx_user_blocks_blocker").on(table.blockerId),
+    index("idx_user_blocks_blocked").on(table.blockedId),
   ]
 );
 

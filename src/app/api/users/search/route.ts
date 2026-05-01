@@ -8,6 +8,7 @@ import {
   enforceRateLimit,
 } from "@/lib/api-helpers";
 import { RATE_LIMITS } from "@/lib/rate-limit";
+import { getInvisibleUserIds } from "@/lib/blocked-users";
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,7 +38,10 @@ export async function GET(request: NextRequest) {
       Number.isFinite(offset) ? offset : 0
     );
     if (error) return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, error);
-    return json({ users });
+
+    const invisible = new Set(await getInvisibleUserIds(session.user.id));
+    const filtered = (users ?? []).filter((u) => !invisible.has(u.id));
+    return json({ users: filtered });
   } catch (error) {
     console.error("Users search error:", error);
     return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Failed to search");

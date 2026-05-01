@@ -92,6 +92,39 @@ export const registerPushTokenSchema = z.object({
   deviceName: z.string().max(120).optional().nullable(),
 });
 
+export const reportTargetTypeSchema = z.enum(["pin", "comment", "user"]);
+export const reportReasonSchema = z.enum([
+  "spam",
+  "harassment",
+  "inappropriate",
+  "other",
+]);
+
+export const createReportSchema = z.object({
+  targetType: reportTargetTypeSchema,
+  targetId: idSchema,
+  reason: reportReasonSchema,
+  note: z.string().trim().max(500).optional().nullable(),
+});
+
+export const blockUserSchema = z.object({
+  blockedId: idSchema,
+});
+
+export const unblockUserQuerySchema = z.object({
+  blockedId: idSchema,
+});
+
+export const adminReportsQuerySchema = z.object({
+  status: z.enum(["open", "resolved", "dismissed", "all"]).optional().default("open"),
+  page: z.coerce.number().int().min(1).max(10_000).optional().default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).optional().default(50),
+});
+
+export const adminReportActionSchema = z.object({
+  action: z.enum(["resolve", "dismiss", "delete_target"]),
+});
+
 export const sendNotificationSchema = z.object({
   target: z.discriminatedUnion("type", [
     z.object({ type: z.literal("user"), userId: idSchema }),

@@ -2,19 +2,31 @@
 
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Bell, Loader2, MapPin, MessageSquare, PieChart, Users } from "lucide-react";
+import {
+  Bell,
+  Flag,
+  Loader2,
+  MapPin,
+  MessageSquare,
+  PieChart,
+  Users,
+} from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   useAdminUsers,
   useAdminPins,
   useAdminComments,
   useAdminAnalytics,
+  useAdminReports,
+  type AdminReport,
+  type AdminReportStatus,
 } from "@/hooks/queries/use-admin";
 import {
   useDeleteAdminUser,
   useDeleteAdminPin,
   useDeleteAdminComment,
   useRefreshStats,
+  useReportAction,
 } from "@/hooks/mutations/use-admin-mutations";
 import { queryKeys } from "@/lib/api/query-keys";
 import { AdminHeader } from "./admin/AdminHeader";
@@ -24,6 +36,7 @@ import { OverviewPanel } from "./admin/OverviewPanel";
 import { UserList } from "./admin/UserList";
 import { PinList } from "./admin/PinList";
 import { CommentList } from "./admin/CommentList";
+import { ReportList } from "./admin/ReportList";
 import { NotificationsPanel } from "./admin/NotificationsPanel";
 import { DeleteConfirmDialog } from "./admin/DeleteConfirmDialog";
 import type {
@@ -47,10 +60,21 @@ export default function AdminDashboard() {
   const { data: analyticsResp, isLoading: analyticsLoading } =
     useAdminAnalytics();
 
+  const [reportStatus, setReportStatus] = useState<AdminReportStatus>("open");
+  const { data: reportsResp, isLoading: reportsLoading } = useAdminReports(
+    reportStatus
+  );
+  const reports = useMemo(
+    () => (reportsResp?.data ?? []) as AdminReport[],
+    [reportsResp]
+  );
+  const reportsTotal = reportsResp?.pagination?.total ?? 0;
+
   const delUser = useDeleteAdminUser();
   const delPin = useDeleteAdminPin();
   const delComment = useDeleteAdminComment();
   const refreshStats = useRefreshStats();
+  const reportAction = useReportAction();
 
   const users = useMemo(
     () => (usersResp?.data || []) as unknown as AdminUser[],
@@ -143,6 +167,24 @@ export default function AdminDashboard() {
       },
     });
 
+  const askDeleteReportTarget = (r: AdminReport) => {
+    const targetLabel =
+      r.target_type === "pin"
+        ? `pin "${r.target_preview.label || r.target_id}"`
+        : r.target_type === "comment"
+        ? `the reported comment`
+        : `user ${r.target_preview.label || r.target_id}`;
+    setConfirm({
+      title: `Remove this ${r.target_type}?`,
+      description: `This permanently deletes ${targetLabel} and any related content. The report will also be marked resolved.`,
+      confirmLabel: "Delete",
+      onConfirm: () => {
+        reportAction.mutate({ reportId: r.id, action: "delete_target" });
+        setConfirm(null);
+      },
+    });
+  };
+
   if (initialLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -163,7 +205,7 @@ export default function AdminDashboard() {
         <AdminStats analytics={analytics} loading={analyticsLoading} />
 
         <Tabs value={tab} onValueChange={(v) => { setTab(v as AdminTab); setQuery(""); }}>
-          <TabsList className="grid w-full grid-cols-5 sm:w-auto sm:inline-flex">
+          <TabsList className="grid w-full grid-cols-6 sm:w-auto sm:inline-flex">
             <TabsTrigger value="overview">
               <PieChart className="mr-2 h-4 w-4" />
               Overview
@@ -179,6 +221,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="comments">
               <MessageSquare className="mr-2 h-4 w-4" />
               Comments
+            </TabsTrigger>
+            <TabsTrigger value="reports">
+              <Flag className="mr-2 h-4 w-4" />
+              Reports
             </TabsTrigger>
             <TabsTrigger value="notifications">
               <Bell className="mr-2 h-4 w-4" />
@@ -221,6 +267,45 @@ export default function AdminDashboard() {
               onDelete={askDeletePin}
               pending={delPin.isPending}
             />
+          </TabsContent>
+
+          <TabsContent value="reports" className="mt-6 space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              {(["open", "resolved", "dismissed", "all"] as const).map(
+                (s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setReportStatus(s)}
+                    className={`rounded-full px-3 py-1 text-xs font-medium capitalize transition ${
+                      reportStatus === s
+                        ? "bg-foreground text-background"
+                        : "bg-muted text-muted-foreground hover:bg-muted/70"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                )
+              )}
+            </div>
+            {reportsLoading ? (
+              <div className="flex items-center justify-center rounded-lg border border-dashed border-border px-6 py-16">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <ReportList
+                items={reports}
+                total={reportsTotal}
+                onResolve={(r) =>
+                  reportAction.mutate({ reportId: r.id, action: "resolve" })
+                }
+                onDismiss={(r) =>
+                  reportAction.mutate({ reportId: r.id, action: "dismiss" })
+                }
+                onDeleteTarget={askDeleteReportTarget}
+                pending={reportAction.isPending}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="notifications" className="mt-6">

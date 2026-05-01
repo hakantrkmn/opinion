@@ -1,7 +1,15 @@
 import { db, sql } from "@/db";
-import { pins, comments, commentVotes, userStats, pushTokens } from "@/db/schema/app";
+import {
+  pins,
+  comments,
+  commentVotes,
+  userStats,
+  pushTokens,
+  reports,
+} from "@/db/schema/app";
 import { user } from "@/db/schema/auth";
-import { eq, desc, count } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
+import { and, eq, desc, count } from "drizzle-orm";
 import { deleteCommentPhoto } from "@/lib/services/photoService";
 import { unlink } from "fs/promises";
 import { join } from "path";
@@ -338,6 +346,218 @@ export const adminService = {
       console.error("refreshAllUserStats error:", error);
       return { success: false, error: "Failed to refresh user statistics" };
     }
+  },
+
+  async getReports(params: {
+    status?: "open" | "resolved" | "dismissed" | "all";
+    page?: number;
+    pageSize?: number;
+  }) {
+    const status = params.status ?? "open";
+    const {
+      limit,
+      offset,
+      page: currentPage,
+      pageSize: currentSize,
+    } = parsePagination(params.page, params.pageSize);
+
+    const reporter = alias(user, "reporter");
+    const whereClause = status === "all" ? undefined : eq(reports.status, status);
+
+    const [totalResult] = whereClause
+      ? await db.select({ count: count() }).from(reports).where(whereClause)
+      : await db.select({ count: count() }).from(reports);
+
+    const baseQuery = db
+      .select({
+        id: reports.id,
+        targetType: reports.targetType,
+        targetId: reports.targetId,
+        reason: reports.reason,
+        note: reports.note,
+        status: reports.status,
+        createdAt: reports.createdAt,
+        resolvedAt: reports.resolvedAt,
+        reporterId: reports.reporterId,
+        reporterEmail: reporter.email,
+        reporterDisplayName: reporter.displayName,
+      })
+      .from(reports)
+      .leftJoin(reporter, eq(reports.reporterId, reporter.id));
+
+    const rows = whereClause
+      ? await baseQuery
+          .where(whereClause)
+          .orderBy(desc(reports.createdAt))
+          .limit(limit)
+          .offset(offset)
+      : await baseQuery
+          .orderBy(desc(reports.createdAt))
+          .limit(limit)
+          .offset(offset);
+
+    // Hydrate target preview per row.
+    const data = await Promise.all(
+      rows.map(async (row) => {
+        let targetPreview: {
+          label: string;
+          authorId: string | null;
+          authorName: string | null;
+          authorEmail: string | null;
+          missing: boolean;
+        } = {
+          label: "",
+          authorId: null,
+          authorName: null,
+          authorEmail: null,
+          missing: false,
+        };
+
+        if (row.targetType === "pin") {
+          const [pinRow] = await db
+            .select({
+              name: pins.name,
+              authorId: pins.userId,
+              displayName: user.displayName,
+              email: user.email,
+            })
+            .from(pins)
+            .leftJoin(user, eq(pins.userId, user.id))
+            .where(eq(pins.id, row.targetId))
+            .limit(1);
+          if (pinRow) {
+            targetPreview = {
+              label: pinRow.name,
+              authorId: pinRow.authorId,
+              authorName: pinRow.displayName,
+              authorEmail: pinRow.email,
+              missing: false,
+            };
+          } else {
+            targetPreview.missing = true;
+          }
+        } else if (row.targetType === "comment") {
+          const [commentRow] = await db
+            .select({
+              text: comments.text,
+              authorId: comments.userId,
+              displayName: user.displayName,
+              email: user.email,
+            })
+            .from(comments)
+            .leftJoin(user, eq(comments.userId, user.id))
+            .where(eq(comments.id, row.targetId))
+            .limit(1);
+          if (commentRow) {
+            targetPreview = {
+              label:
+                commentRow.text.length > 120
+                  ? `${commentRow.text.slice(0, 120)}…`
+                  : commentRow.text,
+              authorId: commentRow.authorId,
+              authorName: commentRow.displayName,
+              authorEmail: commentRow.email,
+              missing: false,
+            };
+          } else {
+            targetPreview.missing = true;
+          }
+        } else if (row.targetType === "user") {
+          const [userRow] = await db
+            .select({
+              displayName: user.displayName,
+              email: user.email,
+            })
+            .from(user)
+            .where(eq(user.id, row.targetId))
+            .limit(1);
+          if (userRow) {
+            targetPreview = {
+              label: userRow.displayName ?? userRow.email ?? row.targetId,
+              authorId: row.targetId,
+              authorName: userRow.displayName,
+              authorEmail: userRow.email,
+              missing: false,
+            };
+          } else {
+            targetPreview.missing = true;
+          }
+        }
+
+        return {
+          id: row.id,
+          target_type: row.targetType,
+          target_id: row.targetId,
+          reason: row.reason,
+          note: row.note,
+          status: row.status,
+          created_at: row.createdAt.toISOString(),
+          resolved_at: row.resolvedAt ? row.resolvedAt.toISOString() : null,
+          reporter: {
+            id: row.reporterId,
+            display_name: row.reporterDisplayName,
+            email: row.reporterEmail,
+          },
+          target_preview: targetPreview,
+        };
+      })
+    );
+
+    return {
+      data,
+      pagination: {
+        page: currentPage,
+        pageSize: currentSize,
+        total: totalResult.count,
+      },
+    };
+  },
+
+  async resolveReport(reportId: string, adminUserId: string) {
+    const [updated] = await db
+      .update(reports)
+      .set({
+        status: "resolved",
+        resolvedBy: adminUserId,
+        resolvedAt: new Date(),
+      })
+      .where(eq(reports.id, reportId))
+      .returning({ id: reports.id });
+    return { success: !!updated, error: updated ? null : "Report not found" };
+  },
+
+  async dismissReport(reportId: string, adminUserId: string) {
+    const [updated] = await db
+      .update(reports)
+      .set({
+        status: "dismissed",
+        resolvedBy: adminUserId,
+        resolvedAt: new Date(),
+      })
+      .where(eq(reports.id, reportId))
+      .returning({ id: reports.id });
+    return { success: !!updated, error: updated ? null : "Report not found" };
+  },
+
+  async resolveAllReportsForTarget(
+    targetType: string,
+    targetId: string,
+    adminUserId: string
+  ) {
+    await db
+      .update(reports)
+      .set({
+        status: "resolved",
+        resolvedBy: adminUserId,
+        resolvedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(reports.targetType, targetType),
+          eq(reports.targetId, targetId),
+          eq(reports.status, "open")
+        )
+      );
   },
 
   async getUserStatsSummary() {

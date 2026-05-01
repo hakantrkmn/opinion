@@ -13,6 +13,7 @@ import {
 } from "@/lib/api-helpers";
 import { createPinFormSchema, pinsQuerySchema } from "@/lib/validation/schemas";
 import { RATE_LIMITS } from "@/lib/rate-limit";
+import { getInvisibleUserIds } from "@/lib/blocked-users";
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,9 +29,11 @@ export async function GET(request: NextRequest) {
       return json({ pins: [] });
     }
 
+    const excludedUserIds = await getInvisibleUserIds(userId ?? null);
     const { pins, error } = await pinService.getPins(parsed.data, {
       requesterUserId: userId,
       scope: parsed.data.scope,
+      excludedUserIds,
     });
     if (error) return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, error);
     return json({ pins });

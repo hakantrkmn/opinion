@@ -3,7 +3,7 @@ import type { Comment, CreatePinData, MapBounds, Pin } from "@/types";
 import { db, sql } from "@/db";
 import { pins, comments, commentVotes, userFollows } from "@/db/schema/app";
 import { user } from "@/db/schema/auth";
-import { eq, and, inArray, asc, count } from "drizzle-orm";
+import { eq, and, inArray, asc, count, notInArray } from "drizzle-orm";
 import { pushService } from "./pushService";
 
 const LIKE_MILESTONES = new Set([5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000]);
@@ -229,11 +229,16 @@ export const pinService = {
 
   async getPins(
     bounds: MapBounds,
-    options?: { requesterUserId?: string | null; scope?: "all" | "following" }
+    options?: {
+      requesterUserId?: string | null;
+      scope?: "all" | "following";
+      excludedUserIds?: string[];
+    }
   ): Promise<{ pins: Pin[] | null; error: string | null }> {
     try {
       const scope = options?.scope ?? "all";
       const requesterUserId = options?.requesterUserId ?? null;
+      const excluded = new Set(options?.excludedUserIds ?? []);
       const result =
         scope === "following" && requesterUserId
           ? await db.execute(
@@ -244,16 +249,21 @@ export const pinService = {
             );
 
       const rows = result as any[];
-      const formattedPins: Pin[] = (rows || []).map((pin: any) => ({
-        id: pin.id,
-        user_id: pin.user_id,
-        name: pin.name,
-        location: pin.location,
-        created_at: pin.created_at,
-        updated_at: pin.updated_at,
-        user: { display_name: pin.user_display_name, avatar_url: pin.user_avatar_url || undefined },
-        comments_count: Number(pin.comments_count),
-      }));
+      const formattedPins: Pin[] = (rows || [])
+        .filter((pin: any) => !excluded.has(pin.user_id))
+        .map((pin: any) => ({
+          id: pin.id,
+          user_id: pin.user_id,
+          name: pin.name,
+          location: pin.location,
+          created_at: pin.created_at,
+          updated_at: pin.updated_at,
+          user: {
+            display_name: pin.user_display_name,
+            avatar_url: pin.user_avatar_url || undefined,
+          },
+          comments_count: Number(pin.comments_count),
+        }));
 
       return { pins: formattedPins, error: null };
     } catch (error) {
@@ -264,7 +274,8 @@ export const pinService = {
 
   async getBatchComments(
     pinIds: string[],
-    userId?: string
+    userId?: string,
+    excludedUserIds?: string[]
   ): Promise<{
     comments: { [pinId: string]: Comment[] };
     error: string | null;
@@ -273,6 +284,13 @@ export const pinService = {
       if (pinIds.length === 0) {
         return { comments: {}, error: null };
       }
+
+      const excluded = excludedUserIds ?? [];
+      const baseWhere = inArray(comments.pinId, pinIds);
+      const where =
+        excluded.length > 0
+          ? and(baseWhere, notInArray(comments.userId, excluded))
+          : baseWhere;
 
       const rows = await db
         .select({
@@ -289,7 +307,7 @@ export const pinService = {
         })
         .from(comments)
         .leftJoin(user, eq(comments.userId, user.id))
-        .where(inArray(comments.pinId, pinIds))
+        .where(where)
         .orderBy(asc(comments.createdAt));
 
       // Get votes for these comments
@@ -361,9 +379,17 @@ export const pinService = {
 
   async getPinComments(
     pinId: string,
-    userId?: string
+    userId?: string,
+    excludedUserIds?: string[]
   ): Promise<{ comments: Comment[] | null; error: string | null }> {
     try {
+      const excluded = excludedUserIds ?? [];
+      const baseWhere = eq(comments.pinId, pinId);
+      const where =
+        excluded.length > 0
+          ? and(baseWhere, notInArray(comments.userId, excluded))
+          : baseWhere;
+
       const rows = await db
         .select({
           id: comments.id,
@@ -379,10 +405,22 @@ export const pinService = {
         })
         .from(comments)
         .leftJoin(user, eq(comments.userId, user.id))
-        .where(eq(comments.pinId, pinId))
+        .where(where)
         .orderBy(asc(comments.createdAt));
 
       if (rows.length === 0) {
+        // Distinguish "pin gone" (auto-delete) from "all visible comments
+        // were filtered out by a block list."
+        if (excluded.length > 0) {
+          const [pinRow] = await db
+            .select({ id: pins.id })
+            .from(pins)
+            .where(eq(pins.id, pinId))
+            .limit(1);
+          if (pinRow) {
+            return { comments: [], error: null };
+          }
+        }
         return { comments: [], error: "PIN_AUTO_DELETED" };
       }
 

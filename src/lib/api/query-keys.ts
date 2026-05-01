@@ -35,5 +35,7 @@ export const queryKeys = {
     notifications: {
       recent: ["admin", "notifications", "recent"] as const,
     },
+    reports: (status: string, page = 1) =>
+      ["admin", "reports", status, page] as const,
   },
 } as const;

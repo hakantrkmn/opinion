@@ -43,6 +43,13 @@
       "when": 1776300000000,
       "tag": "0005_follow_graph",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777659160144,
+      "tag": "0006_ugc_compliance",
+      "breakpoints": true
     }
   ]
 }

@@ -71,6 +71,46 @@ export interface RecentNotification {
   createdAt: string;
 }
 
+export type AdminReportStatus = "open" | "resolved" | "dismissed" | "all";
+
+export interface AdminReport {
+  id: string;
+  target_type: "pin" | "comment" | "user";
+  target_id: string;
+  reason: "spam" | "harassment" | "inappropriate" | "other";
+  note: string | null;
+  status: "open" | "resolved" | "dismissed";
+  created_at: string;
+  resolved_at: string | null;
+  reporter: {
+    id: string;
+    display_name: string | null;
+    email: string | null;
+  };
+  target_preview: {
+    label: string;
+    authorId: string | null;
+    authorName: string | null;
+    authorEmail: string | null;
+    missing: boolean;
+  };
+}
+
+export function useAdminReports(
+  status: AdminReportStatus = "open",
+  page = 1,
+  pageSize = 50
+) {
+  return useQuery({
+    queryKey: queryKeys.admin.reports(status, page),
+    queryFn: async () => {
+      return apiClient<PaginatedResponse<AdminReport>>(
+        `/api/admin/reports?status=${status}&page=${page}&pageSize=${pageSize}`
+      );
+    },
+  });
+}
+
 export function useRecentNotifications() {
   return useQuery({
     queryKey: queryKeys.admin.notifications.recent,

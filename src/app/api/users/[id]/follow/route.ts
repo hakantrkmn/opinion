@@ -10,6 +10,7 @@ import {
 } from "@/lib/api-helpers";
 import { idParamSchema } from "@/lib/validation/schemas";
 import { RATE_LIMITS } from "@/lib/rate-limit";
+import { isBlockedRelation } from "@/lib/blocked-users";
 
 export async function POST(
   request: NextRequest,
@@ -33,6 +34,15 @@ export async function POST(
     const parsed = idParamSchema.safeParse(await params);
     if (!parsed.success) {
       return errorResponse(400, ApiErrorCode.BAD_REQUEST, "Invalid id");
+    }
+
+    const blocked = await isBlockedRelation(session.user.id, parsed.data.id);
+    if (blocked) {
+      return errorResponse(
+        403,
+        ApiErrorCode.FORBIDDEN,
+        "You can't follow this user"
+      );
     }
 
     const result = await userService.followUser(session.user.id, parsed.data.id);
