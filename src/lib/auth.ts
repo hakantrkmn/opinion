@@ -1,10 +1,12 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { emailOTP } from "better-auth/plugins";
 import { expo } from "@better-auth/expo";
 import { db } from "@/db";
 import * as schema from "@/db/schema/auth";
 import { eq, and, isNull } from "drizzle-orm";
 import { sql } from "drizzle-orm";
+import { sendPasswordResetOtp } from "@/lib/email";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -25,7 +27,19 @@ export const auth = betterAuth({
       maxAge: 5 * 60, // 5 minutes
     },
   },
-  plugins: [expo()],
+  plugins: [
+    expo(),
+    emailOTP({
+      otpLength: 6,
+      expiresIn: 600,
+      allowedAttempts: 5,
+      sendVerificationOTP: async ({ email, otp, type }) => {
+        if (type === "forget-password") {
+          await sendPasswordResetOtp(email, otp);
+        }
+      },
+    }),
+  ],
   trustedOrigins: [
     "opinionmobile://",
     ...(process.env.BETTER_AUTH_URL ? [process.env.BETTER_AUTH_URL] : []),

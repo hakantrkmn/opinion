@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSession } from "@/hooks/useSession";
 import { Loader2 } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 
 export default function AuthForm() {
@@ -135,7 +136,17 @@ export default function AuthForm() {
             <div
               className="space-y-2 animate-[fadeSlideIn_0.4s_ease_0.1s_both]"
             >
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                {isLogin && (
+                  <Link
+                    href="/auth/forgot-password"
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Forgot password?
+                  </Link>
+                )}
+              </div>
               <Input
                 id="password"
                 type="password"
