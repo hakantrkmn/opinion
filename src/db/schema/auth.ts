@@ -17,6 +17,7 @@ export const user = pgTable("user", {
   displayName: text("display_name"),
   avatarUrl: text("avatar_url"),
   role: text("role").notNull().default("user"),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export const session = pgTable("session", {

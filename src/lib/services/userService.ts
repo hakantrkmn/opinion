@@ -7,9 +7,12 @@ import {
   commentVotes,
   userStats,
   userFollows,
+  userBlocks,
+  reports,
+  pushTokens,
 } from "@/db/schema/app";
-import { user } from "@/db/schema/auth";
-import { eq, desc, ilike, and, isNotNull, count } from "drizzle-orm";
+import { user, account, session } from "@/db/schema/auth";
+import { eq, desc, ilike, and, or, isNotNull, isNull, count } from "drizzle-orm";
 import { writeFile, unlink, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
@@ -52,7 +55,10 @@ async function getFollowCounts(userId: string) {
 }
 
 async function ensureUserExists(userId: string) {
-  const [row] = await db.select({ id: user.id }).from(user).where(eq(user.id, userId));
+  const [row] = await db
+    .select({ id: user.id })
+    .from(user)
+    .where(and(eq(user.id, userId), isNull(user.deletedAt)));
   return !!row;
 }
 
@@ -275,7 +281,7 @@ export const userService = {
           createdAt: user.createdAt,
         })
         .from(user)
-        .where(eq(user.id, userId));
+        .where(and(eq(user.id, userId), isNull(user.deletedAt)));
 
       if (!row) {
         return { profile: null, error: "User not found" };
@@ -327,7 +333,11 @@ export const userService = {
         })
         .from(user)
         .where(
-          and(isNotNull(user.displayName), ilike(user.displayName, pattern))
+          and(
+            isNotNull(user.displayName),
+            ilike(user.displayName, pattern),
+            isNull(user.deletedAt)
+          )
         )
         .orderBy(desc(user.createdAt))
         .limit(Math.min(Math.max(limit, 1), 50))
@@ -668,7 +678,7 @@ export const userService = {
         })
         .from(userFollows)
         .innerJoin(user, eq(userFollows.followerId, user.id))
-        .where(eq(userFollows.followingId, userId))
+        .where(and(eq(userFollows.followingId, userId), isNull(user.deletedAt)))
         .orderBy(desc(userFollows.createdAt))
         .limit(pageInfo.limit)
         .offset(pageInfo.offset);
@@ -725,7 +735,7 @@ export const userService = {
         })
         .from(userFollows)
         .innerJoin(user, eq(userFollows.followingId, user.id))
-        .where(eq(userFollows.followerId, userId))
+        .where(and(eq(userFollows.followerId, userId), isNull(user.deletedAt)))
         .orderBy(desc(userFollows.createdAt))
         .limit(pageInfo.limit)
         .offset(pageInfo.offset);
@@ -753,6 +763,111 @@ export const userService = {
         hasMore: false,
         error: "Failed to load following",
       };
+    }
+  },
+
+  async deleteAccount(
+    userId: string
+  ): Promise<{ success: boolean; error: string | null }> {
+    try {
+      const [existing] = await db
+        .select({ id: user.id, avatarUrl: user.avatarUrl, deletedAt: user.deletedAt })
+        .from(user)
+        .where(eq(user.id, userId));
+
+      if (!existing) {
+        return { success: false, error: "User not found" };
+      }
+
+      if (existing.deletedAt) {
+        return { success: true, error: null };
+      }
+
+      const userComments = await db
+        .select({ id: comments.id, photoUrl: comments.photoUrl })
+        .from(comments)
+        .where(eq(comments.userId, userId));
+
+      const photoUrlsToDelete = userComments
+        .map((c) => c.photoUrl)
+        .filter((url): url is string => !!url);
+
+      const avatarPathToDelete =
+        existing.avatarUrl && existing.avatarUrl.startsWith("/uploads/")
+          ? existing.avatarUrl
+          : null;
+
+      await db.transaction(async (tx) => {
+        await tx
+          .delete(commentVotes)
+          .where(eq(commentVotes.userId, userId));
+
+        await tx.delete(comments).where(eq(comments.userId, userId));
+
+        await tx
+          .delete(userFollows)
+          .where(
+            or(
+              eq(userFollows.followerId, userId),
+              eq(userFollows.followingId, userId)
+            )
+          );
+
+        await tx
+          .delete(userBlocks)
+          .where(
+            or(
+              eq(userBlocks.blockerId, userId),
+              eq(userBlocks.blockedId, userId)
+            )
+          );
+
+        await tx.delete(reports).where(eq(reports.reporterId, userId));
+
+        await tx.delete(pushTokens).where(eq(pushTokens.userId, userId));
+
+        await tx.delete(session).where(eq(session.userId, userId));
+        await tx.delete(account).where(eq(account.userId, userId));
+
+        await tx
+          .update(user)
+          .set({
+            deletedAt: new Date(),
+            email: `deleted-${userId}@deleted.local`,
+            emailVerified: false,
+            name: "Deleted user",
+            displayName: "Deleted user",
+            avatarUrl: null,
+            image: null,
+          })
+          .where(eq(user.id, userId));
+      });
+
+      const { deleteCommentPhoto } = await import("./photoService");
+      await Promise.all(
+        photoUrlsToDelete.map((url) =>
+          deleteCommentPhoto(url).catch((err) => {
+            console.error("deleteAccount: photo cleanup failed", url, err);
+          })
+        )
+      );
+
+      if (avatarPathToDelete) {
+        try {
+          const relative = avatarPathToDelete.replace(/^\/uploads\//, "");
+          const filePath = join(UPLOAD_DIR, relative);
+          if (existsSync(filePath)) {
+            await unlink(filePath);
+          }
+        } catch (err) {
+          console.error("deleteAccount: avatar cleanup failed", err);
+        }
+      }
+
+      return { success: true, error: null };
+    } catch (error) {
+      console.error("deleteAccount error:", error);
+      return { success: false, error: "Failed to delete account" };
     }
   },
 };
