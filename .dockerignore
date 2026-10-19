@@ -1,0 +1,20 @@
+# Keep the build context small and free of secrets.
+.git
+.github
+.claude
+.next
+node_modules
+npm-debug.log*
+coverage
+analyze
+storage
+public/uploads
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+.DS_Store
+Dockerfile
+.dockerignore
+docker-compose*.yml
+README.md

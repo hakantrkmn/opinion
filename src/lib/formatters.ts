@@ -1,11 +1,11 @@
 const dateFormatterCache = new Map<string, Intl.DateTimeFormat>();
 const numberFormatterCache = new Map<string, Intl.NumberFormat>();
 
+/**
+ * The UI copy is English, and server and client must format identically to
+ * avoid hydration mismatches, so formatting is pinned to "en".
+ */
 function getLocale() {
-  if (typeof navigator !== "undefined") {
-    return navigator.languages?.[0] || navigator.language || "en";
-  }
-
   return "en";
 }
 
@@ -55,4 +55,35 @@ export function formatCompactNumber(value: number) {
     notation: "compact",
     maximumFractionDigits: value >= 1000 ? 1 : 0,
   }).format(value);
+}
+
+const relativeFormatterCache = new Map<string, Intl.RelativeTimeFormat>();
+
+const RELATIVE_STEPS: [Intl.RelativeTimeFormatUnit, number][] = [
+  ["second", 60],
+  ["minute", 60],
+  ["hour", 24],
+  ["day", 7],
+  ["week", 4.345],
+  ["month", 12],
+  ["year", Number.POSITIVE_INFINITY],
+];
+
+/** "3 hours ago", "yesterday"… (English, like the rest of the UI). */
+export function formatTimeAgo(value: string | Date, now = Date.now()) {
+  const date = typeof value === "string" ? new Date(value) : value;
+  let delta = (date.getTime() - now) / 1000;
+  if (Math.abs(delta) < 45) return "just now";
+
+  const locale = "en";
+  let formatter = relativeFormatterCache.get(locale);
+  if (!formatter) {
+    formatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+    relativeFormatterCache.set(locale, formatter);
+  }
+  for (const [unit, size] of RELATIVE_STEPS) {
+    if (Math.abs(delta) < size) return formatter.format(Math.round(delta), unit);
+    delta /= size;
+  }
+  return formatShortDate(date);
 }

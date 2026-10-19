@@ -24,17 +24,19 @@ export default function ShareButton({ url }: ShareButtonProps) {
 
   return (
     <button
+      type="button"
       onClick={handleShare}
-      className="inline-flex items-center gap-2 h-9 px-4 rounded-xl border border-border/50 bg-background/80 text-foreground text-xs font-medium hover:bg-muted/60 hover:border-border transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.97] cursor-pointer"
+      aria-live="polite"
+      className="inline-flex items-center gap-2 h-10 px-4 rounded-xl border border-border bg-background text-foreground text-sm font-medium hover:bg-muted transition-[transform,background-color] duration-150 ease-out active:scale-[0.97]"
     >
       {copied ? (
         <>
-          <Check className="h-3.5 w-3.5 text-emerald-500" />
-          Copied
+          <Check className="h-4 w-4 text-primary" aria-hidden />
+          Link copied
         </>
       ) : (
         <>
-          <Share2 className="h-3.5 w-3.5" />
+          <Share2 className="h-4 w-4" aria-hidden />
           Share
         </>
       )}

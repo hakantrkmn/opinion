@@ -1,60 +1,34 @@
 import Header from "@/components/common/Header";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { PinIcon } from "@/components/icons/PinIcon";
-import { Search } from "lucide-react";
+import { Map as MapIcon } from "lucide-react";
 import Link from "next/link";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex min-h-dvh flex-col bg-background">
       <Header />
-      <main className="flex items-center justify-center min-h-[calc(100vh-4rem)] px-4">
-        <Card className="max-w-md w-full text-center">
-          <CardHeader className="pb-4">
-            <div className="flex justify-center mb-4">
-              <div className="relative">
-                <PinIcon className="h-16 w-16 text-muted-foreground" />
-                <div className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">
-                  !
-                </div>
-              </div>
-            </div>
-            <CardTitle className="text-2xl font-bold">Pin Not Found</CardTitle>
-            <CardDescription className="text-lg">
-              The page you&apos;re looking for doesn&apos;t exist or has been
-              moved.
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              This location might have been removed, or you may have followed an
-              incorrect link.
-            </p>
-
-            <div className="flex justify-center pt-4">
-              <Button asChild className="flex items-center gap-2">
-                <Link href="/">
-                  <Search className="h-4 w-4" />
-                  Explore Map
-                </Link>
-              </Button>
-            </div>
-
-            <div className="pt-4 border-t border-border">
-              <p className="text-xs text-muted-foreground">
-                Need help? Try searching for a different location on the map.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+      <main className="flex flex-1 items-center justify-center px-4 py-12">
+        <div className="flex w-full max-w-sm flex-col items-center text-center">
+          <div className="relative mb-6">
+            <span className="flex size-16 items-center justify-center rounded-2xl bg-muted">
+              <PinIcon className="size-8 text-muted-foreground/70" />
+            </span>
+            <span className="absolute -right-2 -top-2 flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-background bg-foreground px-1.5 text-[11px] font-bold tabular-nums text-background">
+              404
+            </span>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight">Nothing pinned here</h1>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            This page doesn&apos;t exist, or the pin was removed by its author.
+          </p>
+          <Link
+            href="/"
+            className="mt-6 inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-medium text-primary-foreground shadow-sm transition-[transform,background-color] duration-150 ease-out hover:bg-primary/90 active:scale-[0.97]"
+          >
+            <MapIcon className="size-4" aria-hidden />
+            Back to the map
+          </Link>
+        </div>
       </main>
     </div>
   );

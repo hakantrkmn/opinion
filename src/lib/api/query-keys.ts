@@ -1,44 +1,61 @@
 export const queryKeys = {
+  /**
+   * Everything pin related lives under ["pins", ...] so a single
+   * `invalidateQueries({ queryKey: queryKeys.pins.all })` refreshes the map.
+   */
   pins: {
     all: ["pins"] as const,
-    comments: (pinId: string) => ["pins", "comments", pinId] as const,
-    batchComments: (pinIds: string[]) =>
-      ["pins", "batch-comments", pinIds.sort().join(",")] as const,
-    hasCommented: (pinId: string) =>
-      ["pins", "has-commented", pinId] as const,
+    /** Server-side grid clusters (zoom < PIN_DETAIL_MIN_ZOOM). */
+    clustersAll: ["pins", "clusters"] as const,
+    clusters: (scope: string, zoom: number, bboxKey: string) =>
+      ["pins", "clusters", scope, zoom, bboxKey] as const,
+    /** Pins inside a (quantized) bbox (zoom >= PIN_DETAIL_MIN_ZOOM). */
+    bboxAll: ["pins", "bbox"] as const,
+    bbox: (scope: string, bboxKey: string) =>
+      ["pins", "bbox", scope, bboxKey] as const,
+    detail: (pinId: string) => ["pins", pinId] as const,
+    commentsAll: (pinId: string) => ["pins", pinId, "comments"] as const,
+    comments: (pinId: string, sort: string) =>
+      ["pins", pinId, "comments", sort] as const,
   },
   profile: {
+    all: ["profile"] as const,
+    /** GET /api/profile → { profile, stats } */
     me: ["profile", "me"] as const,
-    stats: ["profile", "stats"] as const,
+    /** Stats are part of GET /api/profile; alias kept for callers. */
+    stats: ["profile", "me"] as const,
     pins: ["profile", "pins"] as const,
     comments: ["profile", "comments"] as const,
   },
+  auth: {
+    sessions: ["auth", "sessions"] as const,
+  },
   users: {
-    profile: (userId: string) => ["users", "profile", userId] as const,
-    stats: (userId: string) => ["users", "stats", userId] as const,
-    pins: (userId: string) => ["users", "pins", userId] as const,
-    comments: (userId: string) => ["users", "comments", userId] as const,
+    all: ["users"] as const,
+    /** Everything cached for one user (profile, lists, follow status). */
+    detail: (userId: string) => ["users", userId] as const,
+    profile: (userId: string) => ["users", userId, "profile"] as const,
+    stats: (userId: string) => ["users", userId, "stats"] as const,
+    pins: (userId: string) => ["users", userId, "pins"] as const,
+    comments: (userId: string) => ["users", userId, "comments"] as const,
     followStatus: (userId: string) =>
-      ["users", "follow-status", userId] as const,
-    followers: (userId: string, page = 1, pageSize = 20) =>
-      ["users", "followers", userId, page, pageSize] as const,
-    following: (userId: string, page = 1, pageSize = 20) =>
-      ["users", "following", userId, page, pageSize] as const,
-    search: (query: string, limit = 10, offset = 0) =>
-      ["users", "search", query, limit, offset] as const,
+      ["users", userId, "follow-status"] as const,
+    followers: (userId: string) => ["users", userId, "followers"] as const,
+    following: (userId: string) => ["users", userId, "following"] as const,
+    search: (query: string) => ["users", "search", query] as const,
   },
   blocks: {
     list: ["blocks", "list"] as const,
   },
   admin: {
-    users: (page = 1) => ["admin", "users", page] as const,
-    pins: (page = 1) => ["admin", "pins", page] as const,
-    comments: (page = 1) => ["admin", "comments", page] as const,
+    all: ["admin"] as const,
+    users: (q = "") => ["admin", "users", q] as const,
+    pins: (q = "") => ["admin", "pins", q] as const,
+    comments: (q = "") => ["admin", "comments", q] as const,
     analytics: ["admin", "analytics"] as const,
     notifications: {
       recent: ["admin", "notifications", "recent"] as const,
     },
-    reports: (status: string, page = 1) =>
-      ["admin", "reports", status, page] as const,
+    reports: (status: string) => ["admin", "reports", status] as const,
   },
 } as const;

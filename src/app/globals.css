@@ -29,39 +29,17 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-}
+  --radius-2xl: calc(var(--radius) + 8px);
 
-/* MapLibre Popup Customization */
-.maplibregl-popup {
-  border-radius: 16px !important;
-  box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.15),
-    0 8px 16px -4px rgba(0, 0, 0, 0.06) !important;
-  border: none !important;
-  overflow: hidden !important;
-}
+  /* Motion: one rhythm for the whole UI (see design-tokens.md). */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 
-.maplibregl-popup-content {
-  padding: 0 !important;
-  border-radius: 16px !important;
-  box-shadow: none !important;
-  border: none !important;
-  background: var(--background) !important;
-  color: var(--foreground) !important;
-}
-
-.maplibregl-popup-tip {
-  border-top-color: var(--background) !important;
-  border-width: 10px !important;
-}
-
-.maplibregl-popup-close-button {
-  display: none !important;
-}
-
-/* Custom popup class */
-.custom-popup .maplibregl-popup-content {
-  background: transparent !important;
-  box-shadow: none !important;
+  /* Elevation scale for floating UI (map controls, cards, sheets). */
+  --shadow-float: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 12px -2px rgb(0 0 0 / 0.12);
+  --shadow-raised: 0 2px 4px rgb(0 0 0 / 0.06), 0 12px 32px -8px rgb(0 0 0 / 0.22);
+  --shadow-fab: 0 8px 24px -6px color-mix(in oklch, var(--primary) 60%, transparent), 0 2px 6px rgb(0 0 0 / 0.15);
 }
 
 /* Auth staggered fade-slide-in */
@@ -76,22 +54,22 @@
   }
 }
 
-/* Pin pulse animation */
-@keyframes pin-pulse {
-  0% { transform: scale(1); opacity: 0.6; }
-  100% { transform: scale(2.2); opacity: 0; }
-}
-
-/* Pin marker hover effect */
-.maplibregl-marker:hover {
-  z-index: 10 !important;
-}
-.maplibregl-marker:hover > div > div:first-child {
-  filter: brightness(1.1);
-}
-
 :root {
   --header-height: 3.5rem;
+
+  /*
+   * Stacking layers (lowest → highest). Use as `z-(--z-dialog)` etc.
+   * map controls < header < sheet/dialog < nested dialog < alert
+   * < popover/select/menu < toast
+   */
+  --z-map-controls: 10;
+  --z-header: 40;
+  --z-dialog: 80;
+  --z-dialog-nested: 90;
+  --z-alert: 100;
+  --z-popover: 110;
+  --z-toast: 120;
+
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -99,7 +77,8 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.696 0.17 162.48);
+  /* emerald, deepened from 0.696 0.17 162.48 so white text passes AA (4.7:1) */
+  --primary: oklch(0.54 0.13 163);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -110,7 +89,7 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.696 0.17 162.48);
+  --ring: oklch(0.54 0.13 163);
 }
 
 .dark {
@@ -121,7 +100,8 @@
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
   --primary: oklch(0.765 0.177 163.22);
-  --primary-foreground: oklch(0.985 0 0);
+  /* dark ink on the bright dark-mode green (9.7:1; white was 1.9:1) */
+  --primary-foreground: oklch(0.18 0.03 163);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -138,10 +118,75 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
   body {
     @apply bg-background text-foreground;
-    -webkit-tap-highlight-color: transparent;
   }
+  /* The map page is an app shell: no pull-to-refresh / rubber-banding. */
+  html:has([data-app-shell]),
+  html:has([data-app-shell]) body {
+    overscroll-behavior: none;
+  }
+  button,
+  [role="button"],
+  a {
+    touch-action: manipulation;
+  }
+  /* One visible keyboard focus style for custom controls. Zero specificity,
+     so components with their own ring (shadcn `outline-none` + ring) win. */
+  :where(a, button, summary, [role="button"], [role="tab"], [role="radio"], [role="menuitem"], [role="menuitemradio"]):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  /* iOS zooms into inputs under 16px and never zooms back out. */
+  @media (pointer: coarse) {
+    input,
+    textarea,
+    select {
+      font-size: max(16px, 1em);
+    }
+  }
+}
+
+/* MapLibre controls follow the app theme */
+.maplibregl-ctrl-attrib {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+/* Keep the (license-required) attribution compact and clear of the home
+   indicator; the floating "Drop a pin" button lives on the opposite corner. */
+.maplibregl-ctrl-bottom-left .maplibregl-ctrl-attrib {
+  margin: 0 0 max(0.5rem, env(safe-area-inset-bottom)) max(0.5rem, env(safe-area-inset-left));
+  border-radius: 0.5rem;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.maplibregl-ctrl-bottom-left .maplibregl-ctrl-attrib:not(.maplibregl-compact) {
+  max-width: calc(100% - 12rem);
+  padding: 2px 8px;
+}
+.maplibregl-ctrl-attrib.maplibregl-compact {
+  min-height: 24px;
+}
+/* Dev only: TanStack Query devtools trigger sits above the Next.js dev badge
+   instead of on top of the "Drop a pin" button. */
+.tsqd-open-btn-container {
+  left: 12px !important;
+  right: auto !important;
+  bottom: 76px !important;
+}
+.dark .maplibregl-ctrl.maplibregl-ctrl-attrib,
+.dark .maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact {
+  background-color: color-mix(in oklch, var(--background) 85%, transparent);
+  color: var(--muted-foreground);
+}
+.dark .maplibregl-ctrl.maplibregl-ctrl-attrib a {
+  color: var(--muted-foreground);
+}
+.dark .maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button {
+  filter: invert(1);
 }
 
 /* Safe Area Inset Support for Mobile Safari */
@@ -163,7 +208,8 @@
   }
 }
 
-/* Reduced Motion Support */
+/* Reduced motion: no movement, keep instant state changes. Spinners keep
+   turning (they communicate progress, not decoration). */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -172,6 +218,10 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  .animate-spin {
+    animation-duration: 1s !important;
+    animation-iteration-count: infinite !important;
   }
 }
 

@@ -1,34 +1,27 @@
 import { NextRequest } from "next/server";
-import { adminService } from "@/lib/services/adminService";
 import {
-  ApiErrorCode,
-  errorResponse,
-  json,
-  requireAdmin,
-  parseQuery,
   enforceRateLimit,
-} from "@/lib/api-helpers";
-import { paginationSchema } from "@/lib/validation/schemas";
-import { RATE_LIMITS } from "@/lib/rate-limit";
+  handleRouteError,
+  json,
+  parseQuery,
+  requireAdmin,
+} from "@/server/http/api-helpers";
+import { RATE_LIMITS } from "@/server/http/rate-limit";
+import { adminListQuerySchema } from "@/lib/validation/user-schemas";
+import { listUsers } from "@/server/services/adminService";
 
+/** GET /api/admin/users?limit&offset&q → AdminPage<AdminUser> */
 export async function GET(request: NextRequest) {
   try {
     const { session, error } = await requireAdmin();
     if (error) return error;
-
     const rl = enforceRateLimit(request, "admin:users", RATE_LIMITS.admin, session.user.id);
     if (rl) return rl;
+    const q = parseQuery(request, adminListQuerySchema);
+    if (q.error) return q.error;
 
-    const parsed = parseQuery(request, paginationSchema);
-    if (parsed.error) return parsed.error;
-
-    const { data, pagination } = await adminService.getAllUsers(
-      parsed.data.page,
-      parsed.data.pageSize
-    );
-    return json({ data, pagination });
-  } catch (err) {
-    console.error("Admin users API error:", err);
-    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Internal server error");
+    return json(await listUsers(q.data));
+  } catch (error) {
+    return handleRouteError(error, "GET /api/admin/users");
   }
 }

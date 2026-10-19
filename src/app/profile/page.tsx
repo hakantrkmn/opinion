@@ -1,31 +1,25 @@
-import DynamicProfilePage from "@/components/profile/DynamicProfilePage";
-import { getServerSession } from "@/lib/auth-server";
-import { userService } from "@/lib/services/userService";
-import { UserStats } from "@/types";
+import DynamicProfilePage from "@/features/profile/components/DynamicProfilePage";
+import { requireServerSession } from "@/server/auth/session";
+import { getOwnProfile, getUserStats } from "@/server/services/users";
+import type { OwnProfileResponse } from "@/types/userTypes";
 import { redirect } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 export default async function ProfilePage() {
-  const session = await getServerSession();
+  const session = await requireServerSession("/profile");
 
-  if (!session?.user) {
-    redirect("/auth");
+  let initial: OwnProfileResponse;
+  try {
+    const [profile, stats] = await Promise.all([
+      getOwnProfile(session.user.id),
+      getUserStats(session.user.id),
+    ]);
+    initial = { profile, stats };
+  } catch {
+    // Session for a user that no longer exists / was deleted.
+    redirect("/auth?redirect=%2Fprofile");
   }
 
-  const user = session.user;
-  const { stats, error: statsError } = await userService.getUserStats(user.id);
-  const statsobj: UserStats = {
-    stats: stats,
-    error: statsError,
-    performanceInfo: {
-      queryTime: 0,
-      method: "",
-      improvement: "",
-    },
-  };
-
-  if (statsError) {
-    redirect("/404");
-  }
-
-  return <DynamicProfilePage user={user} userStats={statsobj} />;
+  return <DynamicProfilePage initial={initial} />;
 }

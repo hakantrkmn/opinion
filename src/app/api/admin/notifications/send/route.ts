@@ -1,81 +1,68 @@
 import { NextRequest } from "next/server";
 import {
-  ApiErrorCode,
-  errorResponse,
-  json,
-  requireAdmin,
-  parseBody,
-  enforceRateLimit,
   checkCsrfOrigin,
-} from "@/lib/api-helpers";
-import { sendNotificationSchema } from "@/lib/validation/schemas";
-import { pushService } from "@/lib/services/pushService";
-import { recordAudit } from "@/lib/audit-log";
-import { RATE_LIMITS } from "@/lib/rate-limit";
+  enforceRateLimit,
+  errors,
+  handleRouteError,
+  json,
+  parseBody,
+  requireAdmin,
+} from "@/server/http/api-helpers";
+import { sendNotificationSchema } from "@/lib/validation/user-schemas";
+import { pushService } from "@/server/services/pushService";
+import { recordAudit } from "@/server/services/audit-log";
+import type { SendNotificationResult } from "@/types/userTypes";
 
+/**
+ * POST /api/admin/notifications/send
+ *   { target: { type: "user", user_id } | { type: "all" }, title, body, data? }
+ *   → SendNotificationResult
+ */
 export async function POST(request: NextRequest) {
   try {
     const csrf = checkCsrfOrigin(request);
     if (csrf) return csrf;
-
     const { session, error } = await requireAdmin();
     if (error) return error;
-
     const rl = enforceRateLimit(
       request,
       "admin:notifications:send",
-      RATE_LIMITS.admin,
+      { limit: 10, windowMs: 60_000 },
       session.user.id
     );
     if (rl) return rl;
-
     const parsed = await parseBody(request, sendNotificationSchema);
     if (parsed.error) return parsed.error;
 
     const { target, title, body, data } = parsed.data;
-
     const tokens =
       target.type === "user"
-        ? await pushService.getActiveTokensForUser(target.userId)
+        ? await pushService.getActiveTokensForUser(target.user_id)
         : await pushService.getAllActiveTokens();
 
-    if (tokens.length === 0) {
-      if (target.type === "user") {
-        return errorResponse(404, ApiErrorCode.NOT_FOUND, "User has no active devices");
-      }
-      await recordAudit({
-        actorId: session.user.id,
-        actorEmail: session.user.email,
-        action: "admin.notification.send",
-        targetType: "broadcast",
-        targetId: null,
-        metadata: { title, body, data, recipientCount: 0, sent: 0, failed: 0, deactivated: 0 },
-      });
-      return json({ sent: 0, failed: 0, deactivated: 0, recipientCount: 0 });
+    if (tokens.length === 0 && target.type === "user") {
+      return errors.notFound("User has no active devices");
     }
 
-    const result = await pushService.sendToTokens(tokens, { title, body, data });
+    const r = await pushService.sendToTokens(tokens, { title, body, data });
+    const result: SendNotificationResult = {
+      recipient_count: r.recipientCount,
+      sent: r.sent,
+      failed: r.failed,
+      deactivated: r.deactivated,
+    };
 
     await recordAudit({
       actorId: session.user.id,
       actorEmail: session.user.email,
       action: "admin.notification.send",
       targetType: target.type === "user" ? "user" : "broadcast",
-      targetId: target.type === "user" ? target.userId : null,
-      metadata: {
-        title,
-        body,
-        data,
-        recipientCount: result.recipientCount,
-        sent: result.sent,
-        failed: result.failed,
-        deactivated: result.deactivated,
-      },
+      targetId: target.type === "user" ? target.user_id : null,
+      metadata: { title, body, data, ...result },
     });
 
     return json(result);
-  } catch (err) {
-    console.error("Admin notification send error:", err);
-    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Internal server error");
+  } catch (error) {
+    return handleRouteError(error, "POST /api/admin/notifications/send");
   }
 }

@@ -1,148 +1,69 @@
-# droPINion Design System
+# droPINion Design Tokens
 
-## Design Principles
+Source of truth: `src/app/globals.css` (`:root`, `.dark`, `@theme inline`).
+Use semantic utilities (`bg-primary`, `text-muted-foreground`), not raw palette
+colors, in app UI.
 
-- **Clean and Minimal**: Simple, understandable design focused on functionality
-- **Professional**: Clean interface without emojis or gradients
-- **Consistent**: Uniform spacing and typography using Tailwind utilities
-- **Accessible**: Built on Shadcn/ui components with accessibility in mind
+## Color
 
-## Color Palette
+| Token | Light | Dark | Notes |
+| --- | --- | --- | --- |
+| `--primary` | `oklch(0.54 0.13 163)` emerald | `oklch(0.765 0.177 163)` | White text on light primary is 4.7:1 (AA) |
+| `--primary-foreground` | near-white | `oklch(0.18 0.03 163)` dark ink | Dark ink on the bright dark-mode green (9.7:1) |
+| `--muted-foreground` | `oklch(0.443 0 0)` | `oklch(0.746 0 0)` | ≥7:1 on background in both themes |
+| `--destructive` | red | lighter red | |
 
-### Primary Colors
+Map pins keep their own activity colors (`src/features/pins/lib/activity.ts`:
+emerald-400 / emerald-500 / amber-500). Cluster circles use one step deeper
+(emerald-600 / emerald-700 / amber-600) so white counts stay legible on the
+light, dark and colorful basemaps.
 
-- `slate-900` - Primary text and headers
-- `slate-800` - Secondary text
-- `slate-600` - Muted text
-- `slate-500` - Placeholder text
+## Stacking (z-index)
 
-### Background Colors
+Use `z-(--z-…)`, never ad-hoc numbers.
 
-- `white` - Primary background
-- `slate-50` - Secondary background
-- `slate-100` - Card backgrounds
+| Layer | Token | Value |
+| --- | --- | --- |
+| Floating map controls | `--z-map-controls` | 10 |
+| Sticky header | `--z-header` | 40 |
+| Dialog / bottom sheet / side panel | `--z-dialog` | 80 |
+| Dialog opened from a dialog (lightbox, camera) | `--z-dialog-nested` | 90 |
+| Alert dialog (confirmations) | `--z-alert` | 100 |
+| Popover / select / menu | `--z-popover` | 110 |
+| Toast | `--z-toast` | 120 |
 
-### Border Colors
+## Elevation
 
-- `slate-200` - Default borders
-- `slate-300` - Hover borders
+`shadow-float` (map controls, pills), `shadow-raised` (menus, cards over the
+map, toasts), `shadow-fab` (the "Drop a pin" button).
 
-### Interactive Colors
+## Radius
 
-- `blue-600` - Primary buttons and links
-- `blue-500` - Hover states
-- `green-600` - Success states
-- `yellow-600` - Warning states
-- `red-600` - Error states
+`--radius` 10px; controls `rounded-xl`, cards `rounded-2xl`, sheets
+`rounded-[1.75rem]` (mobile top corners) / `rounded-[1.5rem]` (desktop panel).
 
-## Typography
+## Motion
 
-### Font Stack
+- `ease-out` = `cubic-bezier(0.23, 1, 0.32, 1)` (overrides Tailwind's default),
+  `ease-in-out` = `cubic-bezier(0.77, 0, 0.175, 1)`, `ease-drawer` =
+  `cubic-bezier(0.32, 0.72, 0, 1)` for sheets.
+- Press feedback: `active:scale-[0.96–0.97]`, 150ms. Popovers/menus 150ms,
+  dialogs 200ms, bottom sheet 300ms in / 200ms out.
+- Animate `transform`/`opacity` only; list exact properties in `transition-[…]`.
+- `prefers-reduced-motion`: animations/transitions collapse to instant (spinners
+  keep turning).
 
-- **Primary**: Geist Sans (via Next.js font optimization)
-- **Monospace**: Geist Mono (for code elements)
+## Touch & focus
 
-### Font Sizes
+- Interactive targets: 40px with a mouse, 44px on touch (`pointer-coarse:size-11`).
+- Hover styles only apply on hover devices (Tailwind v4 default).
+- Keyboard focus: 2px `--ring` outline via a global `:focus-visible` rule;
+  shadcn components keep their own ring.
 
-- `text-xs` - 12px - Small labels
-- `text-sm` - 14px - Body text, buttons
-- `text-base` - 16px - Default body text
-- `text-lg` - 18px - Large body text
-- `text-xl` - 20px - Small headings
-- `text-2xl` - 24px - Main headings
+## Layout
 
-## Spacing
-
-### Padding/Margin Scale
-
-- `1` - 4px
-- `2` - 8px
-- `3` - 12px
-- `4` - 16px
-- `6` - 24px
-- `8` - 32px
-- `12` - 48px
-- `16` - 64px
-
-## Components
-
-### Buttons
-
-- **Primary**: `Button` component with default variant
-- **Secondary**: `Button` with `variant="outline"`
-- **Ghost**: `Button` with `variant="ghost"`
-
-### Forms
-
-- **Input**: `Input` component for text fields
-- **Select**: `Select` component for dropdowns
-
-### Layout
-
-- **Card**: `Card` component for content containers
-- **Dialog**: `Dialog` component for modals
-- **Badge**: `Badge` component for status indicators
-
-### Icons
-
-- **Library**: Lucide React
-- **Size**: Consistent 16px (h-4 w-4) for inline icons
-- **Color**: Inherits from parent or uses muted-foreground
-
-## Layout Guidelines
-
-### Header
-
-- Height: 64px (h-16)
-- Background: Clean white with subtle border
-- Branding: "droPINion" in serif font
-- Search: Centered with max-width constraint
-- User actions: Right-aligned with consistent spacing
-
-### Main Content
-
-- Full viewport height minus header: `h-[calc(100vh-64px)]`
-- No background patterns or decorative elements
-- Focus on map functionality
-
-### Modals and Dialogs
-
-- Use Shadcn/ui Dialog component
-- Clean white background
-- Subtle shadows for depth
-- Consistent padding and spacing
-
-## Responsive Design
-
-### Breakpoints
-
-- `sm`: 640px and up
-- `md`: 768px and up
-- `lg`: 1024px and up
-- `xl`: 1280px and up
-
-### Mobile Considerations
-
-- Hide search on mobile (md:flex)
-- Stack user info vertically on small screens
-- Ensure touch targets are at least 44px
-
-## Accessibility
-
-### Color Contrast
-
-- All text meets WCAG AA standards
-- Interactive elements have sufficient contrast
-- Focus states are clearly visible
-
-### Keyboard Navigation
-
-- All interactive elements are keyboard accessible
-- Focus indicators are visible
-- Logical tab order maintained
-
-### Screen Readers
-
-- Semantic HTML structure
-- Proper ARIA labels where needed
-- Descriptive alt text for images
+- Header height `--header-height` (3.5rem) + `env(safe-area-inset-top)`.
+- Floating map UI and sheets pad with `env(safe-area-inset-*)`.
+- Pin detail: bottom sheet on phones, floating right side panel on ≥640px
+  (`ResponsiveDialogContent desktopSide="right"`).
+- Toasts: top-center, below the header.

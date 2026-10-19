@@ -1,51 +1,34 @@
 import { NextRequest } from "next/server";
-import { userService } from "@/lib/services/userService";
 import {
-  ApiErrorCode,
-  errorResponse,
-  json,
-  requireSession,
   enforceRateLimit,
-} from "@/lib/api-helpers";
-import { idParamSchema } from "@/lib/validation/schemas";
-import { RATE_LIMITS } from "@/lib/rate-limit";
+  handleRouteError,
+  json,
+  parseParams,
+  requireSession,
+} from "@/server/http/api-helpers";
+import { RATE_LIMITS } from "@/server/http/rate-limit";
+import { idParamSchema } from "@/lib/validation/user-schemas";
+import { isFollowing } from "@/server/services/users";
+import type { FollowStatusResponse } from "@/types/userTypes";
 
+/** GET /api/users/:id/follow-status → { is_following } */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { session, error: authError } = await requireSession();
-    if (authError) return authError;
-
-    const rl = enforceRateLimit(
-      request,
-      "users:follow-status",
-      RATE_LIMITS.read,
-      session.user.id
-    );
+    const { session, error } = await requireSession();
+    if (error) return error;
+    const rl = enforceRateLimit(request, "users:follow-status", RATE_LIMITS.read, session.user.id);
     if (rl) return rl;
+    const p = parseParams(await params, idParamSchema);
+    if (p.error) return p.error;
 
-    const parsed = idParamSchema.safeParse(await params);
-    if (!parsed.success) {
-      return errorResponse(400, ApiErrorCode.BAD_REQUEST, "Invalid id");
-    }
-
-    const result = await userService.isFollowing(
-      session.user.id,
-      parsed.data.id
-    );
-    if (result.error) {
-      return errorResponse(400, ApiErrorCode.BAD_REQUEST, result.error);
-    }
-
-    return json({ isFollowing: result.isFollowing });
+    const body: FollowStatusResponse = {
+      is_following: await isFollowing(session.user.id, p.data.id),
+    };
+    return json(body);
   } catch (error) {
-    console.error("Follow status GET error:", error);
-    return errorResponse(
-      500,
-      ApiErrorCode.INTERNAL_ERROR,
-      "Failed to load follow status"
-    );
+    return handleRouteError(error, "GET /api/users/:id/follow-status");
   }
 }

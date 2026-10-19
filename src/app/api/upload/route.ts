@@ -1,77 +1,83 @@
 import { NextRequest } from "next/server";
-import { uploadCommentPhoto } from "@/lib/services/photoService";
-import { userService } from "@/lib/services/userService";
 import {
-  ApiErrorCode,
+  checkCsrfOrigin,
+  enforceRateLimit,
+  enforceBodyLimit,
+  errors,
   errorResponse,
+  handleRouteError,
   json,
   requireSession,
-  enforceRateLimit,
-  checkCsrfOrigin,
-} from "@/lib/api-helpers";
-import { uploadTypeSchema } from "@/lib/validation/schemas";
-import { RATE_LIMITS } from "@/lib/rate-limit";
+} from "@/server/http/api-helpers";
+import { RATE_LIMITS } from "@/server/http/rate-limit";
+import { uploadTypeSchema } from "@/lib/validation/user-schemas";
+import { storeProcessedImage } from "@/server/services/photoService";
+import {
+  ImageProcessingError,
+  MAX_UPLOAD_BYTES,
+} from "@/server/services/imageProcessing";
+import { setAvatar } from "@/server/services/users";
+import type { UploadResponse } from "@/types/api";
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const ALLOWED_TYPES = [
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-];
-
+/**
+ * POST /api/upload (multipart: file, type=avatar|comment-photo)
+ *   → 201 UploadResponse { url, metadata }
+ *
+ * Every upload is decoded and re-encoded to WebP server-side (EXIF-rotated,
+ * metadata incl. GPS stripped, max 2048px for photos / 512px square for
+ * avatars). The client's filename and MIME type are ignored.
+ * - avatar: also becomes the user's avatar (previous file deleted).
+ * - comment-photo: attach the returned url when creating/editing a comment.
+ */
 export async function POST(request: NextRequest) {
   try {
     const csrf = checkCsrfOrigin(request);
     if (csrf) return csrf;
-
-    const { session, error: authError } = await requireSession();
-    if (authError) return authError;
-
+    const { session, error } = await requireSession();
+    if (error) return error;
     const rl = enforceRateLimit(request, "upload", RATE_LIMITS.upload, session.user.id);
     if (rl) return rl;
+
+    // Reject oversized bodies before buffering them.
+    const tooLarge = enforceBodyLimit(request, MAX_UPLOAD_BYTES + 64 * 1024);
+    if (tooLarge) return tooLarge;
 
     let formData: FormData;
     try {
       formData = await request.formData();
     } catch {
-      return errorResponse(400, ApiErrorCode.INVALID_FORM_DATA, "Invalid form data");
+      return errors.badRequest("Expected multipart/form-data");
     }
 
     const file = formData.get("file");
-    if (!(file instanceof File)) return errorResponse(400, ApiErrorCode.BAD_REQUEST, "No file provided");
-
-    if (file.size > MAX_FILE_SIZE) {
-      return errorResponse(400, ApiErrorCode.BAD_REQUEST, "File size must be less than 10MB");
+    if (!(file instanceof File)) return errors.badRequest("No file provided");
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return errorResponse(413, "BAD_REQUEST", "File size must be less than 10MB");
     }
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      return errorResponse(400, ApiErrorCode.BAD_REQUEST, "Only image files are allowed (JPG, PNG, WebP, GIF)");
-    }
-
-    const typeValue = formData.get("type");
-    const typeParsed = uploadTypeSchema.safeParse(typeValue);
-    if (!typeParsed.success) return errorResponse(400, ApiErrorCode.BAD_REQUEST, "Invalid upload type");
-
-    if (typeParsed.data === "avatar") {
-      const result = await userService.uploadAvatar(session.user.id, file);
-      if (result.error) return errorResponse(400, ApiErrorCode.BAD_REQUEST, result.error);
-      return json({ url: result.avatarUrl });
+    const type = uploadTypeSchema.safeParse(formData.get("type"));
+    if (!type.success) {
+      return errors.badRequest("type must be 'avatar' or 'comment-photo'");
     }
 
-    const commentIdRaw = formData.get("commentId");
-    const commentId = typeof commentIdRaw === "string" && commentIdRaw.length > 0
-      ? commentIdRaw
-      : undefined;
-    if (commentId && !/^[a-zA-Z0-9_-]{1,64}$/.test(commentId)) {
-      return errorResponse(400, ApiErrorCode.BAD_REQUEST, "Invalid commentId");
+    let result: UploadResponse;
+    try {
+      result =
+        type.data === "avatar"
+          ? await setAvatar(session.user.id, file)
+          : await storeProcessedImage(
+              file,
+              session.user.id,
+              "comment-photos",
+              "comment-photo"
+            );
+    } catch (e) {
+      if (e instanceof ImageProcessingError) {
+        return errorResponse(422, "VALIDATION_ERROR", e.message);
+      }
+      throw e;
     }
-
-    const result = await uploadCommentPhoto(file, session.user.id, commentId);
-    if (!result.success) return errorResponse(400, ApiErrorCode.BAD_REQUEST, result.error || "Upload failed");
-    return json({ url: result.url, metadata: result.metadata });
+    return json(result, { status: 201 });
   } catch (error) {
-    console.error("Upload error:", error);
-    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Upload failed");
+    return handleRouteError(error, "POST /api/upload");
   }
 }

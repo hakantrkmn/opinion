@@ -1,31 +1,25 @@
-"use client";
-import DynamicAuthForm from "@/components/auth/DynamicAuthForm";
-import { useSession } from "@/hooks/useSession";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import AuthForm from "@/features/auth/components/AuthForm";
+import { safeRedirectPath } from "@/lib/safe-redirect";
+import { getServerSession } from "@/server/auth/session";
+import { redirect } from "next/navigation";
 
-export default function AuthPage() {
-  const { user, isLoading } = useSession();
-  const router = useRouter();
+const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
-  useEffect(() => {
-    if (user && !isLoading) {
-      router.push("/");
-    }
-  }, [user, isLoading, router]);
+export default async function AuthPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ redirect?: string | string[]; mode?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const redirectTo = safeRedirectPath(first(params.redirect));
 
-  if (isLoading || user) {
-    return (
-      <div className="min-h-[100dvh] flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/30 border-t-foreground animate-spin" />
-          <span className="text-sm text-muted-foreground">
-            {user ? "Redirecting..." : "Checking session..."}
-          </span>
-        </div>
-      </div>
-    );
-  }
+  // Already signed in: go straight to where the user was heading.
+  if (await getServerSession()) redirect(redirectTo);
 
-  return <DynamicAuthForm />;
+  return (
+    <AuthForm
+      redirectTo={redirectTo}
+      initialMode={first(params.mode) === "signup" ? "signup" : "signin"}
+    />
+  );
 }

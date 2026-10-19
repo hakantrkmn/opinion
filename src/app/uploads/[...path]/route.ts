@@ -1,55 +1,79 @@
+import { createReadStream } from "fs";
+import { stat } from "fs/promises";
+import { extname } from "path";
+import { Readable } from "stream";
 import { NextRequest, NextResponse } from "next/server";
-import { stat, readFile } from "fs/promises";
-import { join, normalize, resolve, extname, sep } from "path";
-import { UPLOAD_DIR } from "@/lib/storage";
+import { resolveUploadPath } from "@/server/uploads";
 
+export const runtime = "nodejs";
+
+// Raster formats only. SVG is intentionally absent: it can carry script.
+// New uploads are always .webp; the others cover legacy files.
 const MIME_TYPES: Record<string, string> = {
+  ".webp": "image/webp",
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
   ".png": "image/png",
-  ".webp": "image/webp",
   ".gif": "image/gif",
-  ".svg": "image/svg+xml",
 };
 
+const SECURITY_HEADERS = {
+  "X-Content-Type-Options": "nosniff",
+  "Content-Security-Policy": "default-src 'none'; sandbox",
+  "Cross-Origin-Resource-Policy": "same-site",
+};
+
+function notFound() {
+  return new NextResponse("Not Found", {
+    status: 404,
+    headers: { ...SECURITY_HEADERS, "Content-Type": "text/plain" },
+  });
+}
+
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   const { path: segments } = await params;
+  if (!segments?.length) return notFound();
 
-  if (!segments || segments.length === 0) {
-    return new NextResponse("Not Found", { status: 404 });
-  }
+  const absolutePath = resolveUploadPath(`/uploads/${segments.join("/")}`);
+  if (!absolutePath) return notFound();
 
-  const relativePath = normalize(segments.join("/"));
-  const baseDir = resolve(UPLOAD_DIR);
-  const absolutePath = resolve(join(baseDir, relativePath));
+  const contentType = MIME_TYPES[extname(absolutePath).toLowerCase()];
+  if (!contentType) return notFound();
 
-  if (!absolutePath.startsWith(baseDir + sep)) {
-    return new NextResponse("Forbidden", { status: 403 });
-  }
-
+  let fileStat;
   try {
-    const fileStat = await stat(absolutePath);
-    if (!fileStat.isFile()) {
-      return new NextResponse("Not Found", { status: 404 });
-    }
-
-    const buffer = await readFile(absolutePath);
-    const ext = extname(absolutePath).toLowerCase();
-    const contentType = MIME_TYPES[ext] || "application/octet-stream";
-
-    return new NextResponse(buffer as unknown as BodyInit, {
-      status: 200,
-      headers: {
-        "Content-Type": contentType,
-        "Content-Length": fileStat.size.toString(),
-        "Cache-Control": "public, max-age=31536000, immutable",
-        "Last-Modified": fileStat.mtime.toUTCString(),
-      },
-    });
+    fileStat = await stat(absolutePath);
   } catch {
-    return new NextResponse("Not Found", { status: 404 });
+    return notFound();
   }
+  if (!fileStat.isFile()) return notFound();
+
+  // File names are unique and never rewritten, so size+mtime is a stable tag.
+  const etag = `"${fileStat.size.toString(16)}-${Math.floor(fileStat.mtimeMs).toString(16)}"`;
+  const headers: Record<string, string> = {
+    ...SECURITY_HEADERS,
+    "Content-Type": contentType,
+    "Cache-Control": "public, max-age=31536000, immutable",
+    ETag: etag,
+    "Last-Modified": fileStat.mtime.toUTCString(),
+  };
+
+  const ifNoneMatch = request.headers.get("if-none-match");
+  if (
+    ifNoneMatch &&
+    ifNoneMatch.split(",").some((t) => t.trim().replace(/^W\//, "") === etag)
+  ) {
+    return new NextResponse(null, { status: 304, headers });
+  }
+
+  const stream = Readable.toWeb(
+    createReadStream(absolutePath)
+  ) as unknown as ReadableStream<Uint8Array>;
+  return new NextResponse(stream, {
+    status: 200,
+    headers: { ...headers, "Content-Length": fileStat.size.toString() },
+  });
 }

@@ -1,6 +1,6 @@
 import Header from "@/components/common/Header";
-import { PublicProfileClient } from "@/components/profile/PublicProfileClient";
-import { getServerSession } from "@/lib/auth-server";
+import { PublicProfileClient } from "@/features/profile/components/PublicProfileClient";
+import { requireServerSession } from "@/server/auth/session";
 import { redirect } from "next/navigation";
 
 export default async function PublicProfilePage({
@@ -8,13 +8,9 @@ export default async function PublicProfilePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await getServerSession();
-
-  if (!session?.user) {
-    redirect("/auth");
-  }
-
   const { id } = await params;
+  const session = await requireServerSession(`/u/${encodeURIComponent(id)}`);
+  if (session.user.id === id) redirect("/profile");
 
   return (
     <div className="min-h-[100dvh] bg-background">

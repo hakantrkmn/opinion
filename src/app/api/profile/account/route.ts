@@ -1,47 +1,56 @@
 import { NextRequest } from "next/server";
-import { userService } from "@/lib/services/userService";
+import { isAPIError } from "better-auth/api";
+import { auth } from "@/server/auth/auth";
 import {
-  ApiErrorCode,
-  errorResponse,
-  json,
-  requireSession,
-  enforceRateLimit,
+  authHeaders,
   checkCsrfOrigin,
-} from "@/lib/api-helpers";
-import { RATE_LIMITS } from "@/lib/rate-limit";
+  enforceRateLimit,
+  errorResponse,
+  handleRouteError,
+  noContent,
+  parseBody,
+  requireSession,
+} from "@/server/http/api-helpers";
+import { deleteAccountSchema } from "@/lib/validation/user-schemas";
+import { deleteAccount } from "@/server/services/users";
 
+/**
+ * DELETE /api/profile/account { password } → 204
+ * Requires re-entering the current password. Soft-deletes the account (see
+ * deleteAccount) and revokes every session.
+ */
 export async function DELETE(request: NextRequest) {
   try {
     const csrf = checkCsrfOrigin(request);
     if (csrf) return csrf;
-
-    const { session, error: authError } = await requireSession();
-    if (authError) return authError;
-
+    const { session, error } = await requireSession();
+    if (error) return error;
+    // Tight limit: this endpoint verifies a password.
     const rl = enforceRateLimit(
       request,
       "account:delete",
-      RATE_LIMITS.write,
+      { limit: 5, windowMs: 15 * 60_000 },
       session.user.id
     );
     if (rl) return rl;
+    const body = await parseBody(request, deleteAccountSchema);
+    if (body.error) return body.error;
 
-    const result = await userService.deleteAccount(session.user.id);
-    if (!result.success) {
-      return errorResponse(
-        500,
-        ApiErrorCode.INTERNAL_ERROR,
-        result.error || "Failed to delete account"
-      );
+    try {
+      await auth.api.verifyPassword({
+        body: { password: body.data.password },
+        headers: await authHeaders(),
+      });
+    } catch (e) {
+      if (isAPIError(e)) {
+        return errorResponse(403, "FORBIDDEN", "Incorrect password");
+      }
+      throw e;
     }
 
-    return json({ success: true });
+    await deleteAccount(session.user.id);
+    return noContent();
   } catch (error) {
-    console.error("Account delete error:", error);
-    return errorResponse(
-      500,
-      ApiErrorCode.INTERNAL_ERROR,
-      "Failed to delete account"
-    );
+    return handleRouteError(error, "DELETE /api/profile/account");
   }
 }

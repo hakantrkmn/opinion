@@ -1,44 +1,38 @@
 import { NextRequest } from "next/server";
-import { userService } from "@/lib/services/userService";
 import {
-  ApiErrorCode,
-  errorResponse,
-  json,
-  requireSession,
   enforceRateLimit,
-} from "@/lib/api-helpers";
-import { idParamSchema } from "@/lib/validation/schemas";
-import { RATE_LIMITS } from "@/lib/rate-limit";
+  errors,
+  handleRouteError,
+  json,
+  parseParams,
+  requireSession,
+} from "@/server/http/api-helpers";
+import { RATE_LIMITS } from "@/server/http/rate-limit";
+import { idParamSchema } from "@/lib/validation/user-schemas";
+import { isBlockedRelation } from "@/server/services/blocks";
+import { assertActiveUser, getUserStats } from "@/server/services/users";
+import type { UserStatsResponse } from "@/types/userTypes";
 
+/** GET /api/users/:id/stats → { stats } */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { session, error: authError } = await requireSession();
-    if (authError) return authError;
-
-    const rl = enforceRateLimit(
-      request,
-      "users:stats",
-      RATE_LIMITS.read,
-      session.user.id
-    );
+    const { session, error } = await requireSession();
+    if (error) return error;
+    const rl = enforceRateLimit(request, "users:stats", RATE_LIMITS.read, session.user.id);
     if (rl) return rl;
+    const p = parseParams(await params, idParamSchema);
+    if (p.error) return p.error;
 
-    const parsed = idParamSchema.safeParse(await params);
-    if (!parsed.success)
-      return errorResponse(400, ApiErrorCode.BAD_REQUEST, "Invalid id");
-
-    const result = await userService.getUserStatsWithPerformanceInfo(
-      parsed.data.id
-    );
-    if (result.error === "User not found") {
-      return errorResponse(404, ApiErrorCode.NOT_FOUND, result.error);
+    if (await isBlockedRelation(session.user.id, p.data.id)) {
+      return errors.notFound("User not found");
     }
-    return json(result);
+    await assertActiveUser(p.data.id);
+    const body: UserStatsResponse = { stats: await getUserStats(p.data.id) };
+    return json(body);
   } catch (error) {
-    console.error("Public user stats error:", error);
-    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Failed to get stats");
+    return handleRouteError(error, "GET /api/users/:id/stats");
   }
 }

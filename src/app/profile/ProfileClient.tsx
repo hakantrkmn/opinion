@@ -1,195 +1,171 @@
 "use client";
 
-import { EditProfile } from "@/components/profile/EditProfile";
-import { ProfileHero } from "@/components/profile/sections/ProfileHero";
+import { PinIcon } from "@/components/icons/PinIcon";
+import { BlockedUsersDialog } from "@/features/moderation/components/BlockedUsersDialog";
+import { AvatarUploader } from "@/features/profile/components/sections/AvatarUploader";
+import { DisplayNameEditor } from "@/features/profile/components/sections/DisplayNameEditor";
+import { ProfileHero } from "@/features/profile/components/sections/ProfileHero";
+import { ProfileTabs } from "@/features/profile/components/sections/ProfileTabs";
 import {
+  EmptyState,
   ProfileCommentsList,
   ProfilePinsList,
-} from "@/components/profile/sections/ProfileLists";
-import { ProfileStatsGrid } from "@/components/profile/sections/ProfileStatsGrid";
-import { ConnectionListDialog } from "@/components/profile/social/ConnectionListDialog";
-import { UserSearchDialog } from "@/components/users/UserSearchDialog";
-import { BlockedUsersDialog } from "@/components/moderation/BlockedUsersDialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+} from "@/features/profile/components/sections/ProfileLists";
+import { AccountSettingsDialog } from "@/features/profile/components/settings/AccountSettingsDialog";
+import { EmailVerificationBanner } from "@/features/profile/components/settings/EmailVerificationBanner";
+import { ConnectionListDialog } from "@/features/profile/components/social/ConnectionListDialog";
+import { UserSearchDialog } from "@/features/users/components/UserSearchDialog";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  useOwnProfile,
   useOwnProfileComments,
   useOwnProfilePins,
-  useOwnProfileStats,
-} from "@/hooks/queries/use-user-profile";
-import { useUserProfile } from "@/hooks/useUserProfile";
-import { queryKeys } from "@/lib/api/query-keys";
-import type { UserStats } from "@/types";
-import { MessageCircle, Search, ShieldOff, TrendingUp } from "lucide-react";
-import { useRouter } from "next/navigation";
+} from "@/features/profile/hooks/use-user-profile";
+import type { PinSummary } from "@/types/api";
+import type { OwnProfileResponse } from "@/types/userTypes";
+import { Map as MapIcon, MessageCircle, Search, Settings } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { PinIcon } from "@/components/icons/PinIcon";
 
-type TabType = "stats" | "pins" | "comments";
+type Dialog = "settings" | "followers" | "following" | "search" | "blocked" | null;
 
-interface ProfileClientProps {
-  user: { id: string; email: string; name?: string; image?: string | null };
-  userStats: UserStats;
-}
+export function ProfileClient({ initial }: { initial: OwnProfileResponse }) {
+  const [dialog, setDialog] = useState<Dialog>(null);
+  const openChange = (which: Exclude<Dialog, null>) => (open: boolean) =>
+    setDialog(open ? which : null);
 
-export function ProfileClient({ user, userStats }: ProfileClientProps) {
-  const { profile, updateProfile } = useUserProfile();
-  const queryClient = useQueryClient();
-  const router = useRouter();
+  // Seeded with the server-rendered profile; refetched when stale.
+  const meQuery = useOwnProfile(true, initial);
+  const profile = meQuery.data?.profile ?? initial.profile;
+  const stats = meQuery.data?.stats ?? initial.stats;
+  const name = profile.display_name || "Unnamed user";
 
-  const [activeTab, setActiveTab] = useState<TabType>("stats");
-  const [showEditProfile, setShowEditProfile] = useState(false);
-  const [showFollowers, setShowFollowers] = useState(false);
-  const [showFollowing, setShowFollowing] = useState(false);
-  const [showUserSearch, setShowUserSearch] = useState(false);
-  const [showBlockedUsers, setShowBlockedUsers] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [tab, setTab] = useState<"pins" | "comments">("pins");
+  const pinsQuery = useOwnProfilePins(tab === "pins");
+  const commentsQuery = useOwnProfileComments(tab === "comments");
 
-  const pinsQuery = useOwnProfilePins(activeTab === "pins");
-  const commentsQuery = useOwnProfileComments(activeTab === "comments");
-  const statsQuery = useOwnProfileStats(user.id, { initialData: userStats });
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.profile.pins }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.profile.comments }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.profile.stats }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.profile.me }),
-      ]);
-      router.refresh();
-      toast.success("Profile refreshed");
-    } catch {
-      toast.error("Failed to refresh");
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
-  const handleSharePin = async (pinId: string, pinName: string) => {
-    const shareUrl = `${window.location.origin}/pin/${pinId}`;
+  const handleSharePin = async (pin: PinSummary) => {
+    const shareUrl = `${window.location.origin}/pin/${pin.id}`;
     try {
       await navigator.clipboard.writeText(shareUrl);
-      toast.success("Pin link copied", { description: pinName });
+      toast.success("Link copied", { id: "copy-pin-link", description: pin.name });
     } catch {
-      toast.info("Share URL", { description: shareUrl });
+      toast.info("Copy this link", { id: "copy-pin-link", description: shareUrl });
     }
   };
 
-  const handleProfileUpdate = (updates: {
-    display_name?: string;
-    avatar_url?: string | null;
-  }) => {
-    updateProfile({
-      ...updates,
-      avatar_url: updates.avatar_url || undefined,
-    });
-  };
-
-  const error = pinsQuery.error?.message || commentsQuery.error?.message || statsQuery.error?.message;
-
   return (
-    <div className="mx-auto max-w-4xl px-4 py-6 pb-24 sm:px-6">
+    <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 pb-[max(6rem,env(safe-area-inset-bottom))] pt-6 sm:px-6 sm:pt-10">
       <ProfileHero
         profile={profile}
-        stats={statsQuery.data?.stats ?? userStats.stats}
-        email={user.email}
-        onEdit={() => setShowEditProfile(true)}
-        onRefresh={handleRefresh}
-        isRefreshing={isRefreshing}
-        onOpenFollowers={() => setShowFollowers(true)}
-        onOpenFollowing={() => setShowFollowing(true)}
-        primaryAction={
-          <div className="flex flex-wrap gap-2">
+        stats={stats}
+        subtitle={profile.email}
+        avatarSlot={<AvatarUploader src={profile.avatar_url} name={name} />}
+        nameSlot={<DisplayNameEditor name={name} />}
+        onOpenFollowers={() => setDialog("followers")}
+        onOpenFollowing={() => setDialog("following")}
+        actions={
+          <>
             <Button
               variant="outline"
-              className="h-11 rounded-xl"
-              onClick={() => setShowUserSearch(true)}
+              className="h-10 flex-1 rounded-xl sm:flex-none"
+              onClick={() => setDialog("search")}
             >
-              <Search className="h-4 w-4" />
-              Find People
+              <Search aria-hidden />
+              Find people
             </Button>
             <Button
               variant="outline"
-              className="h-11 rounded-xl"
-              onClick={() => setShowBlockedUsers(true)}
+              className="h-10 flex-1 rounded-xl sm:flex-none"
+              onClick={() => setDialog("settings")}
             >
-              <ShieldOff className="h-4 w-4" />
-              Blocked
+              <Settings aria-hidden />
+              Settings
             </Button>
-          </div>
+          </>
         }
       />
 
-      {error ? (
-        <Alert variant="destructive" className="mt-4 rounded-2xl">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+      {!profile.email_verified ? (
+        <EmailVerificationBanner onVerify={() => setDialog("settings")} />
       ) : null}
 
-      <Tabs
-        value={activeTab}
-        onValueChange={(value) => setActiveTab(value as TabType)}
-        className="mt-6"
-      >
-        <TabsList className="grid h-auto w-full grid-cols-3 rounded-2xl bg-muted/50 p-1">
-          <TabsTrigger value="stats" className="min-h-11 rounded-xl">
-            <TrendingUp className="h-4 w-4" />
-            <span>Stats</span>
-          </TabsTrigger>
-          <TabsTrigger value="pins" className="min-h-11 rounded-xl">
-            <PinIcon className="h-4 w-4" />
-            <span>Pins</span>
-          </TabsTrigger>
-          <TabsTrigger value="comments" className="min-h-11 rounded-xl">
-            <MessageCircle className="h-4 w-4" />
-            <span>Comments</span>
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="stats" className="mt-4">
-          <ProfileStatsGrid stats={statsQuery.data?.stats ?? userStats.stats} />
-        </TabsContent>
-
-        <TabsContent value="pins" className="mt-4">
+      <ProfileTabs
+        value={tab}
+        onValueChange={setTab}
+        pinsCount={stats?.total_pins}
+        commentsCount={stats?.total_comments}
+        pins={
           <ProfilePinsList
-            pins={pinsQuery.data || []}
-            onShare={(pin) => handleSharePin(pin.id, pin.name)}
+            pins={pinsQuery.items}
+            state={pinsQuery}
+            onShare={handleSharePin}
+            empty={
+              <EmptyState
+                icon={<PinIcon className="size-5" />}
+                title="No pins yet"
+                description="Drop a pin on a place you have an opinion about. It shows up here and on the map."
+                action={
+                  <Button asChild className="h-10 rounded-xl">
+                    <Link href="/">
+                      <PinIcon className="size-4" />
+                      Drop your first pin
+                    </Link>
+                  </Button>
+                }
+              />
+            }
           />
-        </TabsContent>
-
-        <TabsContent value="comments" className="mt-4">
-          <ProfileCommentsList comments={commentsQuery.data || []} />
-        </TabsContent>
-      </Tabs>
-
-      <EditProfile
-        user={user}
-        isOpen={showEditProfile}
-        onClose={() => setShowEditProfile(false)}
-        onProfileUpdate={handleProfileUpdate}
+        }
+        comments={
+          <ProfileCommentsList
+            comments={commentsQuery.items}
+            state={commentsQuery}
+            empty={
+              <EmptyState
+                icon={<MessageCircle aria-hidden className="size-5" />}
+                title="No comments yet"
+                description="Open a pin on the map and share what you think about the place."
+                action={
+                  <Button asChild variant="outline" className="h-10 rounded-xl">
+                    <Link href="/">
+                      <MapIcon aria-hidden />
+                      Explore the map
+                    </Link>
+                  </Button>
+                }
+              />
+            }
+          />
+        }
       />
 
+      <AccountSettingsDialog
+        profile={profile}
+        open={dialog === "settings"}
+        onOpenChange={openChange("settings")}
+        onOpenBlocked={() => setDialog("blocked")}
+      />
       <ConnectionListDialog
-        userId={user.id}
-        open={showFollowers}
-        onOpenChange={setShowFollowers}
+        userId={profile.id}
+        userName={name}
+        open={dialog === "followers"}
+        onOpenChange={openChange("followers")}
         type="followers"
       />
       <ConnectionListDialog
-        userId={user.id}
-        open={showFollowing}
-        onOpenChange={setShowFollowing}
+        userId={profile.id}
+        userName={name}
+        open={dialog === "following"}
+        onOpenChange={openChange("following")}
         type="following"
       />
-      <UserSearchDialog open={showUserSearch} onOpenChange={setShowUserSearch} />
+      <UserSearchDialog open={dialog === "search"} onOpenChange={openChange("search")} />
+      {/* Opened from Settings; closing it goes back there. */}
       <BlockedUsersDialog
-        onOpenChange={setShowBlockedUsers}
-        open={showBlockedUsers}
+        open={dialog === "blocked"}
+        onOpenChange={(open) => setDialog(open ? "blocked" : "settings")}
       />
     </div>
   );

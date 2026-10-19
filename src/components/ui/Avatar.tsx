@@ -100,7 +100,7 @@ export function Avatar({
         />
       )}
 
-      {/* Fallback */}
+      {/* Fallback (also shown while the image loads; no spinner flash) */}
       {shouldShowFallback && (
         <div className="absolute inset-0 flex items-center justify-center bg-muted">
           {fallbackText ? (
@@ -121,20 +121,6 @@ export function Avatar({
         </div>
       )}
 
-      {/* Loading spinner */}
-      {src && !imageError && !imageLoaded && (
-        <div className="absolute inset-0 flex items-center justify-center bg-muted">
-          <div
-            className={cn(
-              "animate-spin rounded-full border-2 border-primary border-t-transparent",
-              size === "sm" && "w-3 h-3",
-              size === "md" && "w-4 h-4",
-              size === "lg" && "w-5 h-5",
-              size === "xl" && "w-6 h-6"
-            )}
-          />
-        </div>
-      )}
     </div>
   );
 }

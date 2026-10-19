@@ -1,69 +1,35 @@
-import { betterFetch } from "@better-fetch/fetch";
-import type { auth } from "@/lib/auth";
+import { getSessionCookie } from "better-auth/cookies";
 import { NextRequest, NextResponse } from "next/server";
 
-type Session = typeof auth.$Infer.Session;
+/**
+ * Cheap gate for signed-in-only pages: only checks that a session cookie is
+ * present (no DB / network). The real check — session validity and the
+ * admin role — happens in the page's server component.
+ */
+const PROTECTED_PREFIXES = ["/profile", "/admin"];
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  if (
-    pathname === "/sitemap.xml" ||
-    pathname === "/robots.txt" ||
-    pathname === "/googleb77d2e6c4cda70af.html"
-  ) {
-    return NextResponse.next();
-  }
-
-  const publicRoutes = ["/", "/pin", "/location", "/auth"];
-  const isPublicRoute = publicRoutes.some(
-    (route) => pathname === "/" || pathname.startsWith(route)
+function isProtected(pathname: string): boolean {
+  return PROTECTED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );
-
-  const isAdminPage = pathname.startsWith("/admin");
-  const isProfilePage = pathname.startsWith("/profile");
-
-  if (isPublicRoute && !isAdminPage) {
-    return NextResponse.next();
-  }
-
-  if (!isAdminPage && !isProfilePage) {
-    return NextResponse.next();
-  }
-
-  // Self-fetch must hit the local HTTP listener, not the public origin.
-  // Behind a TLS-terminating proxy (Dokploy/Traefik), request.nextUrl.origin
-  // is https://... but the container serves plain HTTP. Going out to the
-  // public domain also fails due to NAT hairpinning. Always use loopback.
-  const internalBaseUrl =
-    process.env.INTERNAL_URL ||
-    `http://127.0.0.1:${process.env.PORT || 3000}`;
-
-  const { data: session } = await betterFetch<Session>(
-    "/api/auth/get-session",
-    {
-      baseURL: internalBaseUrl,
-      headers: {
-        cookie: request.headers.get("cookie") || "",
-      },
-    }
-  );
-
-  if (!session) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/auth";
-    return NextResponse.redirect(url);
-  }
-
-  if (isAdminPage && session.user?.role !== "admin") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url);
-  }
-
-  return NextResponse.next();
 }
 
+export function middleware(request: NextRequest) {
+  const { pathname, search } = request.nextUrl;
+  if (!isProtected(pathname)) return NextResponse.next();
+
+  if (getSessionCookie(request)) return NextResponse.next();
+
+  const url = request.nextUrl.clone();
+  url.pathname = "/auth";
+  url.search = "";
+  url.searchParams.set("redirect", `${pathname}${search}`);
+  return NextResponse.redirect(url);
+}
+
+// Edge runtime. The build's "CompressionStream not supported in Edge"
+// warning comes from better-auth/cookies' jose import and is harmless:
+// getSessionCookie only reads the cookie.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api|uploads).*)"],
+  matcher: ["/profile/:path*", "/admin/:path*"],
 };

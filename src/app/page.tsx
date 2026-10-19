@@ -1,72 +1,23 @@
-"use client";
-import DynamicHomeContent from "@/components/map/DynamicHomeContent";
-import { useSession } from "@/hooks/useSession";
-import { Loader2 } from "lucide-react";
-import { useSearchParams } from "next/navigation";
-import { Suspense, useMemo } from "react";
+import Header from "@/components/common/Header";
+import { MapLoader } from "@/features/map/components/MapLoader";
+import { parseLngLat } from "@/features/map/lib/view";
 
-function HomeContent() {
-  const { isLoading } = useSession();
-  const searchParams = useSearchParams();
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-  // Parse latitude and longitude from URL query parameters
-  const initialCoordinates = useMemo(() => {
-    const lat = searchParams.get("lat");
-    const lng = searchParams.get("long") || searchParams.get("lng");
+const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
-    if (lat && lng) {
-      const latitude = parseFloat(lat);
-      const longitude = parseFloat(lng);
+export default async function HomePage({ searchParams }: { searchParams: SearchParams }) {
+  const params = await searchParams;
+  const initialCenter = parseLngLat(first(params.lat), first(params.lng) ?? first(params.long));
+  const pin = first(params.pin);
+  const initialPinId = pin && /^[\w-]{1,64}$/.test(pin) ? pin : null;
 
-      // Validate coordinates
-      if (
-        !isNaN(latitude) &&
-        !isNaN(longitude) &&
-        latitude >= -90 &&
-        latitude <= 90 &&
-        longitude >= -180 &&
-        longitude <= 180
-      ) {
-        console.log("Valid coordinates from URL:", { latitude, longitude });
-        return [longitude, latitude] as [number, number]; // [lng, lat] format for maplibre
-      } else {
-        console.warn("Invalid coordinates in URL:", { lat, lng });
-      }
-    }
-
-    return null;
-  }, [searchParams]);
-
-  // Artık herkes ana sayfaya erişebilir - auth/non-auth fark etmez
-  // RLS policies database seviyesinde koruma sağlıyor
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-sm text-muted-foreground">Loading...</span>
-        </div>
-      </div>
-    );
-  }
-
-  // Hem authenticated hem non-authenticated kullanıcılar için content yükle
-  return <DynamicHomeContent initialCoordinates={initialCoordinates} />;
-}
-
-export default function Home() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <div className="flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm text-muted-foreground">Loading...</span>
-          </div>
-        </div>
-      }
-    >
-      <HomeContent />
-    </Suspense>
+    <div data-app-shell className="flex h-dvh flex-col overflow-clip bg-background">
+      <Header />
+      <main className="relative min-h-0 flex-1">
+        <MapLoader initialCenter={initialCenter} initialPinId={initialPinId} />
+      </main>
+    </div>
   );
 }

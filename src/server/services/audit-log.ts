@@ -1,0 +1,53 @@
+import "server-only";
+import { db } from "@/server/db";
+import { adminAuditLogs } from "@/server/db/schema/app";
+import { headers } from "next/headers";
+import { getClientIp } from "@/server/http/rate-limit";
+
+export type AuditAction =
+  | "admin.user.delete"
+  | "admin.pin.delete"
+  | "admin.comment.delete"
+  | "admin.stats.refresh"
+  | "admin.notification.send"
+  | "admin.report.resolve"
+  | "admin.report.dismiss"
+  | "admin.report.delete_target.pin"
+  | "admin.report.delete_target.comment"
+  | "admin.report.delete_target.user";
+
+export type AuditTargetType =
+  | "user"
+  | "pin"
+  | "comment"
+  | "system"
+  | "broadcast"
+  | "report";
+
+export async function recordAudit(params: {
+  actorId: string;
+  actorEmail?: string | null;
+  action: AuditAction;
+  targetType: AuditTargetType;
+  targetId?: string | null;
+  metadata?: Record<string, unknown>;
+}) {
+  try {
+    const h = await headers();
+    const fakeReq = { headers: h } as unknown as Request;
+    const ipAddress = getClientIp(fakeReq);
+    const userAgent = h.get("user-agent");
+    await db.insert(adminAuditLogs).values({
+      actorId: params.actorId,
+      actorEmail: params.actorEmail ?? null,
+      action: params.action,
+      targetType: params.targetType,
+      targetId: params.targetId ?? null,
+      metadata: params.metadata ?? {},
+      ipAddress,
+      userAgent,
+    });
+  } catch (error) {
+    console.error("Audit log write failed:", error);
+  }
+}

@@ -1,50 +1,60 @@
-import { NextRequest } from "next/server";
-import { pinService } from "@/lib/services/pinService";
+import type { NextRequest } from "next/server";
 import {
-  ApiErrorCode,
-  errorResponse,
-  json,
-  getSession,
-  requireSession,
-  parseBody,
-  enforceRateLimit,
   checkCsrfOrigin,
-} from "@/lib/api-helpers";
-import { idParamSchema, createCommentSchema } from "@/lib/validation/schemas";
-import { RATE_LIMITS } from "@/lib/rate-limit";
-import { getInvisibleUserIds } from "@/lib/blocked-users";
+  enforceRateLimit,
+  getSession,
+  handleRouteError,
+  json,
+  parseBody,
+  parseParams,
+  parseQuery,
+  requireSession,
+} from "@/server/http/api-helpers";
+import { RATE_LIMITS } from "@/server/http/rate-limit";
+import {
+  createCommentSchema,
+  idParamSchema,
+  pinCommentsQuerySchema,
+} from "@/lib/validation/schemas";
+import { createComment, listPinComments } from "@/server/services/pins";
+import type { CommentResponse, PinCommentsResponse } from "@/types/api";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+type Ctx = { params: Promise<{ id: string }> };
+
+/**
+ * GET /api/pins/:id/comments?sort=popular|newest|oldest&limit&offset
+ * → PinCommentsResponse (404 NOT_FOUND when the pin does not exist).
+ */
+export async function GET(request: NextRequest, { params }: Ctx) {
   try {
     const session = await getSession();
-    const userId = session?.user?.id;
+    const viewerId = session?.user.id ?? null;
 
-    const rl = enforceRateLimit(request, "pin:comments:get", RATE_LIMITS.read, userId);
+    const rl = enforceRateLimit(request, "pins:comments:list", RATE_LIMITS.read, viewerId);
     if (rl) return rl;
 
-    const parsed = idParamSchema.safeParse(await params);
-    if (!parsed.success) return errorResponse(400, ApiErrorCode.BAD_REQUEST, "Invalid id");
+    const p = parseParams(await params, idParamSchema);
+    if (p.error) return p.error;
+    const q = parseQuery(request, pinCommentsQuerySchema);
+    if (q.error) return q.error;
 
-    const excludedUserIds = await getInvisibleUserIds(userId ?? null);
-    const { comments, error } = await pinService.getPinComments(
-      parsed.data.id,
-      userId,
-      excludedUserIds
-    );
-    return json({ comments, error });
+    const body: PinCommentsResponse = await listPinComments({
+      pinId: p.data.id,
+      viewerId,
+      ...q.data,
+    });
+    return json(body, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
-    console.error("Pin comments GET error:", error);
-    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Failed to get comments");
+    return handleRouteError(error, "GET /api/pins/:id/comments");
   }
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+/**
+ * POST /api/pins/:id/comments (JSON { text, photo_url? }) → 201 { comment }
+ * 409 CONFLICT when the user already commented, 403 on a block relation
+ * with the pin owner, 404 when the pin is gone.
+ */
+export async function POST(request: NextRequest, { params }: Ctx) {
   try {
     const csrf = checkCsrfOrigin(request);
     if (csrf) return csrf;
@@ -52,26 +62,24 @@ export async function POST(
     const { session, error: authError } = await requireSession();
     if (authError) return authError;
 
-    const rl = enforceRateLimit(request, "pin:comments:post", RATE_LIMITS.write, session.user.id);
+    const rl = enforceRateLimit(request, "comments:create", RATE_LIMITS.write, session.user.id);
     if (rl) return rl;
 
-    const paramParsed = idParamSchema.safeParse(await params);
-    if (!paramParsed.success) return errorResponse(400, ApiErrorCode.BAD_REQUEST, "Invalid id");
-
+    const p = parseParams(await params, idParamSchema);
+    if (p.error) return p.error;
     const body = await parseBody(request, createCommentSchema);
     if (body.error) return body.error;
 
-    const { comment, error } = await pinService.addComment(
-      paramParsed.data.id,
-      body.data.text,
-      session.user.id,
-      body.data.photoUrl ?? undefined,
-      body.data.photoMetadata ?? undefined
-    );
-    if (error) return errorResponse(400, ApiErrorCode.BAD_REQUEST, error);
-    return json({ comment });
+    const result: CommentResponse = {
+      comment: await createComment({
+        pinId: p.data.id,
+        userId: session.user.id,
+        text: body.data.text,
+        photoUrl: body.data.photo_url,
+      }),
+    };
+    return json(result, { status: 201 });
   } catch (error) {
-    console.error("Pin comment POST error:", error);
-    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Failed to add comment");
+    return handleRouteError(error, "POST /api/pins/:id/comments");
   }
 }

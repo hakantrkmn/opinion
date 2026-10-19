@@ -1,49 +1,31 @@
 import { NextRequest } from "next/server";
-import { userService } from "@/lib/services/userService";
 import {
-  ApiErrorCode,
-  errorResponse,
-  json,
-  requireSession,
   enforceRateLimit,
-} from "@/lib/api-helpers";
-import { RATE_LIMITS } from "@/lib/rate-limit";
-import { getInvisibleUserIds } from "@/lib/blocked-users";
+  handleRouteError,
+  json,
+  parseQuery,
+  requireSession,
+} from "@/server/http/api-helpers";
+import { RATE_LIMITS } from "@/server/http/rate-limit";
+import { userSearchQuerySchema } from "@/lib/validation/user-schemas";
+import { searchUsers } from "@/server/services/users";
 
+/**
+ * GET /api/users/search?q=&limit=&offset= → Paginated<UserSummary>
+ * q must be 2–50 chars. Excludes the viewer, deleted and blocked users.
+ */
 export async function GET(request: NextRequest) {
   try {
-    const { session, error: authError } = await requireSession();
-    if (authError) return authError;
-
-    const rl = enforceRateLimit(
-      request,
-      "users:search",
-      RATE_LIMITS.read,
-      session.user.id
-    );
+    const { session, error } = await requireSession();
+    if (error) return error;
+    const rl = enforceRateLimit(request, "users:search", RATE_LIMITS.read, session.user.id);
     if (rl) return rl;
+    const q = parseQuery(request, userSearchQuerySchema);
+    if (q.error) return q.error;
 
-    const { searchParams } = new URL(request.url);
-    const q = (searchParams.get("q") ?? "").trim();
-    const limit = Number(searchParams.get("limit") ?? "20");
-    const offset = Number(searchParams.get("offset") ?? "0");
-
-    if (q.length < 2) {
-      return json({ users: [] });
-    }
-
-    const { users, error } = await userService.searchUsersByDisplayName(
-      q,
-      Number.isFinite(limit) ? limit : 20,
-      Number.isFinite(offset) ? offset : 0
-    );
-    if (error) return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, error);
-
-    const invisible = new Set(await getInvisibleUserIds(session.user.id));
-    const filtered = (users ?? []).filter((u) => !invisible.has(u.id));
-    return json({ users: filtered });
+    const { q: query, limit, offset } = q.data;
+    return json(await searchUsers(query, session.user.id, { limit, offset }));
   } catch (error) {
-    console.error("Users search error:", error);
-    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Failed to search");
+    return handleRouteError(error, "GET /api/users/search");
   }
 }

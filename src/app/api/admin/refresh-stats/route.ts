@@ -1,65 +1,46 @@
 import { NextRequest } from "next/server";
-import { adminService } from "@/lib/services/adminService";
 import {
-  ApiErrorCode,
-  errorResponse,
+  checkCsrfOrigin,
+  enforceRateLimit,
+  handleRouteError,
   json,
   requireAdmin,
-  enforceRateLimit,
-  checkCsrfOrigin,
-} from "@/lib/api-helpers";
-import { RATE_LIMITS } from "@/lib/rate-limit";
-import { recordAudit } from "@/lib/audit-log";
+} from "@/server/http/api-helpers";
+import { refreshAllUserStats } from "@/server/services/adminService";
+import { recordAudit } from "@/server/services/audit-log";
 
+/**
+ * POST /api/admin/refresh-stats → { ok: true, duration_ms }
+ * Recomputes user_stats for all users via the populate_user_stats() SQL
+ * function.
+ */
 export async function POST(request: NextRequest) {
   try {
     const csrf = checkCsrfOrigin(request);
     if (csrf) return csrf;
-
-    const { session, error: authError } = await requireAdmin();
-    if (authError) return authError;
-
-    const rl = enforceRateLimit(request, "admin:refresh-stats", RATE_LIMITS.admin, session.user.id);
+    const { session, error } = await requireAdmin();
+    if (error) return error;
+    const rl = enforceRateLimit(
+      request,
+      "admin:refresh-stats",
+      { limit: 3, windowMs: 60_000 },
+      session.user.id
+    );
     if (rl) return rl;
 
-    const startTime = performance.now();
-    const { success, error } = await adminService.refreshAllUserStats();
-    if (!success) {
-      console.error("Failed to refresh user statistics:", error);
-      return errorResponse(
-        500,
-        ApiErrorCode.INTERNAL_ERROR,
-        error || "Failed to refresh user statistics"
-      );
-    }
-
-    const duration = Number((performance.now() - startTime).toFixed(2));
-    const summary = await adminService.getUserStatsSummary();
+    const started = performance.now();
+    await refreshAllUserStats();
+    const durationMs = Math.round(performance.now() - started);
 
     await recordAudit({
       actorId: session.user.id,
       actorEmail: session.user.email,
       action: "admin.stats.refresh",
       targetType: "system",
-      metadata: { duration },
+      metadata: { duration_ms: durationMs },
     });
-
-    return json({
-      success: true,
-      message: "All user statistics refreshed successfully",
-      performanceInfo: {
-        duration,
-        method: "bulk_refresh",
-        timestamp: new Date().toISOString(),
-      },
-      summary: summary || null,
-    });
-  } catch (err) {
-    console.error("Error in refresh-stats API:", err);
-    return errorResponse(
-      500,
-      ApiErrorCode.INTERNAL_ERROR,
-      "Internal server error while refreshing statistics"
-    );
+    return json({ ok: true, duration_ms: durationMs });
+  } catch (error) {
+    return handleRouteError(error, "POST /api/admin/refresh-stats");
   }
 }

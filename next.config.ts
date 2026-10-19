@@ -1,136 +1,46 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  images: {
-    // Allow images from all domains for maximum flexibility
-    unoptimized: true,
-    dangerouslyAllowSVG: true,
-    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "juuestllrnczytxmaxzm.supabase.co",
-        port: "",
-        pathname: "/storage/v1/object/public/**",
-      },
-      // Generic Supabase storage pattern for any project
-      {
-        protocol: "https",
-        hostname: "*.supabase.co",
-        port: "",
-        pathname: "/storage/v1/object/public/**",
-      },
-      // Buy Me a Coffee CDN
-      {
-        protocol: "https",
-        hostname: "cdn.buymeacoffee.com",
-        port: "",
-        pathname: "/**",
-      },
-      // Vercel CDN and deployment URLs
-      {
-        protocol: "https",
-        hostname: "*.vercel.app",
-        port: "",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "vercel.com",
-        port: "",
-        pathname: "/**",
-      },
-      // Common CDN providers
-      {
-        protocol: "https",
-        hostname: "*.cloudinary.com",
-        port: "",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "*.cdnbuymeacoffee.com",
-        port: "",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "*.imgur.com",
-        port: "",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "*.githubusercontent.com",
-        port: "",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "*.gravatar.com",
-        port: "",
-        pathname: "/**",
-      },
-      // Allow all HTTPS domains as fallback (be careful with this)
-      {
-        protocol: "https",
-        hostname: "**",
-        port: "",
-        pathname: "/**",
-      },
-      // Allow all HTTP domains as fallback (only for development)
-    ],
+const securityHeaders = [
+  // Clickjacking: never render inside a frame (legacy + CSP).
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  {
+    key: "Permissions-Policy",
+    value: "geolocation=(self), camera=(self), microphone=(), payment=(), usb=()",
   },
+];
+
+const nextConfig: NextConfig = {
+  // Self-contained server bundle for the Docker image (see Dockerfile).
+  output: "standalone",
+  // User uploads live in UPLOAD_DIR at runtime; never trace them into the
+  // build. Keep the glob specific: "./storage/**" also matches Next's own
+  // dist/server/async-storage and breaks the standalone server.
+  outputFileTracingExcludes: { "*": ["./storage/uploads/**"] },
+  devIndicators: { position: "top-left" },
+  poweredByHeader: false,
+  // Images are served by our own /uploads route (already re-encoded WebP),
+  // so no next/image optimizer / remote patterns are needed.
   compiler: {
-    removeConsole: process.env.NODE_ENV === "production",
+    // Strip console.log/info/debug in production builds, keep errors/warnings.
+    removeConsole:
+      process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
   },
   experimental: {
-    optimizePackageImports: [
-      "@radix-ui/react-alert-dialog",
-      "@radix-ui/react-dialog",
-      "@radix-ui/react-label",
-      "@radix-ui/react-scroll-area",
-      "@radix-ui/react-select",
-      "@radix-ui/react-slot",
-      "@radix-ui/react-primitive",
-      "@radix-ui/react-portal",
-      "@radix-ui/react-presence",
-      "@radix-ui/react-dismissable-layer",
-      "@radix-ui/react-focus-scope",
-      "@radix-ui/react-compose-refs",
-      "lucide-react",
-      "class-variance-authority",
-      "clsx",
-    ],
+    optimizePackageImports: ["lucide-react"],
   },
-  webpack: (config, { dev, isServer }) => {
-    // Optimize bundle splitting
-    if (!dev && !isServer) {
-      config.optimization.splitChunks = {
-        chunks: "all",
-        cacheGroups: {
-          vendor: {
-            test: /[\\/]node_modules[\\/]/,
-            name: "vendors",
-            priority: 10,
-            reuseExistingChunk: true,
-          },
-          radix: {
-            test: /[\\/]node_modules[\\/]@radix-ui[\\/]/,
-            name: "radix",
-            priority: 20,
-            reuseExistingChunk: true,
-          },
-          maplibre: {
-            test: /[\\/]node_modules[\\/](maplibre-gl|mapbox-gl)[\\/]/,
-            name: "maplibre",
-            priority: 20,
-            reuseExistingChunk: true,
-          },
-        },
-      };
-    }
-    return config;
+  async headers() {
+    return [
+      // /uploads sets its own stricter CSP (default-src 'none'; sandbox),
+      // which a global CSP header would otherwise replace.
+      { source: "/((?!uploads/).*)", headers: securityHeaders },
+      {
+        source: "/uploads/:path*",
+        headers: securityHeaders.filter((h) => h.key !== "Content-Security-Policy"),
+      },
+    ];
   },
 };
 

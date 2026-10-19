@@ -1,27 +1,27 @@
 import { NextRequest } from "next/server";
-import { userService } from "@/lib/services/userService";
 import {
-  ApiErrorCode,
-  errorResponse,
-  json,
-  requireSession,
   enforceRateLimit,
-} from "@/lib/api-helpers";
-import { RATE_LIMITS } from "@/lib/rate-limit";
+  handleRouteError,
+  json,
+  parseQuery,
+  requireSession,
+} from "@/server/http/api-helpers";
+import { RATE_LIMITS } from "@/server/http/rate-limit";
+import { offsetPaginationSchema } from "@/server/http/pagination";
+import { listUserComments } from "@/server/services/users";
 
+/** GET /api/profile/comments?limit&offset → Paginated<UserCommentItem> (own) */
 export async function GET(request: NextRequest) {
   try {
-    const { session, error: authError } = await requireSession();
-    if (authError) return authError;
-
+    const { session, error } = await requireSession();
+    if (error) return error;
     const rl = enforceRateLimit(request, "profile:comments", RATE_LIMITS.read, session.user.id);
     if (rl) return rl;
+    const q = parseQuery(request, offsetPaginationSchema());
+    if (q.error) return q.error;
 
-    const { comments, error } = await userService.getUserComments(session.user.id);
-    if (error) return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, error);
-    return json({ comments });
+    return json(await listUserComments(session.user.id, session.user.id, q.data));
   } catch (error) {
-    console.error("Profile comments error:", error);
-    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Failed to get comments");
+    return handleRouteError(error, "GET /api/profile/comments");
   }
 }

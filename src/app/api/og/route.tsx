@@ -1,17 +1,32 @@
 import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
+import { enforceRateLimit } from "@/server/http/api-helpers";
+import { RATE_LIMITS } from "@/server/http/rate-limit";
 
 export const runtime = "nodejs";
 
+function clamp(value: string | null, max: number): string | null {
+  if (!value) return null;
+  const v = value.trim();
+  return v.length > max ? `${v.slice(0, max - 1)}…` : v;
+}
+
 export async function GET(request: NextRequest) {
+  // Image rendering is CPU-heavy: limit per client IP.
+  const rl = enforceRateLimit(request, "og", RATE_LIMITS.og);
+  if (rl) return rl;
+
   try {
     const { searchParams } = new URL(request.url);
 
-    const title = searchParams.get("title") || "droPINion";
+    const title = clamp(searchParams.get("title"), 80) || "droPINion";
     const description =
-      searchParams.get("description") || "Share your thoughts on the map";
-    const location = searchParams.get("location");
-    const type = searchParams.get("type") || "default";
+      clamp(searchParams.get("description"), 160) ||
+      "Share your thoughts on the map";
+    const location = clamp(searchParams.get("location"), 60);
+    const rawType = searchParams.get("type");
+    const type =
+      rawType === "pin" || rawType === "location" ? rawType : "default";
 
     // Define colors and styling
     const backgroundColor =
@@ -160,6 +175,10 @@ export async function GET(request: NextRequest) {
       {
         width: 1200,
         height: 630,
+        headers: {
+          // Same query → same image; let CDNs/browsers cache it.
+          "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+        },
       }
     );
   } catch (error) {

@@ -1,58 +1,59 @@
 import { NextRequest } from "next/server";
-import { userService } from "@/lib/services/userService";
 import {
-  ApiErrorCode,
-  errorResponse,
-  json,
-  requireSession,
-  parseBody,
-  enforceRateLimit,
   checkCsrfOrigin,
-} from "@/lib/api-helpers";
-import { updateProfileSchema } from "@/lib/validation/schemas";
-import { RATE_LIMITS } from "@/lib/rate-limit";
+  enforceRateLimit,
+  handleRouteError,
+  json,
+  parseBody,
+  requireSession,
+} from "@/server/http/api-helpers";
+import { RATE_LIMITS } from "@/server/http/rate-limit";
+import { updateProfileSchema } from "@/lib/validation/user-schemas";
+import {
+  getOwnProfile,
+  getUserStats,
+  updateDisplayName,
+} from "@/server/services/users";
+import type { OwnProfileResponse, OwnUserProfile } from "@/types/userTypes";
 
-export async function PUT(request: NextRequest) {
+/** GET /api/profile → { profile, stats } for the signed-in user. */
+export async function GET(request: NextRequest) {
   try {
-    const csrf = checkCsrfOrigin(request);
-    if (csrf) return csrf;
-
-    const { session, error: authError } = await requireSession();
-    if (authError) return authError;
-
-    const rl = enforceRateLimit(request, "profile:put", RATE_LIMITS.write, session.user.id);
+    const { session, error } = await requireSession();
+    if (error) return error;
+    const rl = enforceRateLimit(request, "profile:get", RATE_LIMITS.read, session.user.id);
     if (rl) return rl;
 
-    const body = await parseBody(request, updateProfileSchema);
-    if (body.error) return body.error;
-
-    if (body.data.displayName !== undefined) {
-      const result = await userService.updateDisplayName(session.user.id, body.data.displayName);
-      if (!result.success) return errorResponse(400, ApiErrorCode.BAD_REQUEST, result.error || "Failed to update");
-    }
-    return json({ success: true });
+    const [profile, stats] = await Promise.all([
+      getOwnProfile(session.user.id),
+      getUserStats(session.user.id),
+    ]);
+    return json<OwnProfileResponse>({ profile, stats });
   } catch (error) {
-    console.error("Profile update error:", error);
-    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Failed to update profile");
+    return handleRouteError(error, "GET /api/profile");
   }
 }
 
-export async function DELETE(request: NextRequest) {
+/** PATCH /api/profile { display_name? } → { profile } */
+export async function PATCH(request: NextRequest) {
   try {
     const csrf = checkCsrfOrigin(request);
     if (csrf) return csrf;
-
-    const { session, error: authError } = await requireSession();
-    if (authError) return authError;
-
-    const rl = enforceRateLimit(request, "profile:delete", RATE_LIMITS.write, session.user.id);
+    const { session, error } = await requireSession();
+    if (error) return error;
+    const rl = enforceRateLimit(request, "profile:patch", RATE_LIMITS.write, session.user.id);
     if (rl) return rl;
+    const body = await parseBody(request, updateProfileSchema);
+    if (body.error) return body.error;
 
-    const result = await userService.deleteAvatar(session.user.id);
-    if (!result.success) return errorResponse(400, ApiErrorCode.BAD_REQUEST, result.error || "Failed to delete avatar");
-    return json({ success: true });
+    let profile: OwnUserProfile;
+    if (body.data.display_name !== undefined) {
+      profile = await updateDisplayName(session.user.id, body.data.display_name);
+    } else {
+      profile = await getOwnProfile(session.user.id);
+    }
+    return json({ profile });
   } catch (error) {
-    console.error("Avatar delete error:", error);
-    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Failed to delete avatar");
+    return handleRouteError(error, "PATCH /api/profile");
   }
 }

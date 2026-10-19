@@ -1,40 +1,27 @@
 import { NextRequest } from "next/server";
-import { adminService } from "@/lib/services/adminService";
 import {
-  ApiErrorCode,
-  errorResponse,
+  enforceRateLimit,
+  handleRouteError,
   json,
   parseQuery,
   requireAdmin,
-  enforceRateLimit,
-} from "@/lib/api-helpers";
-import { adminReportsQuerySchema } from "@/lib/validation/schemas";
-import { RATE_LIMITS } from "@/lib/rate-limit";
+} from "@/server/http/api-helpers";
+import { RATE_LIMITS } from "@/server/http/rate-limit";
+import { adminReportsQuerySchema } from "@/lib/validation/user-schemas";
+import { listReports } from "@/server/services/adminService";
 
+/** GET /api/admin/reports?limit&offset&status=open|resolved|dismissed|all → AdminPage<AdminReport> */
 export async function GET(request: NextRequest) {
   try {
     const { session, error } = await requireAdmin();
     if (error) return error;
-
-    const rl = enforceRateLimit(
-      request,
-      "admin:reports",
-      RATE_LIMITS.admin,
-      session.user.id
-    );
+    const rl = enforceRateLimit(request, "admin:reports", RATE_LIMITS.admin, session.user.id);
     if (rl) return rl;
+    const q = parseQuery(request, adminReportsQuerySchema);
+    if (q.error) return q.error;
 
-    const parsed = parseQuery(request, adminReportsQuerySchema);
-    if (parsed.error) return parsed.error;
-
-    const result = await adminService.getReports(parsed.data);
-    return json(result);
-  } catch (err) {
-    console.error("Admin reports API error:", err);
-    return errorResponse(
-      500,
-      ApiErrorCode.INTERNAL_ERROR,
-      "Internal server error"
-    );
+    return json(await listReports(q.data));
+  } catch (error) {
+    return handleRouteError(error, "GET /api/admin/reports");
   }
 }

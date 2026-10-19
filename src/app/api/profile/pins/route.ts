@@ -1,27 +1,27 @@
 import { NextRequest } from "next/server";
-import { userService } from "@/lib/services/userService";
 import {
-  ApiErrorCode,
-  errorResponse,
-  json,
-  requireSession,
   enforceRateLimit,
-} from "@/lib/api-helpers";
-import { RATE_LIMITS } from "@/lib/rate-limit";
+  handleRouteError,
+  json,
+  parseQuery,
+  requireSession,
+} from "@/server/http/api-helpers";
+import { RATE_LIMITS } from "@/server/http/rate-limit";
+import { offsetPaginationSchema } from "@/server/http/pagination";
+import { listUserPins } from "@/server/services/users";
 
+/** GET /api/profile/pins?limit&offset → Paginated<PinSummary> (own) */
 export async function GET(request: NextRequest) {
   try {
-    const { session, error: authError } = await requireSession();
-    if (authError) return authError;
-
+    const { session, error } = await requireSession();
+    if (error) return error;
     const rl = enforceRateLimit(request, "profile:pins", RATE_LIMITS.read, session.user.id);
     if (rl) return rl;
+    const q = parseQuery(request, offsetPaginationSchema());
+    if (q.error) return q.error;
 
-    const { pins, error } = await userService.getUserPins(session.user.id);
-    if (error) return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, error);
-    return json({ pins });
+    return json(await listUserPins(session.user.id, q.data));
   } catch (error) {
-    console.error("Profile pins error:", error);
-    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Failed to get pins");
+    return handleRouteError(error, "GET /api/profile/pins");
   }
 }

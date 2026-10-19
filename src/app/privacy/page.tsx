@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Header from "@/components/common/Header";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 export const metadata: Metadata = {
@@ -19,25 +21,27 @@ const CONTACT_EMAIL = "hakanturkmendev@gmail.com";
 
 export default function PrivacyPolicyPage() {
   return (
-    <div className="min-h-screen bg-background">
-      <main className="mx-auto w-full max-w-3xl px-6 py-12 sm:py-16">
-        <header className="mb-10">
+    <div className="min-h-dvh bg-background">
+      <Header />
+      <main className="mx-auto w-full max-w-3xl px-4 pb-24 pt-8 sm:px-6 sm:pt-12">
+        <header className="mb-10 flex flex-col gap-3 border-b border-border/60 pb-8">
           <Link
             href="/"
-            className="text-sm text-muted-foreground hover:text-foreground"
+            className="-ml-2 inline-flex h-10 w-fit items-center gap-1.5 rounded-lg px-2 text-sm text-muted-foreground outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
           >
-            ← Back to droPINion
+            <ArrowLeft aria-hidden className="size-4" />
+            Back to map
           </Link>
-          <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
+          <h1 className="text-3xl font-bold tracking-tight text-balance sm:text-4xl">
             Privacy Policy
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Last updated: {LAST_UPDATED}
+          <p className="text-sm text-muted-foreground">
+            Last updated <time>{LAST_UPDATED}</time>
           </p>
         </header>
 
-        <article className="prose prose-neutral dark:prose-invert max-w-none space-y-8 text-sm leading-relaxed">
-          <section className="space-y-3">
+        <article className="flex max-w-[68ch] flex-col gap-10 text-[15px] leading-7 text-foreground/85 [&_a]:font-medium [&_a]:text-foreground [&_a]:underline [&_a]:decoration-primary/50 [&_a]:underline-offset-4 [&_a:hover]:decoration-primary [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:leading-snug [&_h2]:tracking-tight [&_h2]:text-foreground [&_h3]:pt-2 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-foreground [&_li]:pl-1 [&_strong]:font-semibold [&_strong]:text-foreground [&_ul]:marker:text-muted-foreground">
+          <section className="flex flex-col gap-3">
             <p>
               droPINion (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;) is a
               location-based social map. This Privacy Policy explains what
@@ -50,13 +54,13 @@ export default function PrivacyPolicyPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
-            <h2 className="text-xl font-semibold">1. Information We Collect</h2>
+          <section className="flex flex-col gap-3">
+            <h2>1. Information We Collect</h2>
 
-            <h3 className="text-base font-semibold">
+            <h3>
               Information you provide
             </h3>
-            <ul className="list-disc space-y-1 pl-6">
+            <ul className="flex list-disc flex-col gap-1.5 pl-5">
               <li>
                 <strong>Account:</strong> email address and password (passwords
                 are stored hashed; we never see your plaintext password).
@@ -77,10 +81,10 @@ export default function PrivacyPolicyPage() {
               </li>
             </ul>
 
-            <h3 className="text-base font-semibold">
+            <h3>
               Information collected automatically
             </h3>
-            <ul className="list-disc space-y-1 pl-6">
+            <ul className="flex list-disc flex-col gap-1.5 pl-5">
               <li>
                 <strong>Location:</strong> when you create a pin or center the
                 map on your current position, the app reads your device GPS
@@ -103,10 +107,10 @@ export default function PrivacyPolicyPage() {
               </li>
             </ul>
 
-            <h3 className="text-base font-semibold">
+            <h3>
               Information we do <em>not</em> collect
             </h3>
-            <ul className="list-disc space-y-1 pl-6">
+            <ul className="flex list-disc flex-col gap-1.5 pl-5">
               <li>We do not collect contacts, calendar, or microphone data.</li>
               <li>
                 We do not run third-party analytics or advertising SDKs in the
@@ -119,11 +123,11 @@ export default function PrivacyPolicyPage() {
             </ul>
           </section>
 
-          <section className="space-y-3">
-            <h2 className="text-xl font-semibold">
+          <section className="flex flex-col gap-3">
+            <h2>
               2. How We Use Your Information
             </h2>
-            <ul className="list-disc space-y-1 pl-6">
+            <ul className="flex list-disc flex-col gap-1.5 pl-5">
               <li>To create and authenticate your account.</li>
               <li>
                 To display your pins, comments, and votes to other users at the
@@ -143,8 +147,8 @@ export default function PrivacyPolicyPage() {
             </ul>
           </section>
 
-          <section className="space-y-3">
-            <h2 className="text-xl font-semibold">3. Public Content</h2>
+          <section className="flex flex-col gap-3">
+            <h2>3. Public Content</h2>
             <p>
               Pins, comments, votes, and your public profile (display name,
               avatar) are visible to anyone using droPINion, including users
@@ -159,13 +163,13 @@ export default function PrivacyPolicyPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
-            <h2 className="text-xl font-semibold">4. Third-Party Services</h2>
+          <section className="flex flex-col gap-3">
+            <h2>4. Third-Party Services</h2>
             <p>
               We use a small number of trusted vendors to operate the service.
               Each receives only the data they need:
             </p>
-            <ul className="list-disc space-y-1 pl-6">
+            <ul className="flex list-disc flex-col gap-1.5 pl-5">
               <li>
                 <strong>Apple Push Notification Service / Firebase Cloud
                 Messaging:</strong> to deliver push notifications. Your device
@@ -188,8 +192,8 @@ export default function PrivacyPolicyPage() {
             </ul>
           </section>
 
-          <section className="space-y-3">
-            <h2 className="text-xl font-semibold">
+          <section className="flex flex-col gap-3">
+            <h2>
               5. User-Generated Content & Moderation
             </h2>
             <p>
@@ -197,7 +201,7 @@ export default function PrivacyPolicyPage() {
               abusive behaviour. We provide the following tools, accessible
               from inside the app:
             </p>
-            <ul className="list-disc space-y-1 pl-6">
+            <ul className="flex list-disc flex-col gap-1.5 pl-5">
               <li>
                 <strong>Report:</strong> any pin, comment, or user can be
                 reported via the &quot;…&quot; menu, with reasons including
@@ -221,9 +225,9 @@ export default function PrivacyPolicyPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
-            <h2 className="text-xl font-semibold">6. Data Retention</h2>
-            <ul className="list-disc space-y-1 pl-6">
+          <section className="flex flex-col gap-3">
+            <h2>6. Data Retention</h2>
+            <ul className="flex list-disc flex-col gap-1.5 pl-5">
               <li>
                 Account data is retained while your account is active.
               </li>
@@ -240,13 +244,13 @@ export default function PrivacyPolicyPage() {
             </ul>
           </section>
 
-          <section className="space-y-3">
-            <h2 className="text-xl font-semibold">7. Your Rights</h2>
+          <section className="flex flex-col gap-3">
+            <h2>7. Your Rights</h2>
             <p>
               Depending on where you live (e.g. EU/UK under GDPR, California
               under CCPA, Türkiye under KVKK), you may have the right to:
             </p>
-            <ul className="list-disc space-y-1 pl-6">
+            <ul className="flex list-disc flex-col gap-1.5 pl-5">
               <li>Access the personal data we hold about you.</li>
               <li>Correct inaccurate data (you can edit your profile in the app).</li>
               <li>Delete your data (you can delete your account from the app).</li>
@@ -258,7 +262,7 @@ export default function PrivacyPolicyPage() {
               To exercise any of these rights, contact us at{" "}
               <a
                 href={`mailto:${CONTACT_EMAIL}`}
-                className="font-medium text-primary underline underline-offset-2"
+                className="break-words"
               >
                 {CONTACT_EMAIL}
               </a>
@@ -266,15 +270,15 @@ export default function PrivacyPolicyPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
-            <h2 className="text-xl font-semibold">8. Children</h2>
+          <section className="flex flex-col gap-3">
+            <h2>8. Children</h2>
             <p>
               droPINion is not intended for children under 13 (or under 16 in
               the EEA, where applicable). We do not knowingly collect data
               from such children. If you believe a child has registered, email{" "}
               <a
                 href={`mailto:${CONTACT_EMAIL}`}
-                className="font-medium text-primary underline underline-offset-2"
+                className="break-words"
               >
                 {CONTACT_EMAIL}
               </a>{" "}
@@ -282,8 +286,8 @@ export default function PrivacyPolicyPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
-            <h2 className="text-xl font-semibold">9. Security</h2>
+          <section className="flex flex-col gap-3">
+            <h2>9. Security</h2>
             <p>
               We use TLS in transit, hashed passwords (better-auth), restricted
               admin access, and database-level access controls. No system is
@@ -292,8 +296,8 @@ export default function PrivacyPolicyPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
-            <h2 className="text-xl font-semibold">10. International Transfers</h2>
+          <section className="flex flex-col gap-3">
+            <h2>10. International Transfers</h2>
             <p>
               Our infrastructure may store and process data in countries other
               than the one you reside in. Where required, we rely on standard
@@ -301,8 +305,8 @@ export default function PrivacyPolicyPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
-            <h2 className="text-xl font-semibold">
+          <section className="flex flex-col gap-3">
+            <h2>
               11. Changes to This Policy
             </h2>
             <p>
@@ -313,13 +317,13 @@ export default function PrivacyPolicyPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
-            <h2 className="text-xl font-semibold">12. Contact</h2>
+          <section className="flex flex-col gap-3">
+            <h2>12. Contact</h2>
             <p>
               Questions, requests, or complaints? Email us at{" "}
               <a
                 href={`mailto:${CONTACT_EMAIL}`}
-                className="font-medium text-primary underline underline-offset-2"
+                className="break-words"
               >
                 {CONTACT_EMAIL}
               </a>

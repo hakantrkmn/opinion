@@ -1,117 +1,51 @@
 import { NextRequest } from "next/server";
-import { userService } from "@/lib/services/userService";
 import {
-  ApiErrorCode,
-  errorResponse,
-  json,
-  requireSession,
-  enforceRateLimit,
   checkCsrfOrigin,
-} from "@/lib/api-helpers";
-import { idParamSchema } from "@/lib/validation/schemas";
-import { RATE_LIMITS } from "@/lib/rate-limit";
-import { isBlockedRelation } from "@/lib/blocked-users";
+  enforceRateLimit,
+  handleRouteError,
+  json,
+  parseParams,
+  requireSession,
+} from "@/server/http/api-helpers";
+import { RATE_LIMITS } from "@/server/http/rate-limit";
+import { idParamSchema } from "@/lib/validation/user-schemas";
+import { followUser, unfollowUser } from "@/server/services/users";
+import type { FollowStatusResponse } from "@/types/userTypes";
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+type Ctx = { params: Promise<{ id: string }> };
+
+async function guard(request: NextRequest, ctx: Ctx, scope: string) {
+  const csrf = checkCsrfOrigin(request);
+  if (csrf) return { error: csrf } as const;
+  const { session, error } = await requireSession();
+  if (error) return { error } as const;
+  const rl = enforceRateLimit(request, scope, RATE_LIMITS.write, session.user.id);
+  if (rl) return { error: rl } as const;
+  const p = parseParams(await ctx.params, idParamSchema);
+  if (p.error) return { error: p.error } as const;
+  return { error: null, userId: session.user.id, targetId: p.data.id } as const;
+}
+
+/** POST /api/users/:id/follow → { is_following: true } (idempotent) */
+export async function POST(request: NextRequest, ctx: Ctx) {
   try {
-    const csrf = checkCsrfOrigin(request);
-    if (csrf) return csrf;
-
-    const { session, error: authError } = await requireSession();
-    if (authError) return authError;
-
-    const rl = enforceRateLimit(
-      request,
-      "users:follow",
-      RATE_LIMITS.write,
-      session.user.id
-    );
-    if (rl) return rl;
-
-    const parsed = idParamSchema.safeParse(await params);
-    if (!parsed.success) {
-      return errorResponse(400, ApiErrorCode.BAD_REQUEST, "Invalid id");
-    }
-
-    const blocked = await isBlockedRelation(session.user.id, parsed.data.id);
-    if (blocked) {
-      return errorResponse(
-        403,
-        ApiErrorCode.FORBIDDEN,
-        "You can't follow this user"
-      );
-    }
-
-    const result = await userService.followUser(session.user.id, parsed.data.id);
-    if (!result.success) {
-      return errorResponse(
-        result.error === "User not found" ? 404 : 400,
-        result.error === "User not found"
-          ? ApiErrorCode.NOT_FOUND
-          : ApiErrorCode.BAD_REQUEST,
-        result.error ?? "Failed to follow user"
-      );
-    }
-
-    return json({ success: true, isFollowing: true });
+    const g = await guard(request, ctx, "users:follow");
+    if (g.error) return g.error;
+    await followUser(g.userId, g.targetId);
+    return json<FollowStatusResponse>({ is_following: true });
   } catch (error) {
-    console.error("Follow POST error:", error);
-    return errorResponse(
-      500,
-      ApiErrorCode.INTERNAL_ERROR,
-      "Failed to follow user"
-    );
+    return handleRouteError(error, "POST /api/users/:id/follow");
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+/** DELETE /api/users/:id/follow → { is_following: false } (idempotent) */
+export async function DELETE(request: NextRequest, ctx: Ctx) {
   try {
-    const csrf = checkCsrfOrigin(request);
-    if (csrf) return csrf;
-
-    const { session, error: authError } = await requireSession();
-    if (authError) return authError;
-
-    const rl = enforceRateLimit(
-      request,
-      "users:unfollow",
-      RATE_LIMITS.write,
-      session.user.id
-    );
-    if (rl) return rl;
-
-    const parsed = idParamSchema.safeParse(await params);
-    if (!parsed.success) {
-      return errorResponse(400, ApiErrorCode.BAD_REQUEST, "Invalid id");
-    }
-
-    const result = await userService.unfollowUser(
-      session.user.id,
-      parsed.data.id
-    );
-    if (!result.success) {
-      return errorResponse(
-        result.error === "User not found" ? 404 : 400,
-        result.error === "User not found"
-          ? ApiErrorCode.NOT_FOUND
-          : ApiErrorCode.BAD_REQUEST,
-        result.error ?? "Failed to unfollow user"
-      );
-    }
-
-    return json({ success: true, isFollowing: false });
+    const g = await guard(request, ctx, "users:follow");
+    if (g.error) return g.error;
+    await unfollowUser(g.userId, g.targetId);
+    return json<FollowStatusResponse>({ is_following: false });
   } catch (error) {
-    console.error("Follow DELETE error:", error);
-    return errorResponse(
-      500,
-      ApiErrorCode.INTERNAL_ERROR,
-      "Failed to unfollow user"
-    );
+    return handleRouteError(error, "DELETE /api/users/:id/follow");
   }
 }

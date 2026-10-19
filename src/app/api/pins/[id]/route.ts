@@ -1,20 +1,44 @@
-import { NextRequest } from "next/server";
-import { pinService } from "@/lib/services/pinService";
+import type { NextRequest } from "next/server";
 import {
-  ApiErrorCode,
-  errorResponse,
-  json,
-  requireSession,
-  enforceRateLimit,
   checkCsrfOrigin,
-} from "@/lib/api-helpers";
+  enforceRateLimit,
+  getSession,
+  handleRouteError,
+  json,
+  parseParams,
+  requireSession,
+} from "@/server/http/api-helpers";
+import { RATE_LIMITS } from "@/server/http/rate-limit";
 import { idParamSchema } from "@/lib/validation/schemas";
-import { RATE_LIMITS } from "@/lib/rate-limit";
+import { deletePin, getPinById } from "@/server/services/pins";
+import type { DeleteCommentResponse, PinResponse } from "@/types/api";
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+type Ctx = { params: Promise<{ id: string }> };
+
+/** GET /api/pins/:id → PinResponse (404 NOT_FOUND). */
+export async function GET(request: NextRequest, { params }: Ctx) {
+  try {
+    const session = await getSession();
+    const viewerId = session?.user.id ?? null;
+
+    const rl = enforceRateLimit(request, "pins:get", RATE_LIMITS.read, viewerId);
+    if (rl) return rl;
+
+    const p = parseParams(await params, idParamSchema);
+    if (p.error) return p.error;
+
+    const body: PinResponse = { pin: await getPinById(p.data.id, viewerId) };
+    return json(body, { headers: { "Cache-Control": "private, no-store" } });
+  } catch (error) {
+    return handleRouteError(error, "GET /api/pins/:id");
+  }
+}
+
+/**
+ * DELETE /api/pins/:id — owner only (403), 404 when missing.
+ * → { pin_deleted: true, pin_id }
+ */
+export async function DELETE(request: NextRequest, { params }: Ctx) {
   try {
     const csrf = checkCsrfOrigin(request);
     if (csrf) return csrf;
@@ -25,14 +49,12 @@ export async function DELETE(
     const rl = enforceRateLimit(request, "pins:delete", RATE_LIMITS.write, session.user.id);
     if (rl) return rl;
 
-    const parsed = idParamSchema.safeParse(await params);
-    if (!parsed.success) return errorResponse(400, ApiErrorCode.BAD_REQUEST, "Invalid id");
+    const p = parseParams(await params, idParamSchema);
+    if (p.error) return p.error;
 
-    const { success, error } = await pinService.deletePin(parsed.data.id, session.user.id);
-    if (error) return errorResponse(400, ApiErrorCode.BAD_REQUEST, error);
-    return json({ success });
+    const body: DeleteCommentResponse = await deletePin(p.data.id, session.user.id);
+    return json(body);
   } catch (error) {
-    console.error("Pin DELETE error:", error);
-    return errorResponse(500, ApiErrorCode.INTERNAL_ERROR, "Failed to delete pin");
+    return handleRouteError(error, "DELETE /api/pins/:id");
   }
 }

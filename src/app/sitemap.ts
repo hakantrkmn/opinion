@@ -1,11 +1,12 @@
-import { db } from "@/db";
-import { pins } from "@/db/schema/app";
 import { getBaseUrl } from "@/lib/site-url";
-import { desc } from "drizzle-orm";
+import { getSitemapPins } from "@/server/services/pins/pages";
 import { MetadataRoute } from "next";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+/** Newest pins only: keeps the sitemap small and the query an index scan. */
+const SITEMAP_MAX_PINS = 5000;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = getBaseUrl();
@@ -28,16 +29,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let pinPages: MetadataRoute.Sitemap = [];
 
   try {
-    const allPins = await db
-      .select({
-        id: pins.id,
-        createdAt: pins.createdAt,
-        updatedAt: pins.updatedAt,
-        name: pins.name,
-      })
-      .from(pins)
-      .orderBy(desc(pins.createdAt))
-      .limit(2000);
+    const allPins = await getSitemapPins(SITEMAP_MAX_PINS);
 
     pinPages = allPins.map((pin) => {
       const lastModified = new Date(pin.updatedAt || pin.createdAt);
