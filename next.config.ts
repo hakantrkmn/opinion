@@ -13,8 +13,10 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  // Self-contained server bundle for the Docker image (see Dockerfile).
-  output: "standalone",
+  // Self-contained server bundle only for the Docker image (the Dockerfile
+  // sets NEXT_OUTPUT=standalone). Platforms that run `npm start` (Dokploy /
+  // Nixpacks) use the regular build, which `next start` requires.
+  output: process.env.NEXT_OUTPUT === "standalone" ? "standalone" : undefined,
   // User uploads live in UPLOAD_DIR at runtime; never trace them into the
   // build. Keep the glob specific: "./storage/**" also matches Next's own
   // dist/server/async-storage and breaks the standalone server.

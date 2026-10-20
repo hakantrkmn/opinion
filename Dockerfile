@@ -13,7 +13,8 @@ RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
 # --- build -------------------------------------------------------------------
 FROM node:${NODE_VERSION} AS builder
 WORKDIR /app
-ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    NEXT_OUTPUT=standalone
 # NEXT_PUBLIC_* values are inlined into the client bundle at build time.
 ARG NEXT_PUBLIC_SITE_URL
 ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
