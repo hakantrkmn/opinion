@@ -73,7 +73,7 @@ non-root, `node:22-bookworm-slim`). On start the container runs
 
 ```bash
 docker build --build-arg NEXT_PUBLIC_SITE_URL=https://example.com -t dropinion .
-docker run -p 3000:3000 --env-file .env -v dropinion-uploads:/app/storage/uploads dropinion
+docker run -p 3000:3000 --env-file .env -v dropinion-uploads:/app/storage dropinion
 ```
 
 Run the container behind a reverse proxy (Traefik/Dokploy) that sets
@@ -81,8 +81,12 @@ Run the container behind a reverse proxy (Traefik/Dokploy) that sets
 `TRUSTED_PROXY_HOPS` entries of `X-Forwarded-For`.
 
 Production runs on Dokploy behind Traefik (TLS terminated at the proxy, one
-container). Mount a persistent volume at `/app/storage/uploads` and keep
-`TRUSTED_PROXY_HOPS=1`. Rate limits are kept in process memory, which is
+container), built with **Build Type: Dockerfile** and the build argument
+`NEXT_PUBLIC_SITE_URL`. The `opinion-uploads` volume is mounted at
+`/app/storage` (`UPLOAD_DIR=/app/storage/uploads`); the container runs as
+uid 1001, so the volume must be owned by it
+(`chown -R 1001:1001 /var/lib/docker/volumes/opinion-uploads/_data`).
+Keep `TRUSTED_PROXY_HOPS=1`. Rate limits are kept in process memory, which is
 correct for a single instance; move them to Redis/Postgres before scaling
 out.
 

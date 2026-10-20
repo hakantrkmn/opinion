@@ -49,7 +49,10 @@ COPY --from=deps --chown=nextjs:nodejs /app/node_modules/drizzle-orm ./node_modu
 COPY --from=deps --chown=nextjs:nodejs /app/node_modules/postgres ./node_modules/postgres
 
 USER nextjs
-VOLUME ["/app/storage/uploads"]
+# No VOLUME instruction: the platform mounts persistent storage (Dokploy
+# mounts the `opinion-uploads` volume at /app/storage). An image-declared
+# VOLUME at /app/storage/uploads would shadow that mount with an empty
+# anonymous volume. The mounted directory must be writable by uid 1001.
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
