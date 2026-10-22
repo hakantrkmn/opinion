@@ -1,6 +1,6 @@
 import "server-only";
 import { db, sql } from "@/server/db";
-import { pushService } from "@/server/services/pushService";
+import { pushService, type PushDevice } from "@/server/services/pushService";
 import { isBlockedRelation } from "@/server/services/blocks";
 
 /**
@@ -64,8 +64,8 @@ export async function notifyCommentLiked(params: {
     `);
     if (claimed.length === 0) return;
 
-    const tokens = await pushService.getActiveTokensForUser(comment.user_id);
-    if (tokens.length === 0) return;
+    const devices = await pushService.getActiveDevicesForUser(comment.user_id);
+    if (devices.length === 0) return;
 
     const [liker] = (await db.execute(sql`
       SELECT COALESCE(display_name, name) AS name FROM "user" WHERE id = ${likerId}
@@ -79,7 +79,7 @@ export async function notifyCommentLiked(params: {
           ? `${likerName} and 1 other liked your comment`
           : `${likerName} and ${others} others liked your comment`;
 
-    await pushService.sendToTokens(tokens, {
+    await pushService.sendToDevices(devices, {
       title,
       body: snippet(comment.text),
       data: {
@@ -108,7 +108,7 @@ export async function notifyFollowersOfNewPin(params: {
 }): Promise<void> {
   try {
     const rows = (await db.execute(sql`
-      SELECT DISTINCT t.token
+      SELECT DISTINCT t.token, t.platform
       FROM user_follows f
       JOIN push_tokens t ON t.user_id = f.follower_id AND t.is_active
       JOIN "user" fu ON fu.id = f.follower_id AND fu.deleted_at IS NULL
@@ -118,15 +118,15 @@ export async function notifyFollowersOfNewPin(params: {
           WHERE (b.blocker_id = f.follower_id AND b.blocked_id = f.following_id)
              OR (b.blocker_id = f.following_id AND b.blocked_id = f.follower_id)
         )
-    `)) as unknown as Array<{ token: string }>;
+    `)) as unknown as PushDevice[];
     if (rows.length === 0) return;
 
     const [author] = (await db.execute(sql`
       SELECT COALESCE(display_name, name) AS name FROM "user" WHERE id = ${params.authorId}
     `)) as unknown as Array<{ name: string | null }>;
 
-    await pushService.sendToTokens(
-      rows.map((r) => r.token),
+    await pushService.sendToDevices(
+      rows,
       {
         title: `${author?.name || "Birisi"} yeni bir pin bıraktı`,
         body: params.pinName,

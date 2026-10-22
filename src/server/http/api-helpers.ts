@@ -326,8 +326,8 @@ function allowedOrigins(request: NextRequest): Set<string> {
   return origins;
 }
 
-// Native apps using cookies (via @better-auth/expo) send this scheme as
-// Origin. Bearer-authenticated requests skip the check entirely.
+// The native apps send this scheme as Origin. Bearer-authenticated requests
+// skip the check entirely.
 const NATIVE_ORIGINS = new Set<string>(["opinionmobile://"]);
 
 /**

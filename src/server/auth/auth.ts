@@ -5,7 +5,6 @@ import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { emailOTP } from "better-auth/plugins/email-otp";
 import { bearer } from "better-auth/plugins/bearer";
-import { expo } from "@better-auth/expo";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/server/db";
 import * as schema from "@/server/db/schema/auth";
@@ -58,11 +57,7 @@ function trustedOrigins(): string[] {
   for (const extra of (process.env.BETTER_AUTH_TRUSTED_ORIGINS ?? "").split(",")) {
     if (extra.trim()) origins.add(extra.trim());
   }
-  if (!isProduction) {
-    // Expo Go / dev client during development only.
-    origins.add("exp://");
-    origins.add("http://localhost:3000");
-  }
+  if (!isProduction) origins.add("http://localhost:3000");
   return [...origins];
 }
 
@@ -161,7 +156,6 @@ export const auth = betterAuth({
     },
   },
   plugins: [
-    expo(),
     bearer(),
     emailOTP({
       otpLength: 6,

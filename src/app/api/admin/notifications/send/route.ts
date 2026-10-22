@@ -35,16 +35,16 @@ export async function POST(request: NextRequest) {
     if (parsed.error) return parsed.error;
 
     const { target, title, body, data } = parsed.data;
-    const tokens =
+    const devices =
       target.type === "user"
-        ? await pushService.getActiveTokensForUser(target.user_id)
-        : await pushService.getAllActiveTokens();
+        ? await pushService.getActiveDevicesForUser(target.user_id)
+        : await pushService.getAllActiveDevices();
 
-    if (tokens.length === 0 && target.type === "user") {
+    if (devices.length === 0 && target.type === "user") {
       return errors.notFound("User has no active devices");
     }
 
-    const r = await pushService.sendToTokens(tokens, { title, body, data });
+    const r = await pushService.sendToDevices(devices, { title, body, data });
     const result: SendNotificationResult = {
       recipient_count: r.recipientCount,
       sent: r.sent,

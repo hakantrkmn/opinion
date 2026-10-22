@@ -30,6 +30,9 @@ const nextConfig: NextConfig = {
     removeConsole:
       process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
   },
+  // Push SDKs: keep them as plain node_modules requires (http2, native
+  // crypto, dynamic requires) instead of bundling them into the server build.
+  serverExternalPackages: ["firebase-admin", "@parse/node-apn"],
   experimental: {
     optimizePackageImports: ["lucide-react"],
   },

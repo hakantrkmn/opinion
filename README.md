@@ -9,11 +9,12 @@ photos, vote, follow and block each other. Web app + JSON API used by the
 - **Next.js 15** (App Router, React 19, TypeScript, Tailwind CSS v4, TanStack Query)
 - **PostgreSQL 17 + PostGIS** (self-hosted, Docker) via **Drizzle ORM** (`postgres` driver)
 - **better-auth** — email + password, email OTP (password reset, email
-  verification, email change), bearer tokens + `@better-auth/expo` for mobile
+  verification, email change), bearer tokens for the native apps
 - **MapLibre GL** with free, key-less **OpenFreeMap** vector basemaps;
   pins render as GL layers (server-side grid clusters below zoom 12,
   client clustering above), **sharp** for image re-encoding,
-  **Resend** for email, **Expo push** for notifications
+  **Resend** for email, push straight to **APNs** (`@parse/node-apn`) and
+  **FCM** (`firebase-admin`)
 
 ## Local setup
 
@@ -47,7 +48,9 @@ See [`.env.example`](.env.example) for the full, commented list.
 | `TRUSTED_PROXY_HOPS` | – | Proxies appending to `X-Forwarded-For` (default 1) |
 | `UPLOAD_DIR` | – | Upload storage dir (default `./storage/uploads`) |
 | `RESEND_API_KEY`, `RESEND_FROM_EMAIL` | – | Transactional email |
-| `EXPO_ACCESS_TOKEN` | – | Expo push (only with enhanced push security) |
+| `FCM_SERVICE_ACCOUNT` | – | Android push: Firebase service-account JSON (path or content) |
+| `APNS_KEY`, `APNS_KEY_ID`, `APNS_TEAM_ID` | – | iOS push: APNs `.p8` key (path or content) and its ids |
+| `APNS_BUNDLE_ID`, `APNS_PRODUCTION` | – | APNs topic (default `com.hakanturkmen.opinion`) and environment (default: production when `NODE_ENV=production`) |
 | `BETTER_AUTH_TRUSTED_ORIGINS` | – | Extra trusted origins (comma separated) |
 | `DATABASE_POOL_MAX` | – | DB pool size (default 10) |
 

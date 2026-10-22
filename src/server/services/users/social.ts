@@ -34,15 +34,15 @@ export async function isFollowing(
 }
 
 async function notifyFollowed(followerId: string, followingId: string) {
-  const tokens = await pushService.getActiveTokensForUser(followingId);
-  if (tokens.length === 0) return;
+  const devices = await pushService.getActiveDevicesForUser(followingId);
+  if (devices.length === 0) return;
   const [follower] = await db
     .select({ displayName: user.displayName })
     .from(user)
     .where(eq(user.id, followerId))
     .limit(1);
   const name = follower?.displayName || "Birisi";
-  await pushService.sendToTokens(tokens, {
+  await pushService.sendToDevices(devices, {
     title: `${name} seni takip etmeye başladı`,
     body: "Profiline göz at ve yeni pinlerini paylaş.",
     data: { type: "follow", follower_id: followerId },

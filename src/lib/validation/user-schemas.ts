@@ -68,13 +68,14 @@ export const userSearchQuerySchema = z.object({
 });
 
 export const registerPushTokenSchema = z.object({
-  token: z.string().min(1).max(200),
+  // Raw APNs device token (iOS) or FCM registration token (Android).
+  token: z.string().min(1).max(1024),
   platform: z.enum(["ios", "android"]),
   device_name: z.string().trim().max(120).optional().nullable(),
 });
 
 export const unregisterPushTokenSchema = z.object({
-  token: z.string().min(1).max(200),
+  token: z.string().min(1).max(1024),
 });
 
 export const reportTargetTypeSchema = z.enum(["pin", "comment", "user"]);
