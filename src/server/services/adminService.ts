@@ -99,7 +99,10 @@ export async function listUsers(params: ListParams): Promise<AdminPage<AdminUser
         emailVerified: user.emailVerified,
         createdAt: user.createdAt,
         deletedAt: user.deletedAt,
-        activeTokens: sql<number>`(SELECT COUNT(*)::int FROM ${pushTokens} WHERE ${pushTokens.userId} = ${user.id} AND ${pushTokens.isActive})`,
+        // Spelled out: in a single-table select drizzle renders columns
+        // unqualified, so `${pushTokens.userId} = ${user.id}` became
+        // "user_id" = "id" and matched push_tokens against itself (always 0).
+        activeTokens: sql<number>`(SELECT COUNT(*)::int FROM push_tokens pt WHERE pt.user_id = "user"."id" AND pt.is_active)`,
       })
       .from(user)
       .where(where)
