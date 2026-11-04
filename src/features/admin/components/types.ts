@@ -8,6 +8,7 @@ export type {
 
 export type AdminTab =
   | "overview"
+  | "newcomers"
   | "users"
   | "pins"
   | "comments"

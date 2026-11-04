@@ -36,6 +36,7 @@ import {
 import type {
   AdminAnalytics,
   AdminComment,
+  AdminNewcomersPage,
   AdminNotificationLog,
   AdminPage,
   AdminPin,
@@ -76,6 +77,103 @@ function authorWithEmail(
   return {
     ...toUserSummary({ ...row, id: row.id }),
     email: row.deletedAt ? null : row.email,
+  };
+}
+
+/** "New member": joined this recently with at most this many comments. */
+const NEWCOMER_WINDOW = "14 days";
+const NEWCOMER_MAX_COMMENTS = 3;
+
+/**
+ * GET /api/admin/newcomers: posts by new members so the team can welcome
+ * them (reply or like) while it still matters. Unanswered posts first.
+ * Members with an open report against them are left out.
+ */
+export async function listNewcomerPosts(params: ListParams): Promise<AdminNewcomersPage> {
+  const base = sql`
+    FROM comments c
+    JOIN "user" u ON u.id = c.user_id
+      AND u.deleted_at IS NULL
+      AND u.created_at > now() - ${NEWCOMER_WINDOW}::interval
+    JOIN pins p ON p.id = c.pin_id
+    LEFT JOIN user_stats s ON s.user_id = u.id
+    CROSS JOIN LATERAL (
+      SELECT c.likes_count > 0 OR EXISTS (
+        SELECT 1 FROM comments o
+        WHERE o.pin_id = c.pin_id AND o.user_id <> c.user_id AND o.created_at > c.created_at
+      ) AS answered
+    ) a
+    WHERE COALESCE(s.total_comments, 0) <= ${NEWCOMER_MAX_COMMENTS}
+      AND NOT EXISTS (
+        SELECT 1 FROM reports r
+        WHERE r.target_type = 'user' AND r.target_id = u.id AND r.status = 'open'
+      )`;
+
+  const [[totals], rows] = await Promise.all([
+    db.execute(sql`
+      SELECT count(*)::int AS total, count(*) FILTER (WHERE NOT a.answered)::int AS waiting
+      ${base}
+    `) as unknown as Promise<Array<{ total: number; waiting: number }>>,
+    db.execute(sql`
+      SELECT c.id, c.text, c.photo_url, c.is_first_comment, c.verified_visit,
+             c.likes_count, c.created_at, a.answered,
+             p.id AS pin_id, p.name AS pin_name,
+             ST_Y(p.location) AS pin_lat, ST_X(p.location) AS pin_lng,
+             u.id AS user_id, COALESCE(u.display_name, u.name) AS display_name,
+             u.avatar_url, u.email, u.created_at AS joined_at,
+             COALESCE(s.total_comments, 0) AS total_comments
+      ${base}
+      ORDER BY a.answered, c.created_at DESC, c.id
+      LIMIT ${params.limit} OFFSET ${params.offset}
+    `) as unknown as Promise<
+      Array<{
+        id: string;
+        text: string;
+        photo_url: string | null;
+        is_first_comment: boolean;
+        verified_visit: boolean;
+        likes_count: number;
+        created_at: string;
+        answered: boolean;
+        pin_id: string;
+        pin_name: string;
+        pin_lat: number;
+        pin_lng: number;
+        user_id: string;
+        display_name: string | null;
+        avatar_url: string | null;
+        email: string | null;
+        joined_at: string;
+        total_comments: number;
+      }>
+    >,
+  ]);
+
+  return {
+    ...page(
+      rows.map((r) => ({
+        id: r.id,
+        text: r.text,
+        photo_url: r.photo_url,
+        is_first_comment: r.is_first_comment,
+        verified_visit: r.verified_visit,
+        likes: Number(r.likes_count),
+        created_at: isoRequired(r.created_at),
+        answered: r.answered,
+        pin: { id: r.pin_id, name: r.pin_name, lat: Number(r.pin_lat), lng: Number(r.pin_lng) },
+        user: {
+          id: r.user_id,
+          display_name: r.display_name,
+          avatar_url: r.avatar_url,
+          email: r.email,
+          joined_at: isoRequired(r.joined_at),
+          total_comments: Number(r.total_comments),
+        },
+      })),
+      Number(totals?.total ?? 0),
+      params
+    ),
+    waiting: Number(totals?.waiting ?? 0),
   };
 }
 

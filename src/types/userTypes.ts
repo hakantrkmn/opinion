@@ -164,6 +164,29 @@ export interface AdminComment {
   user: UserSummary & { email: string | null };
 }
 
+/**
+ * A recent contribution by a new member (joined in the last 14 days, at
+ * most 3 comments in total), for welcoming them by hand.
+ * GET /api/admin/newcomers → AdminNewcomersPage.
+ */
+export interface AdminNewcomerPost {
+  id: string;
+  text: string;
+  photo_url: string | null;
+  /** True when this comment opened the pin (the newcomer dropped it). */
+  is_first_comment: boolean;
+  verified_visit: boolean;
+  likes: number;
+  created_at: string;
+  /** Someone else liked it or added an opinion to the pin afterwards. */
+  answered: boolean;
+  pin: { id: string; name: string; lat: number; lng: number };
+  user: UserSummary & { email: string | null; joined_at: string; total_comments: number };
+}
+
+/** Unanswered posts first, then newest; `waiting` counts unanswered ones. */
+export type AdminNewcomersPage = AdminPage<AdminNewcomerPost> & { waiting: number };
+
 export type AdminReportStatus = "open" | "resolved" | "dismissed";
 
 export interface AdminReport {

@@ -5,6 +5,8 @@ import { queryKeys } from "@/lib/api/query-keys";
 import type {
   AdminAnalytics,
   AdminComment,
+  AdminNewcomerPost,
+  AdminNewcomersPage,
   AdminNotificationLog,
   AdminPage,
   AdminPin,
@@ -51,6 +53,16 @@ export function useAdminComments(q = "", enabled = true) {
     url: withQ("/api/admin/comments", q),
     limit: PAGE,
     enabled,
+    staleTime: 30_000,
+  });
+}
+
+/** Always on: the tab badge shows how many newcomers wait for a reply. */
+export function useAdminNewcomers() {
+  return usePaginatedQuery<AdminNewcomerPost, AdminNewcomersPage>({
+    queryKey: queryKeys.admin.newcomers,
+    url: "/api/admin/newcomers",
+    limit: PAGE,
     staleTime: 30_000,
   });
 }

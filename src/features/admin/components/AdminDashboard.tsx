@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useIsFetching, useQueryClient } from "@tanstack/react-query";
-import { Bell, Flag, MapPin, MessageSquare, PieChart, Users } from "lucide-react";
+import { Bell, Flag, HandHeart, MapPin, MessageSquare, PieChart, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   useAdminAnalytics,
   useAdminComments,
+  useAdminNewcomers,
   useAdminPins,
   useAdminReports,
   useAdminUsers,
@@ -31,6 +32,7 @@ import { OverviewPanel } from "@/features/admin/components/OverviewPanel";
 import { UserList } from "@/features/admin/components/UserList";
 import { PinList } from "@/features/admin/components/PinList";
 import { CommentList } from "@/features/admin/components/CommentList";
+import { NewcomerList } from "@/features/admin/components/NewcomerList";
 import { ReportList } from "@/features/admin/components/ReportList";
 import { NotificationsPanel } from "@/features/admin/components/NotificationsPanel";
 import { DeleteConfirmDialog } from "@/features/admin/components/DeleteConfirmDialog";
@@ -44,6 +46,7 @@ import type {
 
 const TABS = [
   { value: "overview", label: "Overview", icon: PieChart },
+  { value: "newcomers", label: "Newcomers", icon: HandHeart },
   { value: "reports", label: "Reports", icon: Flag },
   { value: "users", label: "Members", icon: Users },
   { value: "pins", label: "Pins", icon: MapPin },
@@ -67,6 +70,8 @@ export default function AdminDashboard() {
   const pinsQuery = useAdminPins(debouncedQuery, tab === "pins");
   const commentsQuery = useAdminComments(debouncedQuery, tab === "comments");
   const reportsQuery = useAdminReports(reportStatus, tab === "reports");
+  const newcomersQuery = useAdminNewcomers();
+  const waitingNewcomers = newcomersQuery.firstPage?.waiting ?? 0;
   const { data: analytics, isLoading: analyticsLoading } = useAdminAnalytics();
 
   const delUser = useDeleteAdminUser();
@@ -169,6 +174,12 @@ export default function AdminDashboard() {
                     <span className="sr-only"> open</span>
                   </span>
                 ) : null}
+                {value === "newcomers" && waitingNewcomers > 0 ? (
+                  <span className="rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold leading-[18px] tabular-nums text-white">
+                    {waitingNewcomers}
+                    <span className="sr-only"> waiting</span>
+                  </span>
+                ) : null}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -176,6 +187,10 @@ export default function AdminDashboard() {
 
         <TabsContent value="overview" className="mt-6">
           <OverviewPanel analytics={analytics} loading={analyticsLoading} />
+        </TabsContent>
+
+        <TabsContent value="newcomers" className="mt-6">
+          <NewcomerList query={newcomersQuery} />
         </TabsContent>
 
         <TabsContent value="reports" className="mt-6 flex flex-col gap-4">

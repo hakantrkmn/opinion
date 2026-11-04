@@ -59,6 +59,7 @@ export const queryKeys = {
     users: (q = "") => ["admin", "users", q] as const,
     pins: (q = "") => ["admin", "pins", q] as const,
     comments: (q = "") => ["admin", "comments", q] as const,
+    newcomers: ["admin", "newcomers"] as const,
     analytics: ["admin", "analytics"] as const,
     notifications: {
       recent: ["admin", "notifications", "recent"] as const,
