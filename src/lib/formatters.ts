@@ -59,7 +59,8 @@ export function formatCompactNumber(value: number) {
 
 /** "650 m", "2.4 km", "183 km". */
 export function formatDistance(meters: number) {
-  if (meters < 1000) return `${Math.max(10, Math.round(meters / 10) * 10)} m`;
+  const rounded = Math.round(meters / 10) * 10;
+  if (rounded < 1000) return `${Math.max(10, rounded)} m`;
   const km = meters / 1000;
   return `${getNumberFormatter({ maximumFractionDigits: km < 10 ? 1 : 0 }).format(km)} km`;
 }

@@ -5,7 +5,8 @@ import { queryKeys } from "@/lib/api/query-keys";
 import type { NearestPinResponse } from "@/types/api";
 import { useQuery } from "@tanstack/react-query";
 import type { Map as MapLibreMap } from "maplibre-gl";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { distanceMeters, type LngLat } from "../lib/geo";
 
 /** Wait this long after the viewport turned out empty (no flicker on pans). */
 const SHOW_DELAY_MS = 600;
@@ -13,9 +14,10 @@ const SHOW_DELAY_MS = 600;
 /** ~1.1 km grid: cache-friendly and never sends the exact viewport. */
 const round2 = (v: number) => Math.round(v * 100) / 100;
 
-function roundedCenter(map: MapLibreMap) {
+/** The rounded point is what's sent; `exact` stays on the device. */
+function centers(map: MapLibreMap) {
   const c = map.getCenter().wrap();
-  return { lat: round2(c.lat), lng: round2(c.lng) };
+  return { lat: round2(c.lat), lng: round2(c.lng), exact: [c.lng, c.lat] as LngLat };
 }
 
 /**
@@ -24,7 +26,7 @@ function roundedCenter(map: MapLibreMap) {
  * applicable or loading.
  */
 export function useEmptyAreaHint(map: MapLibreMap | null, empty: boolean) {
-  const [center, setCenter] = useState<{ lat: number; lng: number } | null>(null);
+  const [center, setCenter] = useState<ReturnType<typeof centers> | null>(null);
 
   useEffect(() => {
     if (!map || !empty) {
@@ -36,7 +38,7 @@ export function useEmptyAreaHint(map: MapLibreMap | null, empty: boolean) {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const schedule = () => {
       clearTimeout(timer);
-      timer = setTimeout(() => setCenter(roundedCenter(map)), SHOW_DELAY_MS);
+      timer = setTimeout(() => setCenter(centers(map)), SHOW_DELAY_MS);
     };
     const hide = () => {
       clearTimeout(timer);
@@ -62,6 +64,12 @@ export function useEmptyAreaHint(map: MapLibreMap | null, empty: boolean) {
     staleTime: 5 * 60_000,
   });
 
-  if (!center || !query.data) return null;
-  return query.data;
+  // Distance from the real view centre, not the ~1 km grid point.
+  const data = query.data;
+  return useMemo((): NearestPinResponse | null => {
+    if (!center || !data) return null;
+    if (!data.pin) return data;
+    const distance_m = Math.round(distanceMeters(center.exact, [data.pin.lng, data.pin.lat]));
+    return { pin: { ...data.pin, distance_m } };
+  }, [center, data]);
 }

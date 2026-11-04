@@ -71,7 +71,8 @@ function ComposerForm({
   const pending = addComment.isPending;
 
   const submit = () => {
-    if (!trimmed || pending) return;
+    // Wait for a running "I'm here" check, or the badge would be lost.
+    if (!trimmed || pending || here.checking) return;
     addComment.mutate(
       { text: trimmed, photo, fix: hereFix },
       {
@@ -160,7 +161,7 @@ function ComposerForm({
           type="submit"
           size="icon"
           className="size-10 shrink-0 rounded-xl transition-[transform,opacity,background-color] duration-150 ease-out active:scale-[0.94]"
-          disabled={!trimmed || pending}
+          disabled={!trimmed || pending || here.checking}
           aria-label="Post comment"
           title="Post (⌘/Ctrl + Enter)"
         >

@@ -74,10 +74,13 @@ export async function getPinsInBounds(q: MapQuery): Promise<PinsInBoundsResponse
   };
 }
 
+/** KNN candidates (planar degrees) re-ranked by ground distance. */
+const NEAREST_CANDIDATES = 32;
+
 /**
  * The visible pin closest to a point (all scope), for the "nothing here
- * yet" hint. KNN on the GIST index (degree distance) picks the candidate;
- * the reported distance is great-circle metres.
+ * yet" hint. The GIST index finds the nearest candidates in degrees, which
+ * skews with latitude; they are re-ranked by great-circle metres.
  */
 export async function getNearestPin(q: {
   lat: number;
@@ -86,12 +89,16 @@ export async function getNearestPin(q: {
 }): Promise<NearestPinResponse> {
   const point = sql`ST_SetSRID(ST_MakePoint(${q.lng}::float8, ${q.lat}::float8), 4326)`;
   const [row] = (await db.execute(sql`
-    SELECT ${pinColumnsSql}, ST_DistanceSphere(p.location, ${point}) AS distance_m
-    FROM pins p
-    JOIN "user" u ON u.id = p.user_id
-    WHERE p.comments_count > 0
-      ${mapFiltersSql("all", q.viewerId)}
-    ORDER BY p.location <-> ${point}
+    SELECT * FROM (
+      SELECT ${pinColumnsSql}, ST_DistanceSphere(p.location, ${point}) AS distance_m
+      FROM pins p
+      JOIN "user" u ON u.id = p.user_id
+      WHERE p.comments_count > 0
+        ${mapFiltersSql("all", q.viewerId)}
+      ORDER BY p.location <-> ${point}
+      LIMIT ${NEAREST_CANDIDATES}
+    ) candidates
+    ORDER BY distance_m
     LIMIT 1
   `)) as unknown as Array<PinRow & { distance_m: number }>;
   return {
