@@ -5,6 +5,8 @@ import { clearAllDrafts } from "@/features/pins/lib/pin-drafts";
 import { authClient } from "@/lib/auth-client";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiSend } from "@/lib/api/send";
+import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 
 type SignInInput = { email: string; password: string; redirectTo?: string };
@@ -13,6 +15,7 @@ type SignUpInput = SignInInput & { displayName: string };
 export function useSession() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const locale = useLocale();
   const { data: sessionData, isPending: isLoading, error } = authClient.useSession();
 
   const finishAuth = (redirectTo?: string) => {
@@ -27,7 +30,12 @@ export function useSession() {
       if (result.error) throw new AuthClientError(result.error);
       return result.data;
     },
-    onSuccess: (_data, { redirectTo }) => finishAuth(redirectTo),
+    onSuccess: async (_data, { redirectTo }) => {
+      // The language picked while signed out becomes the account's (push,
+      // email). Best effort: never block signing in.
+      await apiSend("/api/locale", { method: "POST", json: { locale } }).catch(() => undefined);
+      finishAuth(redirectTo);
+    },
   });
 
   const signUpMutation = useMutation({

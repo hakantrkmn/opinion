@@ -119,7 +119,8 @@
     "codeSent": "Kod gönderildi",
     "check": "{email} adresini kontrol et",
     "verifiedToast": "E-posta doğrulandı",
-    "updatedToast": "E-posta güncellendi"
+    "updatedToast": "E-posta güncellendi",
+    "newEmailPlaceholder": "sen@ornek.com"
   },
   "password": {
     "title": "Şifre",
@@ -167,7 +168,9 @@
     "currentPassword": "Mevcut şifre",
     "typeToConfirm": "Onaylamak için <mono>{word}</mono> yaz",
     "deleting": "Hesap siliniyor…",
-    "submit": "Hesabımı sil"
+    "submit": "Hesabımı sil",
+    "wrongPassword": "Şifre yanlış",
+    "failed": "Hesabın silinemedi"
   },
   "verifyBanner": {
     "title": "E-postanı doğrula",

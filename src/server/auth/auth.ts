@@ -1,5 +1,5 @@
 import "server-only";
-import { LOCALE_COOKIE, resolveLocale } from "@/i18n/config";
+import { isLocale, LOCALE_COOKIE, resolveLocale, type Locale } from "@/i18n/config";
 import { hashPassword, verifyPassword } from "./password";
 import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
@@ -81,6 +81,26 @@ function readCookie(header: string | null | undefined, name: string): string | n
     if (key === name) return decodeURIComponent(value.join("="));
   }
   return null;
+}
+
+/** The requester's UI language: their account's, else cookie / browser. */
+function requestLocaleOf(
+  ctx:
+    | {
+        headers?: Headers;
+        request?: Request;
+        context?: { session?: { user?: Record<string, unknown> } | null };
+      }
+    | undefined
+): Locale | null {
+  const sessionLocale = ctx?.context?.session?.user?.locale;
+  if (isLocale(sessionLocale)) return sessionLocale;
+  const headers = ctx?.headers ?? ctx?.request?.headers;
+  if (!headers) return null;
+  return resolveLocale({
+    cookie: readCookie(headers.get("cookie"), LOCALE_COOKIE),
+    acceptLanguage: headers.get("accept-language"),
+  });
 }
 
 export const auth = betterAuth({
@@ -185,9 +205,9 @@ export const auth = betterAuth({
       disableSignUp: true,
       overrideDefaultEmailVerification: true,
       changeEmail: { enabled: true },
-      sendVerificationOTP: async ({ email, otp, type }) => {
+      sendVerificationOTP: async ({ email, otp, type }, ctx) => {
         // Not awaited by callers' timing: sendOtpEmail never throws.
-        await sendOtpEmail(email, otp, type);
+        await sendOtpEmail(email, otp, type, requestLocaleOf(ctx));
       },
     }),
   ],

@@ -1,5 +1,6 @@
 import { ThemeProvider } from "@/components/common/theme-provider";
 import { LazyToaster } from "@/components/LazyToaster";
+import { ApiErrorTranslator } from "@/components/common/ApiErrorTranslator";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { getBaseUrl } from "@/lib/site-url";
 import {
@@ -138,6 +139,7 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <NextIntlClientProvider>
+        <ApiErrorTranslator />
         <QueryProvider>
           <ThemeProvider
             attribute="class"

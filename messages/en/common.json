@@ -4,5 +4,18 @@
   "avatar": "Avatar",
   "close": "Close",
   "toastRegion": "Notifications",
-  "closeToast": "Close toast"
+  "closeToast": "Close toast",
+  "apiErrors": {
+    "BAD_REQUEST": "That request didn't work. Please check and try again.",
+    "VALIDATION_ERROR": "Some of the details aren't valid. Please check and try again.",
+    "UNAUTHORIZED": "Please sign in to continue.",
+    "FORBIDDEN": "You can't do that here.",
+    "NOT_FOUND": "This no longer exists.",
+    "CONFLICT": "That's already been done.",
+    "RATE_LIMITED": "Too many attempts. Wait a moment and try again.",
+    "TOO_FAR": "You're too far from this place.",
+    "INTERNAL_ERROR": "Something went wrong on our side. Please try again.",
+    "NETWORK": "Couldn't reach droPINion. Check your connection.",
+    "UNKNOWN": "Something went wrong. Please try again."
+  }
 }

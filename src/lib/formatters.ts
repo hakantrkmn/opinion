@@ -68,7 +68,10 @@ const RELATIVE_STEPS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["year", Number.POSITIVE_INFINITY],
 ];
 
-/** "3 hours ago", "yesterday", "now"… in the given locale. */
+/** Intl says "now"; "just now" reads better next to "edited", "joined". */
+const JUST_NOW: Record<string, string> = { en: "just now", tr: "az önce" };
+
+/** "3 hours ago", "yesterday", "just now"… in the given locale. */
 export function formatTimeAgo(value: string | Date, locale = "en", now = Date.now()) {
   const date = typeof value === "string" ? new Date(value) : value;
   let delta = (date.getTime() - now) / 1000;
@@ -78,7 +81,7 @@ export function formatTimeAgo(value: string | Date, locale = "en", now = Date.no
     formatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
     relativeFormatterCache.set(locale, formatter);
   }
-  if (Math.abs(delta) < 45) return formatter.format(0, "second");
+  if (Math.abs(delta) < 45) return JUST_NOW[locale] ?? formatter.format(0, "second");
   for (const [unit, size] of RELATIVE_STEPS) {
     if (Math.abs(delta) < size) return formatter.format(Math.round(delta), unit);
     delta /= size;

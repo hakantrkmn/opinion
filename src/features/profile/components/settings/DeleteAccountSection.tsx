@@ -1,6 +1,7 @@
 "use client";
 
 import { FormField } from "@/features/auth/components/form-field";
+import { ApiError, errorMessage } from "@/lib/api/client";
 import { PasswordInput } from "@/features/auth/components/password-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,8 +51,14 @@ export function DeleteAccountSection() {
   const pending = deleteAccount.isPending;
   const confirmed = confirmText.trim() === CONFIRM_WORD;
   const canSubmit = password.length > 0 && confirmed && !pending;
-  const serverError = deleteAccount.error?.message;
-  const wrongPassword = !!serverError && /password/i.test(serverError);
+  const failure = deleteAccount.error;
+  // 403 = wrong password (see DELETE /api/profile/account).
+  const wrongPassword = failure instanceof ApiError && failure.status === 403;
+  const serverError = failure
+    ? wrongPassword
+      ? t("wrongPassword")
+      : errorMessage(failure, t("failed"))
+    : undefined;
 
   return (
     <SettingsSection title={t("title")} tone="destructive">

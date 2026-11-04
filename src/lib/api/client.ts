@@ -1,3 +1,4 @@
+import { translateApiErrorCode } from "./error-i18n";
 import type { ApiErrorCode } from "@/types/api";
 
 /**
@@ -59,7 +60,18 @@ export async function apiFormData<T>(
   return res.json();
 }
 
-/** Human readable message for any thrown value. */
+/**
+ * Human readable message for any thrown value. In a non-English UI, API and
+ * network errors get a translated message by code (server text is English).
+ */
 export function errorMessage(error: unknown, fallback = "Something went wrong") {
+  if (error instanceof ApiError) {
+    const translated = translateApiErrorCode(error.code ?? "UNKNOWN");
+    if (translated) return translated;
+  } else if (error instanceof TypeError) {
+    // fetch() network failure ("Failed to fetch").
+    const translated = translateApiErrorCode("NETWORK");
+    if (translated) return translated;
+  }
   return error instanceof Error && error.message ? error.message : fallback;
 }

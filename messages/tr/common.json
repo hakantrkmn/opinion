@@ -4,5 +4,18 @@
   "avatar": "Profil fotoğrafı",
   "close": "Kapat",
   "toastRegion": "Bildirimler",
-  "closeToast": "Bildirimi kapat"
+  "closeToast": "Bildirimi kapat",
+  "apiErrors": {
+    "BAD_REQUEST": "Bu istek olmadı. Kontrol edip tekrar dene.",
+    "VALIDATION_ERROR": "Bazı bilgiler geçerli değil. Kontrol edip tekrar dene.",
+    "UNAUTHORIZED": "Devam etmek için giriş yap.",
+    "FORBIDDEN": "Bunu burada yapamazsın.",
+    "NOT_FOUND": "Bu artık yok.",
+    "CONFLICT": "Bu zaten yapılmış.",
+    "RATE_LIMITED": "Çok fazla deneme oldu. Biraz bekleyip tekrar dene.",
+    "TOO_FAR": "Bu yere yeterince yakın değilsin.",
+    "INTERNAL_ERROR": "Bizim tarafta bir sorun çıktı. Tekrar dene.",
+    "NETWORK": "droPINion’a ulaşılamadı. Bağlantını kontrol et.",
+    "UNKNOWN": "Bir şeyler ters gitti. Tekrar dene."
+  }
 }

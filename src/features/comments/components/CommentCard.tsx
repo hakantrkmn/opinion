@@ -87,7 +87,7 @@ export const CommentCard = memo(function CommentCard({
               {comment.is_first_comment ? (
                 <span
                   title={t("opTitle")}
-                  className="rounded-md bg-primary/10 px-1.5 py-px text-[10px] font-bold uppercase tracking-wider text-primary"
+                  className="shrink-0 whitespace-nowrap rounded-md bg-primary/10 px-1.5 py-px text-[10px] font-bold uppercase tracking-wider text-primary"
                 >
                   {t("op")}
                 </span>

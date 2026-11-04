@@ -119,7 +119,8 @@
     "codeSent": "Code sent",
     "check": "Check {email}",
     "verifiedToast": "Email verified",
-    "updatedToast": "Email updated"
+    "updatedToast": "Email updated",
+    "newEmailPlaceholder": "you@example.com"
   },
   "password": {
     "title": "Password",
@@ -167,7 +168,9 @@
     "currentPassword": "Current password",
     "typeToConfirm": "Type <mono>{word}</mono> to confirm",
     "deleting": "Deleting account…",
-    "submit": "Delete my account"
+    "submit": "Delete my account",
+    "wrongPassword": "Incorrect password",
+    "failed": "Couldn't delete your account"
   },
   "verifyBanner": {
     "title": "Verify your email",

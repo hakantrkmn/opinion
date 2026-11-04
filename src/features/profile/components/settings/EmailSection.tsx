@@ -221,7 +221,7 @@ export function EmailSection({
               spellCheck={false}
               enterKeyHint="send"
               autoFocus
-              placeholder="you@example.com"
+              placeholder={t("newEmailPlaceholder")}
               value={newEmail}
               onChange={(e) => {
                 setNewEmail(e.target.value);

@@ -120,7 +120,9 @@ export function MapStatus({
       role="status"
       aria-live="polite"
       className={cn(
-        "flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-xs font-medium transition-[opacity,transform] duration-200 ease-out",
+        // Phones: may wrap (longer Turkish copy) instead of running under
+        // the right-hand controls.
+        "flex min-h-9 max-w-[calc(100vw-7.5rem)] items-center gap-1.5 rounded-2xl px-3.5 py-1.5 text-xs font-medium leading-tight transition-[opacity,transform] duration-200 ease-out sm:max-w-none sm:whitespace-nowrap sm:rounded-full",
         mapSurface,
         content ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-1 opacity-0"
       )}

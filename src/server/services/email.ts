@@ -85,15 +85,18 @@ const OTP_COPY: Record<Locale, Record<OtpEmailType, OtpCopy>> = {
   },
 };
 
-/** The account's language for this address (Turkish when unknown). */
-async function localeForEmail(email: string): Promise<Locale> {
+/**
+ * The account's language for this address, else the requester's, else
+ * Turkish.
+ */
+async function localeForEmail(email: string, requestLocale?: Locale | null): Promise<Locale> {
   try {
     const [row] = (await db.execute(sql`
       SELECT locale FROM "user" WHERE lower(email) = lower(${email}) LIMIT 1
     `)) as unknown as Array<{ locale: string | null }>;
-    return recipientLocale(row?.locale);
+    return recipientLocale(row?.locale ?? requestLocale);
   } catch {
-    return recipientLocale(null);
+    return recipientLocale(requestLocale);
   }
 }
 
@@ -105,9 +108,16 @@ async function localeForEmail(email: string): Promise<Locale> {
 export async function sendOtpEmail(
   email: string,
   code: string,
-  type: OtpEmailType
+  type: OtpEmailType,
+  /** The requester's language (session or browser), see auth.ts. */
+  requestLocale?: Locale | null
 ): Promise<void> {
-  const locale = await localeForEmail(email);
+  // A change-email code goes to an address no account has yet: use the
+  // requester's language. Otherwise the account's choice wins.
+  const locale =
+    type === "change-email" && requestLocale
+      ? requestLocale
+      : await localeForEmail(email, requestLocale);
   const copy = OTP_COPY[locale][type];
   const common = COMMON_COPY[locale];
   if (!isEmailConfigured()) {
