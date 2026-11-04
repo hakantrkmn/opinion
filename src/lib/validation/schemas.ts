@@ -88,3 +88,13 @@ export const voteCommentSchema = z.object({
 });
 
 export const idParamSchema = z.object({ id: idSchema });
+
+/**
+ * POST /api/notifications/read — `{ all: true }` or up to 100 ids, plus the
+ * optional `seen_until` (newest `updated_at` the client showed).
+ */
+const seenUntilSchema = z.iso.datetime({ offset: true }).optional();
+export const markNotificationsReadSchema = z.union([
+  z.object({ all: z.literal(true), seen_until: seenUntilSchema }),
+  z.object({ ids: z.array(idSchema).min(1).max(100), seen_until: seenUntilSchema }),
+]);

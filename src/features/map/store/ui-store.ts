@@ -10,14 +10,28 @@ export interface DraftPin {
   fix: GeoFix;
 }
 
+/**
+ * Request to move the map to a pin opened from outside the map. Pending
+ * until the mounted map consumes it (a new object per request, so opening
+ * the same pin twice still moves).
+ */
+export interface FocusRequest {
+  lng: number;
+  lat: number;
+}
+
 interface MapUiState {
   selectedPinId: string | null;
+  focus: FocusRequest | null;
   /** Non-null while the "create pin" dialog is open. */
   draft: DraftPin | null;
   signInPromptOpen: boolean;
   basemap: BasemapChoice;
 
   selectPin: (pinId: string | null) => void;
+  /** Open a pin's detail and fly the map to it. */
+  focusPin: (pin: { id: string; lng: number; lat: number }) => void;
+  clearFocus: () => void;
   setDraft: (draft: DraftPin | null) => void;
   setSignInPromptOpen: (open: boolean) => void;
   setBasemap: (basemap: BasemapChoice) => void;
@@ -31,11 +45,14 @@ export const useMapUiStore = create<MapUiState>()(
   persist(
     (set) => ({
       selectedPinId: null,
+      focus: null,
       draft: null,
       signInPromptOpen: false,
       basemap: "auto",
 
       selectPin: (selectedPinId) => set({ selectedPinId }),
+      focusPin: ({ id, lng, lat }) => set({ selectedPinId: id, focus: { lng, lat } }),
+      clearFocus: () => set({ focus: null }),
       setDraft: (draft) => set({ draft }),
       setSignInPromptOpen: (signInPromptOpen) => set({ signInPromptOpen }),
       setBasemap: (basemap) => set({ basemap }),

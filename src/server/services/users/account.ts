@@ -22,7 +22,8 @@ const SAFE_ID = /^[a-zA-Z0-9_-]{1,64}$/;
  * deletion ("ban").
  *
  * - Removes the user's votes, comments (and their photos), follows, blocks,
- *   filed reports, push tokens, sessions and credentials.
+ *   filed reports, inbox rows (received and caused), push tokens, sessions
+ *   and credentials.
  * - Pins left without comments are removed by the comment-deletion trigger;
  *   pins that still have other people's comments stay, shown with an
  *   anonymous author (display_name null).
@@ -47,6 +48,9 @@ export async function deleteAccount(userId: string): Promise<boolean> {
     .where(eq(comments.userId, userId));
 
   await db.transaction(async (tx) => {
+    // The user row first: in-flight inbox writers (recordNotifications)
+    // hold it FOR SHARE, so they finish before the scrub below or skip.
+    await tx.execute(sql`SELECT 1 FROM "user" WHERE id = ${userId} FOR UPDATE`);
     // Lock affected pins first (pin → comment order, see lockPinOfComment).
     await tx.execute(sql`
       SELECT 1 FROM pins
@@ -65,6 +69,21 @@ export async function deleteAccount(userId: string): Promise<boolean> {
       .delete(userBlocks)
       .where(or(eq(userBlocks.blockerId, userId), eq(userBlocks.blockedId, userId)));
     await tx.delete(reports).where(eq(reports.reporterId, userId));
+    // Inbox: drop the user's own rows and groups only they caused; remove
+    // them from other groups so the remaining actors' events survive.
+    await tx.execute(sql`
+      DELETE FROM notifications
+      WHERE recipient_id = ${userId} OR actor_ids = ARRAY[${userId}]::text[]
+    `);
+    await tx.execute(sql`
+      UPDATE notifications SET
+        actor_ids = array_remove(actor_ids, ${userId}),
+        count = cardinality(array_remove(actor_ids, ${userId})),
+        actor_id = CASE WHEN actor_id = ${userId}
+          THEN (array_remove(actor_ids, ${userId}))[cardinality(array_remove(actor_ids, ${userId}))]
+          ELSE actor_id END
+      WHERE actor_ids @> ARRAY[${userId}]::text[]
+    `);
     await tx.delete(pushTokens).where(eq(pushTokens.userId, userId));
     await tx.delete(session).where(eq(session.userId, userId));
     await tx.delete(account).where(eq(account.userId, userId));

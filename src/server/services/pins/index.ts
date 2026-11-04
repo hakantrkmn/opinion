@@ -12,5 +12,5 @@ export {
   deleteComment,
 } from "./comments";
 export { voteComment } from "./votes";
-export { notifyCommentLiked, notifyFollowersOfNewPin } from "./notifications";
+export { notifyCommentLiked, notifyFollowersOfNewPin, notifyPinCommented } from "./notifications";
 export { mapCacheHeaders } from "./http";

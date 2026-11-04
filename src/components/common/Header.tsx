@@ -1,6 +1,7 @@
 "use client";
 
 import { Avatar } from "@/components/ui/Avatar";
+import { NotificationBell } from "@/features/notifications/components/NotificationBell";
 import { UserSearchDialog } from "@/features/users/components/UserSearchDialog";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { useUserProfile } from "@/features/profile/hooks/useUserProfile";
@@ -67,6 +68,8 @@ export default function Header() {
                 >
                   <Search />
                 </button>
+
+                <NotificationBell className={iconButton} />
 
                 {/* Phones: one avatar menu instead of a row of buttons. */}
                 <div className="sm:hidden">

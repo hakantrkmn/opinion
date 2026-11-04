@@ -306,3 +306,63 @@ export const adminAuditLogs = pgTable(
     index("idx_admin_audit_metadata_gin").using("gin", table.metadata),
   ]
 );
+
+/**
+ * In-app notification inbox. Unread events about the same target collapse
+ * into one row (partial unique index on (recipient_id, group_key) WHERE
+ * read_at IS NULL): `actor_ids` collects the distinct actors (`count` is
+ * its length), `actor_id` / `comment_id` point at the latest event and
+ * `updated_at` moves. Once read, the next event starts a new row.
+ * `pushed_at` throttles the matching push per (recipient, group).
+ */
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    recipientId: text("recipient_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    groupKey: text("group_key").notNull(),
+    actorId: text("actor_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    /** Distinct actors of the group, oldest first (actor_id is the last). */
+    actorIds: text("actor_ids").array().notNull(),
+    pinId: text("pin_id").references(() => pins.id, { onDelete: "cascade" }),
+    // Latest comment of the group; SET NULL so a deleted reply doesn't drop
+    // the whole "new opinions on your pin" row (likes on a deleted comment
+    // are filtered out at read time).
+    commentId: text("comment_id").references(() => comments.id, {
+      onDelete: "set null",
+    }),
+    count: integer("count").notNull().default(1),
+    readAt: tstz("read_at"),
+    pushedAt: tstz("pushed_at"),
+    createdAt: tstz("created_at").notNull().defaultNow(),
+    updatedAt: tstz("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("uniq_notifications_unread_group")
+      .on(table.recipientId, table.groupKey)
+      .where(sql`${table.readAt} IS NULL`),
+    index("idx_notifications_recipient_updated").on(
+      table.recipientId,
+      table.updatedAt.desc()
+    ),
+    index("idx_notifications_actor").on(table.actorId),
+    index("idx_notifications_actor_ids").using("gin", table.actorIds),
+    index("idx_notifications_pin").on(table.pinId),
+    index("idx_notifications_comment").on(table.commentId),
+    check(
+      "notifications_type_check",
+      sql`${table.type} in ('pin_commented', 'comment_liked', 'followed')`
+    ),
+    check(
+      "notifications_count_matches_actors",
+      sql`${table.count} = cardinality(${table.actorIds}) AND ${table.count} > 0`
+    ),
+  ]
+);

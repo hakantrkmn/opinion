@@ -47,6 +47,11 @@ export const queryKeys = {
   blocks: {
     list: ["blocks", "list"] as const,
   },
+  notifications: {
+    all: ["notifications"] as const,
+    list: ["notifications", "list"] as const,
+    unread: ["notifications", "unread"] as const,
+  },
   admin: {
     all: ["admin"] as const,
     users: (q = "") => ["admin", "users", q] as const,

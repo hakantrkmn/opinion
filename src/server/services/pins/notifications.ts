@@ -2,18 +2,33 @@ import "server-only";
 import { db, sql } from "@/server/db";
 import { pushService, type PushDevice } from "@/server/services/pushService";
 import { isBlockedRelation } from "@/server/services/blocks";
+import { recordNotifications } from "@/server/services/inbox";
 
 /**
- * Push notifications triggered by pin / comment activity. Call these from
- * `after()` so they never delay or fail the HTTP response; every function
- * here catches and logs its own errors.
+ * Inbox rows and push notifications triggered by pin / comment activity.
+ * Call these from `after()` so they never delay or fail the HTTP response;
+ * every function here catches and logs its own errors.
  */
 
 const LIKE_MILESTONES = new Set([5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000]);
 const LIKE_NOTIFY_COOLDOWN = "1 hour";
+/** At most one "new opinion" push per (recipient, pin) in this window. */
+const PIN_COMMENT_PUSH_COOLDOWN = "1 hour";
 
 function snippet(text: string, max = 80): string {
   return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
+/** "Mert" / "Mert ve 2 kişi daha" */
+function actorLabel(name: string, count: number): string {
+  return count > 1 ? `${name} ve ${count - 1} kişi daha` : name;
+}
+
+async function displayName(userId: string): Promise<string> {
+  const [row] = (await db.execute(sql`
+    SELECT COALESCE(display_name, name) AS name FROM "user" WHERE id = ${userId}
+  `)) as unknown as Array<{ name: string | null }>;
+  return row?.name || "Birisi";
 }
 
 /**
@@ -50,6 +65,16 @@ export async function notifyCommentLiked(params: {
     `);
     if (claimedPair.length === 0) return;
 
+    // Inbox: every first like by a user counts; the push below is rarer.
+    await recordNotifications({
+      recipientIds: [comment.user_id],
+      type: "comment_liked",
+      groupTargetId: commentId,
+      actorId: likerId,
+      pinId: comment.pin_id,
+      commentId,
+    });
+
     const likes = Number(comment.likes_count);
     if (likes !== 1 && !LIKE_MILESTONES.has(likes)) return;
 
@@ -67,20 +92,8 @@ export async function notifyCommentLiked(params: {
     const devices = await pushService.getActiveDevicesForUser(comment.user_id);
     if (devices.length === 0) return;
 
-    const [liker] = (await db.execute(sql`
-      SELECT COALESCE(display_name, name) AS name FROM "user" WHERE id = ${likerId}
-    `)) as unknown as Array<{ name: string | null }>;
-    const likerName = liker?.name || "Someone";
-    const others = likes - 1;
-    const title =
-      others <= 0
-        ? `${likerName} liked your comment`
-        : others === 1
-          ? `${likerName} and 1 other liked your comment`
-          : `${likerName} and ${others} others liked your comment`;
-
     await pushService.sendToDevices(devices, {
-      title,
+      title: `${actorLabel(await displayName(likerId), likes)} yorumunu beğendi`,
       body: snippet(comment.text),
       data: {
         type: "comment_like",
@@ -121,14 +134,10 @@ export async function notifyFollowersOfNewPin(params: {
     `)) as unknown as PushDevice[];
     if (rows.length === 0) return;
 
-    const [author] = (await db.execute(sql`
-      SELECT COALESCE(display_name, name) AS name FROM "user" WHERE id = ${params.authorId}
-    `)) as unknown as Array<{ name: string | null }>;
-
     await pushService.sendToDevices(
       rows,
       {
-        title: `${author?.name || "Birisi"} yeni bir pin bıraktı`,
+        title: `${await displayName(params.authorId)} yeni bir pin bıraktı`,
         body: params.pinName,
         data: {
           type: "followed_user_pin",
@@ -142,5 +151,94 @@ export async function notifyFollowersOfNewPin(params: {
     );
   } catch (error) {
     console.error("[notifyFollowersOfNewPin]", params.pinId, error);
+  }
+}
+
+/**
+ * "X shared an opinion on your pin / on a pin you commented on". Called
+ * after a comment was created. Recipients: the pin owner and everyone who
+ * commented on the pin before, minus the commenter, deleted users and
+ * anyone with a block relation (either way) to the commenter or the owner. Each gets one grouped
+ * inbox row per pin; the push is throttled per (recipient, pin).
+ */
+export async function notifyPinCommented(params: {
+  pinId: string;
+  commentId: string;
+  commenterId: string;
+}): Promise<void> {
+  const { pinId, commentId, commenterId } = params;
+  try {
+    const [ctx] = (await db.execute(sql`
+      SELECT p.user_id AS owner_id, p.name AS pin_name, c.text
+      FROM pins p JOIN comments c ON c.id = ${commentId} AND c.pin_id = p.id
+      WHERE p.id = ${pinId}
+    `)) as unknown as Array<{ owner_id: string; pin_name: string; text: string }>;
+    if (!ctx) return; // comment or pin deleted in the meantime
+
+    const recipients = (await db.execute(sql`
+      SELECT r.user_id
+      FROM (
+        SELECT ${ctx.owner_id}::text AS user_id
+        UNION
+        SELECT c.user_id FROM comments c WHERE c.pin_id = ${pinId}
+      ) r
+      JOIN "user" u ON u.id = r.user_id AND u.deleted_at IS NULL
+      WHERE r.user_id <> ${commenterId}
+        -- Neither the commenter nor the pin owner may be blocked with the
+        -- recipient (the pin would be hidden from them).
+        AND NOT EXISTS (
+          SELECT 1 FROM user_blocks b
+          WHERE (b.blocker_id = r.user_id AND b.blocked_id IN (${commenterId}, ${ctx.owner_id}))
+             OR (b.blocked_id = r.user_id AND b.blocker_id IN (${commenterId}, ${ctx.owner_id}))
+        )
+    `)) as unknown as Array<{ user_id: string }>;
+    if (recipients.length === 0) return;
+
+    const recorded = await recordNotifications({
+      recipientIds: recipients.map((r) => r.user_id),
+      type: "pin_commented",
+      groupTargetId: pinId,
+      actorId: commenterId,
+      pinId,
+      commentId,
+      pushCooldown: PIN_COMMENT_PUSH_COOLDOWN,
+    });
+    const toPush = recorded.filter((r) => r.should_push);
+    if (toPush.length === 0) return;
+
+    const devices = (await db.execute(sql`
+      SELECT t.user_id, t.token, t.platform
+      FROM push_tokens t
+      WHERE t.is_active AND t.user_id IN (${sql.join(
+        toPush.map((r) => sql`${r.recipient_id}`),
+        sql`, `
+      )})
+    `)) as unknown as Array<PushDevice & { user_id: string }>;
+    if (devices.length === 0) return;
+
+    const name = await displayName(commenterId);
+    const body = snippet(ctx.text);
+    await Promise.all(
+      toPush.map((r) => {
+        const mine = devices.filter((d) => d.user_id === r.recipient_id);
+        if (mine.length === 0) return null;
+        const isOwner = r.recipient_id === ctx.owner_id;
+        return pushService.sendToDevices(mine, {
+          title: isOwner
+            ? `${actorLabel(name, r.count)} pinine yorum yaptı`
+            : `“${snippet(ctx.pin_name, 40)}” hakkında yeni yorum`,
+          body: isOwner ? `${snippet(ctx.pin_name, 40)} · ${body}` : `${name}: ${body}`,
+          data: {
+            type: "pin_comment",
+            pinId,
+            commentId,
+            commenterId,
+            count: r.count,
+          },
+        });
+      })
+    );
+  } catch (error) {
+    console.error("[notifyPinCommented]", params, error);
   }
 }

@@ -1,4 +1,4 @@
-import type { NextRequest } from "next/server";
+import { after, type NextRequest } from "next/server";
 import {
   checkCsrfOrigin,
   enforceRateLimit,
@@ -16,7 +16,7 @@ import {
   idParamSchema,
   pinCommentsQuerySchema,
 } from "@/lib/validation/schemas";
-import { createComment, listPinComments } from "@/server/services/pins";
+import { createComment, listPinComments, notifyPinCommented } from "@/server/services/pins";
 import type { CommentResponse, PinCommentsResponse } from "@/types/api";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -78,6 +78,15 @@ export async function POST(request: NextRequest, { params }: Ctx) {
         photoUrl: body.data.photo_url,
       }),
     };
+
+    after(() =>
+      notifyPinCommented({
+        pinId: p.data.id,
+        commentId: result.comment.id,
+        commenterId: session.user.id,
+      })
+    );
+
     return json(result, { status: 201 });
   } catch (error) {
     return handleRouteError(error, "POST /api/pins/:id/comments");

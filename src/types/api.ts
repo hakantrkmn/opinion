@@ -168,3 +168,34 @@ export interface Paginated<T> {
   has_more: boolean;
   next_offset: number | null;
 }
+
+// ---------------------------------------------------------------- inbox
+
+/**
+ * - pin_commented: `actor` (and `count - 1` others) shared an opinion on a
+ *   pin you own (`pin.is_mine`) or already commented on; `comment` is the
+ *   latest one.
+ * - comment_liked: `count` people liked your `comment`.
+ * - followed: `actor` (and `count - 1` others) started following you.
+ */
+export type NotificationType = "pin_commented" | "comment_liked" | "followed";
+
+export interface NotificationItem {
+  id: string;
+  type: NotificationType;
+  /** Events collapsed into this row (≥ 1); `actor` is the latest. */
+  count: number;
+  read: boolean;
+  created_at: string;
+  /** Time of the latest event. Lists are ordered by it, newest first. */
+  updated_at: string;
+  actor: UserSummary;
+  pin: { id: string; name: string; lat: number; lng: number; is_mine: boolean } | null;
+  /** Text is truncated to 140 characters. */
+  comment: { id: string; text: string } | null;
+}
+
+/** GET /api/notifications/unread-count, POST /api/notifications/read */
+export interface UnreadNotificationsResponse {
+  unread_count: number;
+}

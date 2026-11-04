@@ -9,6 +9,7 @@ import {
   getInvisibleUserIds,
   isBlockedRelation,
 } from "@/server/services/blocks";
+import { recordNotifications } from "@/server/services/inbox";
 import { pushService } from "@/server/services/pushService";
 import { assertActiveUser } from "./profile";
 import { isoRequired, toUserSummary } from "./mappers";
@@ -33,7 +34,19 @@ export async function isFollowing(
   return !!row;
 }
 
+/** Repeat follows (unfollow + follow) never push twice in this window. */
+const FOLLOW_PUSH_COOLDOWN = "10 minutes";
+
 async function notifyFollowed(followerId: string, followingId: string) {
+  // One unread "new followers" row per user, whoever followed.
+  const [recorded] = await recordNotifications({
+    recipientIds: [followingId],
+    type: "followed",
+    groupTargetId: followingId,
+    actorId: followerId,
+    pushCooldown: FOLLOW_PUSH_COOLDOWN,
+  });
+  if (!recorded?.should_push) return;
   const devices = await pushService.getActiveDevicesForUser(followingId);
   if (devices.length === 0) return;
   const [follower] = await db
