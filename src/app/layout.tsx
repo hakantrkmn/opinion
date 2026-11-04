@@ -69,7 +69,7 @@ export const metadata: Metadata = {
       "Drop a pin, share your honest opinion on any location, and discover what locals think. Reviews, ratings, and stories from a global community.",
     images: [
       {
-        url: "/api/og?title=droPINion&description=Discover%20%26%20Share%20Place%20Reviews&type=default",
+        url: "/api/og?type=default",
         width: 1200,
         height: 630,
         alt: "droPINion - Interactive Opinion Map",
@@ -83,7 +83,7 @@ export const metadata: Metadata = {
       "Drop a pin, share your honest opinion on any location, and discover what locals think.",
     creator: "@opinion_map",
     images: [
-      "/api/og?title=droPINion&description=Discover%20%26%20Share%20Place%20Reviews&type=default",
+      "/api/og?type=default",
     ],
   },
   robots: {

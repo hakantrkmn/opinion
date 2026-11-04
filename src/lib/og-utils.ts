@@ -8,43 +8,21 @@ export interface OGImageConfig {
   location?: string;
   type?: "pin" | "location" | "default";
   baseUrl: string;
+  /** A specific preview image (e.g. /api/og/pin/:id) instead of /api/og. */
+  imageUrl?: string;
 }
 
 /**
- * Generate Open Graph image URL for dynamic content
- * This can be extended to use a service like Vercel OG or custom image generation
+ * Open Graph image URL. /api/og renders fixed copy per type (plus a
+ * location name that has pins); title / description are not sent to it.
  */
 export function generateOGImageUrl(config: OGImageConfig): string {
-  const params = new URLSearchParams({
-    title: config.title,
-    type: config.type || "default",
-  });
-
-  if (config.description) {
-    params.append("description", config.description.substring(0, 100));
-  }
-
-  if (config.location) {
+  if (config.imageUrl) return config.imageUrl;
+  const params = new URLSearchParams({ type: config.type || "default" });
+  if (config.location && config.type === "location") {
     params.append("location", config.location);
   }
-
   return `${config.baseUrl}/api/og?${params.toString()}`;
-}
-
-/**
- * Generate fallback Open Graph image based on content type
- */
-export function getFallbackOGImage(
-  type: "pin" | "location" | "default",
-  baseUrl: string
-): string {
-  const images = {
-    pin: `${baseUrl}/og-pin-default.png`,
-    location: `${baseUrl}/og-location-default.png`,
-    default: `${baseUrl}/og-default.png`,
-  };
-
-  return images[type] || images.default;
 }
 
 /**
@@ -52,10 +30,6 @@ export function getFallbackOGImage(
  */
 export function generateOGMetadata(config: OGImageConfig) {
   const ogImage = generateOGImageUrl(config);
-  const fallbackImage = getFallbackOGImage(
-    config.type || "default",
-    config.baseUrl
-  );
 
   return {
     title: config.title,
@@ -63,12 +37,6 @@ export function generateOGMetadata(config: OGImageConfig) {
     images: [
       {
         url: ogImage,
-        width: 1200,
-        height: 630,
-        alt: config.title,
-      },
-      {
-        url: fallbackImage,
         width: 1200,
         height: 630,
         alt: config.title,

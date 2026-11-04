@@ -11,7 +11,11 @@ import {
 } from "@/lib/structured-data";
 import Header from "@/components/common/Header";
 import { PinIcon } from "@/components/icons/PinIcon";
-import { getPinPageComments, getPinPageData } from "@/server/services/pins/pages";
+import {
+  getPinPageComments,
+  getPinPageData,
+  getPinShareQuote,
+} from "@/server/services/pins/pages";
 import { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -20,10 +24,12 @@ import {
   ChevronRight,
   MessageCircle,
   MapPin,
+  MapPinCheck,
   ThumbsUp,
   ThumbsDown,
   User,
 } from "lucide-react";
+import { PinPageComposer } from "./PinPageComposer";
 import ShareButton from "./ShareButton";
 
 export async function generateMetadata({
@@ -34,7 +40,7 @@ export async function generateMetadata({
   const { id } = await params;
   const baseUrl = getBaseUrl();
 
-  const pin = await getPinPageData(id);
+  const [pin, quote] = await Promise.all([getPinPageData(id), getPinShareQuote(id)]);
 
   if (!pin) {
     return {
@@ -46,8 +52,13 @@ export async function generateMetadata({
 
   const pinName = pin.name || "this place";
   const title = `Reviews of ${pinName}`;
-  const description = `Discover opinions and thoughts about ${pinName}. Read what the community thinks about this location on droPINion.`;
+  // Link previews quote the pin's best opinion (same one as the image).
+  const opinions = `${pin.commentsCount} ${pin.commentsCount === 1 ? "opinion" : "opinions"}`;
+  const description = quote
+    ? `“${quote.text.length > 140 ? `${quote.text.slice(0, 139).trimEnd()}…` : quote.text}” — ${quote.displayName} · ${opinions} on droPINion`
+    : `Discover opinions and thoughts about ${pinName}. Read what the community thinks about this location on droPINion.`;
   const locationName = pin.name || "Unknown Location";
+  const imageUrl = `${baseUrl}/api/og/pin/${encodeURIComponent(id)}`;
 
   const ogMetadata = generateOGMetadata({
     title,
@@ -55,6 +66,7 @@ export async function generateMetadata({
     location: locationName,
     type: "pin",
     baseUrl,
+    imageUrl,
   });
 
   const twitterMetadata = generateTwitterMetadata({
@@ -63,6 +75,7 @@ export async function generateMetadata({
     location: locationName,
     type: "pin",
     baseUrl,
+    imageUrl,
   });
 
   const locationKeywords = generateLocationKeywords(locationName);
@@ -226,6 +239,14 @@ export default async function PinPage({
             <ShareButton url={shareUrl} pinName={pin.name} />
           </div>
 
+          <div className="mb-10">
+            <PinPageComposer
+              pinId={pin.id}
+              pinName={pin.name || "this place"}
+              commentsCount={pinComments.length}
+            />
+          </div>
+
           {/* Comments */}
           <section aria-labelledby="comments-heading">
             <h2 id="comments-heading" className="text-base font-semibold text-foreground mb-4">
@@ -239,15 +260,8 @@ export default async function PinPage({
                 </div>
                 <h3 className="text-sm font-semibold text-foreground mb-1">No comments yet</h3>
                 <p className="text-xs text-muted-foreground max-w-[220px]">
-                  Open this pin on the map to leave your opinion
+                  Be the first to share your opinion above.
                 </p>
-                <Link
-                  href={mapUrl}
-                  className="mt-4 inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-primary hover:bg-primary/10 transition-colors duration-150"
-                >
-                  Go to the map
-                  <ChevronRight className="h-3 w-3" />
-                </Link>
               </div>
             ) : (
               <div className="flex flex-col gap-3">
@@ -286,6 +300,15 @@ export default async function PinPage({
                           })}
                         </span>
                       </div>
+                      {comment.verifiedVisit && (
+                        <span
+                          title="Written on site"
+                          className="flex flex-shrink-0 items-center gap-0.5 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400"
+                        >
+                          <MapPinCheck className="size-3" aria-hidden />
+                          Was here
+                        </span>
+                      )}
                       {comment.isFirstComment && (
                         <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-md flex-shrink-0">
                           OP
@@ -330,19 +353,6 @@ export default async function PinPage({
             )}
           </section>
 
-          {/* Footer CTA */}
-          <div className="mt-10 p-6 rounded-2xl border border-border/60 bg-muted/30 text-center">
-            <p className="text-sm text-muted-foreground mb-3">
-              Want to share your opinion about this place?
-            </p>
-            <Link
-              href={mapUrl}
-              className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-primary text-primary-foreground text-sm font-medium shadow-sm transition-[transform,background-color] duration-150 ease-out active:scale-[0.97] hover:bg-primary/90"
-            >
-              <MapPin className="h-4 w-4" aria-hidden />
-              Open on the map
-            </Link>
-          </div>
         </main>
       </div>
     </>

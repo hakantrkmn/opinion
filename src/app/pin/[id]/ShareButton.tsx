@@ -8,10 +8,20 @@ interface ShareButtonProps {
   pinName: string;
 }
 
-export default function ShareButton({ url }: ShareButtonProps) {
+export default function ShareButton({ url, pinName }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
 
   const handleShare = async () => {
+    // Phones: the native share sheet (WhatsApp, Instagram…), which shows
+    // the quote card preview. Desktop: copy the link.
+    if (typeof navigator.share === "function" && window.matchMedia("(pointer: coarse)").matches) {
+      try {
+        await navigator.share({ title: pinName, text: `What do you think about ${pinName}?`, url });
+        return;
+      } catch (error) {
+        if ((error as DOMException).name === "AbortError") return;
+      }
+    }
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);

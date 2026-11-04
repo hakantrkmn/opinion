@@ -2,6 +2,7 @@ import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
 import { enforceRateLimit } from "@/server/http/api-helpers";
 import { RATE_LIMITS } from "@/server/http/rate-limit";
+import { searchPinsByName } from "@/server/services/pins/pages";
 
 export const runtime = "nodejs";
 
@@ -19,14 +20,19 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
 
-    const title = clamp(searchParams.get("title"), 80) || "droPINion";
-    const description =
-      clamp(searchParams.get("description"), 160) ||
-      "Share your thoughts on the map";
-    const location = clamp(searchParams.get("location"), 60);
+    // Copy is fixed: free text from the query string would let anyone mint
+    // a branded image saying anything. The only input is a location name,
+    // and only when pins actually match it (like /location/[slug]).
     const rawType = searchParams.get("type");
-    const type =
-      rawType === "pin" || rawType === "location" ? rawType : "default";
+    const requested = clamp(searchParams.get("location"), 60);
+    const location =
+      rawType === "location" && requested && (await searchPinsByName(requested, 1)).length > 0
+        ? requested
+        : null;
+    const type = location ? "location" : rawType === "pin" ? "pin" : "default";
+    const title = location ? `Opinions in ${location}` : "droPINion";
+    const description =
+      type === "pin" ? "Honest opinions, pinned to real places" : "Share your thoughts on the map";
 
     // Define colors and styling
     const backgroundColor =

@@ -69,6 +69,7 @@ export interface PinPageComment {
   text: string;
   createdAt: Date;
   isFirstComment: boolean;
+  verifiedVisit: boolean;
   photoUrl: string | null;
   userId: string;
   displayName: string | null;
@@ -77,13 +78,39 @@ export interface PinPageComment {
   dislikeCount: number;
 }
 
+export interface PinShareQuote {
+  text: string;
+  displayName: string;
+  verifiedVisit: boolean;
+}
+
+/**
+ * The opinion that represents a pin in link previews: best score (a "Was
+ * here" counts as a vote, like the popular sort), then the opening one.
+ * Deleted authors are skipped.
+ */
+export const getPinShareQuote = cache(async (pinId: string): Promise<PinShareQuote | null> => {
+  const [row] = (await db.execute(sql`
+    SELECT c.text, COALESCE(u.display_name, u.name) AS display_name, c.verified_visit
+    FROM comments c
+    JOIN "user" u ON u.id = c.user_id AND u.deleted_at IS NULL
+    WHERE c.pin_id = ${pinId}
+    ORDER BY (c.likes_count - c.dislikes_count + c.verified_visit::int) DESC,
+             c.is_first_comment DESC, c.created_at, c.id
+    LIMIT 1
+  `)) as unknown as Array<{ text: string; display_name: string | null; verified_visit: boolean }>;
+  return row
+    ? { text: row.text, displayName: row.display_name || "Someone", verifiedVisit: row.verified_visit }
+    : null;
+});
+
 /** Oldest-first comments for the SSR pin page (bounded). */
 export async function getPinPageComments(
   pinId: string,
   limit = 200
 ): Promise<PinPageComment[]> {
   const rows = (await db.execute(sql`
-    SELECT c.id, c.text, c.created_at, c.is_first_comment, c.photo_url, c.user_id,
+    SELECT c.id, c.text, c.created_at, c.is_first_comment, c.verified_visit, c.photo_url, c.user_id,
            c.likes_count, c.dislikes_count,
            u.deleted_at IS NOT NULL AS user_deleted,
            COALESCE(u.display_name, u.name) AS display_name,
@@ -98,6 +125,7 @@ export async function getPinPageComments(
     text: string;
     created_at: string;
     is_first_comment: boolean;
+    verified_visit: boolean;
     photo_url: string | null;
     user_id: string;
     likes_count: number;
@@ -111,6 +139,7 @@ export async function getPinPageComments(
     text: r.text,
     createdAt: new Date(toIso(r.created_at)),
     isFirstComment: r.is_first_comment,
+    verifiedVisit: r.verified_visit,
     photoUrl: r.photo_url,
     userId: r.user_id,
     displayName: r.user_deleted ? DELETED_USER_LABEL : r.display_name,
