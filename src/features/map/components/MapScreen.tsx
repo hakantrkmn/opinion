@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useBasemapSync, useResolvedBasemap } from "../hooks/useBasemap";
 import { clearDeepLinkParams, useDeepLinkPin } from "../hooks/useDeepLinkPin";
 import { useDropPin } from "../hooks/useDropPin";
+import { useEmptyAreaHint } from "../hooks/useEmptyAreaHint";
 import { useLayerManager } from "../hooks/useLayerManager";
 import { useLocationWatch } from "../hooks/useLocationWatch";
 import { useMapInteractions } from "../hooks/useMapInteractions";
@@ -102,6 +103,18 @@ export default function MapScreen({ initialCenter, initialPinId }: MapScreenProp
           ? ("empty" as const)
           : null;
 
+  // "All" scope and nothing loaded in view: point at the closest opinion.
+  const emptyArea = useEmptyAreaHint(
+    map,
+    scope === "all" &&
+      !pins.isFetching &&
+      !pins.isError &&
+      pins.mode !== null &&
+      pins.clustersFC.features.length === 0 &&
+      pins.pinsFC.features.length === 0
+  );
+  const focusPin = useMapUiStore((s) => s.focusPin);
+
   return (
     <div className="relative h-full w-full overflow-clip">
       <div
@@ -133,8 +146,10 @@ export default function MapScreen({ initialCenter, initialPinId }: MapScreenProp
             error={pins.isError}
             truncated={pins.truncated}
             followingHint={followingHint}
+            emptyArea={emptyArea}
             onRetry={() => void pins.refetch()}
             onSignIn={requireSignIn}
+            onShowNearest={focusPin}
           />
         </div>
 

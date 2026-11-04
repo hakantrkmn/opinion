@@ -46,6 +46,12 @@ export const pinClustersQuerySchema = viewportBoundsSchema.and(
   })
 );
 
+/** GET /api/pins/nearest */
+export const nearestPinQuerySchema = z.object({
+  lat: z.coerce.number().min(-90).max(90),
+  lng: z.coerce.number().min(-180).max(180),
+});
+
 /** POST /api/pins (multipart text fields; `photo` file handled separately) */
 export const createPinFormSchema = z.object({
   name: z.string().trim().min(1).max(MAX_PIN_NAME_LEN),

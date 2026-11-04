@@ -3,7 +3,7 @@
  * Route handlers import from here; errors are thrown as HttpError and turned
  * into ApiError responses by handleRouteError.
  */
-export { getPinsInBounds, getPinClusters, getPinById, createPin, deletePin } from "./pins";
+export { getPinsInBounds, getPinClusters, getNearestPin, getPinById, createPin, deletePin } from "./pins";
 export {
   listPinComments,
   getCommentItem,

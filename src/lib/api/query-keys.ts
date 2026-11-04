@@ -13,6 +13,8 @@ export const queryKeys = {
     bboxAll: ["pins", "bbox"] as const,
     bbox: (scope: string, bboxKey: string) =>
       ["pins", "bbox", scope, bboxKey] as const,
+    /** Closest pin to a (rounded) point, for the empty-area hint. */
+    nearest: (lat: number, lng: number) => ["pins", "nearest", lat, lng] as const,
     detail: (pinId: string) => ["pins", pinId] as const,
     commentsAll: (pinId: string) => ["pins", pinId, "comments"] as const,
     comments: (pinId: string, sort: string) =>

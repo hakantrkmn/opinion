@@ -42,6 +42,14 @@ export interface PinSummary {
 }
 
 /**
+ * GET /api/pins/nearest?lat&lng → the closest visible pin (all scope), or
+ * null when there are none. `distance_m` is great-circle metres.
+ */
+export interface NearestPinResponse {
+  pin: (PinSummary & { distance_m: number }) | null;
+}
+
+/**
  * GET /api/pins?minLat&maxLat&minLng&maxLng&scope=all|following
  * Only meaningful at zoom >= PIN_DETAIL_MIN_ZOOM. Server caps the result at
  * PINS_MAX_RESULTS (newest first) and sets `truncated` when capped.

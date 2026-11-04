@@ -57,6 +57,13 @@ export function formatCompactNumber(value: number) {
   }).format(value);
 }
 
+/** "650 m", "2.4 km", "183 km". */
+export function formatDistance(meters: number) {
+  if (meters < 1000) return `${Math.max(10, Math.round(meters / 10) * 10)} m`;
+  const km = meters / 1000;
+  return `${getNumberFormatter({ maximumFractionDigits: km < 10 ? 1 : 0 }).format(km)} km`;
+}
+
 const relativeFormatterCache = new Map<string, Intl.RelativeTimeFormat>();
 
 const RELATIVE_STEPS: [Intl.RelativeTimeFormatUnit, number][] = [

@@ -1,7 +1,9 @@
 "use client";
 
+import { formatDistance } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
-import { AlertCircle, Loader2, ZoomIn } from "lucide-react";
+import type { NearestPinResponse } from "@/types/api";
+import { AlertCircle, ArrowRight, Loader2, MapPin, ZoomIn } from "lucide-react";
 import { useEffect, useState } from "react";
 import { mapSurface } from "./control-styles";
 
@@ -10,8 +12,11 @@ interface MapStatusProps {
   error: boolean;
   truncated: boolean;
   followingHint: "signin" | "empty" | null;
+  /** Nothing in view: the closest pin anywhere (or none at all). */
+  emptyArea: NearestPinResponse | null;
   onRetry: () => void;
   onSignIn: () => void;
+  onShowNearest: (pin: NonNullable<NearestPinResponse["pin"]>) => void;
 }
 
 /** Shows only after a short delay so fast (cached) loads never flash. */
@@ -33,8 +38,10 @@ export function MapStatus({
   error,
   truncated,
   followingHint,
+  emptyArea,
   onRetry,
   onSignIn,
+  onShowNearest,
 }: MapStatusProps) {
   const slow = useDelayed(fetching, 250);
 
@@ -78,6 +85,29 @@ export function MapStatus({
     );
   } else if (followingHint === "empty") {
     content = "No pins from people you follow here";
+  } else if (emptyArea) {
+    const nearest = emptyArea.pin;
+    content = nearest ? (
+      <>
+        <MapPin className="h-3.5 w-3.5 text-primary" />
+        No opinions here yet
+        <button
+          type="button"
+          onClick={() => onShowNearest(nearest)}
+          aria-label={`Show the nearest opinion: ${nearest.name}, ${formatDistance(nearest.distance_m)} away`}
+          className="pointer-events-auto -my-2 -mr-2 ml-0.5 flex items-center gap-1 rounded-full py-2 pl-2 pr-2.5 font-semibold text-primary"
+        >
+          <span className="max-w-40 truncate max-sm:hidden">{nearest.name} ·</span>
+          {formatDistance(nearest.distance_m)}
+          <ArrowRight className="h-3.5 w-3.5" />
+        </button>
+      </>
+    ) : (
+      <>
+        <MapPin className="h-3.5 w-3.5 text-primary" />
+        No opinions yet. Drop the first one!
+      </>
+    );
   }
 
   return (

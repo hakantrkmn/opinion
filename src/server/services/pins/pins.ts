@@ -3,6 +3,7 @@ import { db, sql } from "@/server/db";
 import { PINS_MAX_RESULTS } from "@/constants/map";
 import type {
   CreatePinResponse,
+  NearestPinResponse,
   PinClustersResponse,
   PinScope,
   PinSummary,
@@ -70,6 +71,31 @@ export async function getPinsInBounds(q: MapQuery): Promise<PinsInBoundsResponse
   return {
     pins: (truncated ? rows.slice(0, PINS_MAX_RESULTS) : rows).map(toPinSummary),
     truncated,
+  };
+}
+
+/**
+ * The visible pin closest to a point (all scope), for the "nothing here
+ * yet" hint. KNN on the GIST index (degree distance) picks the candidate;
+ * the reported distance is great-circle metres.
+ */
+export async function getNearestPin(q: {
+  lat: number;
+  lng: number;
+  viewerId: string | null;
+}): Promise<NearestPinResponse> {
+  const point = sql`ST_SetSRID(ST_MakePoint(${q.lng}::float8, ${q.lat}::float8), 4326)`;
+  const [row] = (await db.execute(sql`
+    SELECT ${pinColumnsSql}, ST_DistanceSphere(p.location, ${point}) AS distance_m
+    FROM pins p
+    JOIN "user" u ON u.id = p.user_id
+    WHERE p.comments_count > 0
+      ${mapFiltersSql("all", q.viewerId)}
+    ORDER BY p.location <-> ${point}
+    LIMIT 1
+  `)) as unknown as Array<PinRow & { distance_m: number }>;
+  return {
+    pin: row ? { ...toPinSummary(row), distance_m: Math.round(Number(row.distance_m)) } : null,
   };
 }
 
