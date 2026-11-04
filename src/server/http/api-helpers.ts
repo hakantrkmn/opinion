@@ -379,7 +379,9 @@ export class HttpError extends Error {
   constructor(
     public status: number,
     public code: ApiErrorCode,
-    message: string
+    message: string,
+    /** Extra details for the client, e.g. `{ distance_m, max_distance_m }`. */
+    public issues?: unknown
   ) {
     super(message);
     this.name = "HttpError";
@@ -401,7 +403,12 @@ export class HttpError extends Error {
 
 export function handleRouteError(error: unknown, context: string): NextResponse {
   if (error instanceof HttpError) {
-    return errorResponse(error.status, error.code, error.message);
+    return errorResponse(
+      error.status,
+      error.code,
+      error.message,
+      error.issues === undefined ? undefined : { issues: error.issues }
+    );
   }
   console.error(`[api] ${context}:`, error);
   return errors.internal();

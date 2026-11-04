@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { CommentItem } from "@/types/api";
 import { AlertCircle, Loader2, MessageCircle } from "lucide-react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
+import { useHereCheck } from "../hooks/use-here-check";
 import {
   useDeleteComment,
   useEditComment,
+  useVerifyVisit,
   useVoteComment,
 } from "../hooks/useCommentMutations";
 import type { usePinComments } from "../hooks/usePinComments";
@@ -16,6 +18,8 @@ import { CommentCard } from "./CommentCard";
 
 interface CommentListProps {
   pinId: string;
+  /** Pin location, for "I'm here now". */
+  pin: { lat: number; lng: number } | undefined;
   query: ReturnType<typeof usePinComments>;
   currentUserId: string | null;
   onRequireSignIn: () => void;
@@ -24,6 +28,7 @@ interface CommentListProps {
 
 export function CommentList({
   pinId,
+  pin,
   query,
   currentUserId,
   onRequireSignIn,
@@ -62,6 +67,22 @@ export function CommentList({
   const onDelete = useCallback(
     (comment: CommentItem) => removeMutate(comment.id),
     [removeMutate]
+  );
+
+  const here = useHereCheck(pin);
+  const verify = useVerifyVisit(pinId);
+  const [checkingId, setCheckingId] = useState<string | null>(null);
+  const hereCheck = here.check;
+  const verifyMutate = verify.mutate;
+  const onVerifyVisit = useCallback(
+    (comment: CommentItem) => {
+      setCheckingId(comment.id);
+      void hereCheck().then((fix) => {
+        setCheckingId(null);
+        if (fix) verifyMutate({ commentId: comment.id, fix });
+      });
+    },
+    [hereCheck, verifyMutate]
   );
 
   if (query.isPending) return <CommentSkeletons />;
@@ -108,6 +129,7 @@ export function CommentList({
 
   const editingId = edit.isPending ? edit.variables?.commentId : undefined;
   const deletingId = remove.isPending ? remove.variables : undefined;
+  const verifyingId = verify.isPending ? verify.variables?.commentId : checkingId;
 
   return (
     <div className="flex flex-col gap-3 py-4">
@@ -118,9 +140,11 @@ export function CommentList({
           currentUserId={currentUserId}
           isEditingPending={editingId === comment.id}
           isDeleting={deletingId === comment.id}
+          isVerifying={verifyingId === comment.id}
           onVote={onVote}
           onEdit={onEdit}
           onDelete={onDelete}
+          onVerifyVisit={onVerifyVisit}
         />
       ))}
       {query.hasNextPage ? (

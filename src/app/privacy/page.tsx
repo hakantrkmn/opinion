@@ -88,7 +88,10 @@ export default function PrivacyPolicyPage() {
               <li>
                 <strong>Location:</strong> when you create a pin or center the
                 map on your current position, the app reads your device GPS
-                coordinates. We do not track your location in the background.
+                coordinates. When you tap “I&apos;m here” on a comment, your
+                position is checked once against the pin; only the resulting
+                “Was here” badge is saved, never the coordinates. We do not
+                track your location in the background.
                 You can deny or revoke the location permission at any time in
                 your device settings — the app will still let you browse the
                 public map.

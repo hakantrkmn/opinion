@@ -23,6 +23,8 @@ import {
   updateCommentLists,
 } from "../lib/cache";
 import { applyVote } from "../lib/vote";
+import type { GeoFix } from "@/features/map/store/location-store";
+import { toDeviceFixBody } from "./use-here-check";
 
 /*
  * Toasts for comment actions live here and only here — components never
@@ -38,9 +40,18 @@ function invalidateProfileLists(queryClient: QueryClient) {
 export function useAddComment(pinId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ text, photo }: { text: string; photo?: File | null }) => {
+    mutationFn: async ({
+      text,
+      photo,
+      fix,
+    }: {
+      text: string;
+      photo?: File | null;
+      /** "I'm here" fix, checked against the pin by the server. */
+      fix?: GeoFix | null;
+    }) => {
       const photo_url = photo ? (await uploadCommentPhoto(photo)).url : undefined;
-      return postComment(pinId, { text, photo_url });
+      return postComment(pinId, { text, photo_url, ...(fix ? toDeviceFixBody(fix) : null) });
     },
     onSuccess: ({ comment }) => {
       updateCommentLists(queryClient, pinId, (data, sort) =>
@@ -106,6 +117,25 @@ export function useEditComment(pinId: string) {
       toast.error("Couldn't update your comment", {
         description: errorMessage(error),
       });
+    },
+  });
+}
+
+/** "I'm here now": marks the viewer's own comment as written on site. */
+export function useVerifyVisit(pinId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ commentId, fix }: { commentId: string; fix: GeoFix }) =>
+      patchCommentRequest(commentId, toDeviceFixBody(fix)),
+    onSuccess: ({ comment }) => {
+      updateCommentLists(queryClient, pinId, (data) =>
+        patchComment(data, comment.id, (c) => ({ ...c, verified_visit: comment.verified_visit }))
+      );
+      invalidateProfileLists(queryClient);
+      toast.success("Marked as “Was here”");
+    },
+    onError: (error) => {
+      toast.error("Couldn't confirm you're here", { description: errorMessage(error) });
     },
   });
 }

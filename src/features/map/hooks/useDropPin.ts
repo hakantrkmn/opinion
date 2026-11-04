@@ -6,14 +6,10 @@ import type { Map as MapLibreMap } from "maplibre-gl";
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { distanceMeters, type LngLat } from "../lib/geo";
-import { getQuickFix } from "../lib/geolocation";
-import { startLocationWatch } from "./useLocationWatch";
-import { useLocationStore, type GeoFix } from "../store/location-store";
+import { getFreshFix } from "../lib/fresh-fix";
+import type { GeoFix } from "../store/location-store";
 import { useMapUiStore } from "../store/ui-store";
 
-/** A watched fix this recent and precise is reused instead of asking again. */
-const REUSABLE_FIX_AGE_MS = 30_000;
-const REUSABLE_FIX_ACCURACY_M = 50;
 const DROP_ZOOM = 17;
 
 /**
@@ -35,22 +31,10 @@ export function useDropPin(map: MapLibreMap | null) {
   }, [user, isLoading, setSignInPromptOpen]);
 
   const freshFix = useCallback(async (): Promise<GeoFix | null> => {
-    const known = useLocationStore.getState().fix;
-    if (
-      known &&
-      Date.now() - known.timestamp < REUSABLE_FIX_AGE_MS &&
-      known.accuracy <= REUSABLE_FIX_ACCURACY_M
-    ) {
-      return known;
-    }
     busyRef.current = true;
     setLocating(true);
     try {
-      const fix = await getQuickFix();
-      useLocationStore.getState().setFix(fix);
-      // Keep the live dot running so the next drop is instant.
-      startLocationWatch();
-      return fix;
+      return await getFreshFix();
     } catch (error) {
       toast.error("Couldn't get your location", {
         description: error instanceof Error ? error.message : undefined,

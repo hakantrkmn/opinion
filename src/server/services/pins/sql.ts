@@ -109,6 +109,7 @@ export const commentColumnsSql = sql`
   c.photo_url,
   c.photo_metadata,
   c.is_first_comment,
+  c.verified_visit,
   c.created_at,
   c.updated_at,
   c.likes_count,
@@ -122,6 +123,7 @@ export interface CommentRow extends UserRow {
   photo_url: string | null;
   photo_metadata: unknown;
   is_first_comment: boolean;
+  verified_visit: boolean;
   created_at: string | Date;
   updated_at: string | Date;
   likes_count: number | string;
@@ -156,6 +158,7 @@ export function toCommentItem(row: CommentRow): CommentItem {
     photo_url: row.photo_url ?? null,
     photo_metadata: row.photo_url ? toPhotoMetadata(row.photo_metadata) : null,
     is_first_comment: row.is_first_comment,
+    verified_visit: !!row.verified_visit,
     created_at: toIso(row.created_at),
     updated_at: toIso(row.updated_at),
     user: toUserSummary(row),

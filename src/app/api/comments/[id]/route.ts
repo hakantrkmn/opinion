@@ -9,14 +9,16 @@ import {
   requireSession,
 } from "@/server/http/api-helpers";
 import { RATE_LIMITS } from "@/server/http/rate-limit";
-import { idParamSchema, updateCommentSchema } from "@/lib/validation/schemas";
+import { deviceFixOf, idParamSchema, updateCommentSchema } from "@/lib/validation/schemas";
 import { deleteComment, updateComment } from "@/server/services/pins";
 import type { CommentResponse, DeleteCommentResponse } from "@/types/api";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 /**
- * PATCH /api/comments/:id (JSON { text?, photo_url? | null }) → { comment }
+ * PATCH /api/comments/:id (JSON { text?, photo_url? | null, user_lat?,
+ * user_lng?, accuracy? }) → { comment }. The device fix marks it "Was here"
+ * (422 TOO_FAR with { distance_m, max_distance_m } when too far).
  * 404 when the comment does not exist or is not the caller's.
  */
 export async function PATCH(request: NextRequest, { params }: Ctx) {
@@ -41,6 +43,7 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
         userId: session.user.id,
         text: body.data.text,
         photoUrl: body.data.photo_url,
+        device: deviceFixOf(body.data),
       }),
     };
     return json(result);

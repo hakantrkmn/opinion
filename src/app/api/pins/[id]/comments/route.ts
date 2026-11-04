@@ -13,6 +13,7 @@ import {
 import { RATE_LIMITS } from "@/server/http/rate-limit";
 import {
   createCommentSchema,
+  deviceFixOf,
   idParamSchema,
   pinCommentsQuerySchema,
 } from "@/lib/validation/schemas";
@@ -50,7 +51,9 @@ export async function GET(request: NextRequest, { params }: Ctx) {
 }
 
 /**
- * POST /api/pins/:id/comments (JSON { text, photo_url? }) → 201 { comment }
+ * POST /api/pins/:id/comments (JSON { text, photo_url?, user_lat?, user_lng?,
+ * accuracy? }) → 201 { comment }; a device fix near the pin makes it
+ * `verified_visit` ("Was here"), a far one is ignored.
  * 409 CONFLICT when the user already commented, 403 on a block relation
  * with the pin owner, 404 when the pin is gone.
  */
@@ -76,6 +79,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
         userId: session.user.id,
         text: body.data.text,
         photoUrl: body.data.photo_url,
+        device: deviceFixOf(body.data),
       }),
     };
 

@@ -114,6 +114,11 @@ export interface CommentItem {
   photo_url: string | null;
   photo_metadata: PhotoMetadata | null;
   is_first_comment: boolean;
+  /**
+   * "Was here": written on site (the author was within ~100 m of the pin
+   * when posting, or confirmed it later). Pin-opening comments always are.
+   */
+  verified_visit: boolean;
   created_at: string;
   updated_at: string;
   user: UserSummary;

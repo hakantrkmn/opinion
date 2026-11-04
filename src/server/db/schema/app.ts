@@ -77,6 +77,12 @@ export const comments = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     text: text("text").notNull(),
     isFirstComment: boolean("is_first_comment").notNull().default(false),
+    /**
+     * Written on site: the author's device was within the pin create
+     * distance when posting (or later, via "I'm here now"). Only the flag is
+     * kept, never the coordinates.
+     */
+    verifiedVisit: boolean("verified_visit").notNull().default(false),
     photoUrl: text("photo_url"),
     photoMetadata: jsonb("photo_metadata").default(sql`'{}'::jsonb`),
     likesCount: integer("likes_count").notNull().default(0),

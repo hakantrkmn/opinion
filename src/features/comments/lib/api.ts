@@ -27,9 +27,12 @@ export function fetchPinComments(
   );
 }
 
+/** Optional "Was here" proof: the device fix at posting time. */
+type DeviceFix = { user_lat: number; user_lng: number; accuracy: number };
+
 export function postComment(
   pinId: string,
-  body: { text: string; photo_url?: string | null }
+  body: { text: string; photo_url?: string | null } & Partial<DeviceFix>
 ) {
   return apiClient<CommentResponse>(
     `/api/pins/${encodeURIComponent(pinId)}/comments`,
@@ -39,7 +42,7 @@ export function postComment(
 
 export function patchComment(
   commentId: string,
-  body: { text?: string; photo_url?: string | null }
+  body: { text?: string; photo_url?: string | null } & Partial<DeviceFix>
 ) {
   return apiClient<CommentResponse>(
     `/api/comments/${encodeURIComponent(commentId)}`,

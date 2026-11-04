@@ -16,7 +16,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { ReportContentButton } from "@/features/moderation/components/ReportContentButton";
 import { formatTimeAgo } from "@/lib/formatters";
 import type { CommentItem, VoteValue } from "@/types/api";
-import { Pencil, Trash2 } from "lucide-react";
+import { Loader2, MapPinCheck, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { memo, useState } from "react";
 import { CommentEditForm } from "./CommentEditForm";
@@ -32,6 +32,8 @@ export interface CommentHandlers {
     values: { text: string; photo: File | null | undefined }
   ) => Promise<boolean>;
   onDelete: (comment: CommentItem) => void;
+  /** "I'm here now" on the viewer's own comment that isn't "Was here" yet. */
+  onVerifyVisit: (comment: CommentItem) => void;
 }
 
 interface CommentCardProps extends CommentHandlers {
@@ -39,6 +41,7 @@ interface CommentCardProps extends CommentHandlers {
   currentUserId: string | null;
   isEditingPending: boolean;
   isDeleting: boolean;
+  isVerifying: boolean;
 }
 
 function wasEdited(c: CommentItem) {
@@ -50,9 +53,11 @@ export const CommentCard = memo(function CommentCard({
   currentUserId,
   isEditingPending,
   isDeleting,
+  isVerifying,
   onVote,
   onEdit,
   onDelete,
+  onVerifyVisit,
 }: CommentCardProps) {
   const [editing, setEditing] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -84,6 +89,15 @@ export const CommentCard = memo(function CommentCard({
                   OP
                 </span>
               ) : null}
+              {comment.verified_visit ? (
+                <span
+                  title="Written on site"
+                  className="flex shrink-0 items-center gap-0.5 rounded-md bg-emerald-500/10 px-1.5 py-px text-[10px] font-semibold text-emerald-700 dark:text-emerald-400"
+                >
+                  <MapPinCheck className="size-3" aria-hidden />
+                  Was here
+                </span>
+              ) : null}
             </div>
             <time
               dateTime={comment.created_at}
@@ -100,6 +114,23 @@ export const CommentCard = memo(function CommentCard({
           <div className="flex shrink-0 items-center gap-0.5 transition-opacity duration-150 pointer-fine:opacity-0 pointer-fine:group-focus-within:opacity-100 pointer-fine:group-hover:opacity-100">
             {isOwn ? (
               <>
+                {!comment.verified_visit ? (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 rounded-lg text-muted-foreground pointer-coarse:size-10"
+                    onClick={() => onVerifyVisit(comment)}
+                    disabled={isDeleting || isVerifying}
+                    aria-label="I'm here now: add a “Was here” badge"
+                    title="I'm here now"
+                  >
+                    {isVerifying ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <MapPinCheck className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                ) : null}
                 <Button
                   variant="ghost"
                   size="icon"

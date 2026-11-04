@@ -21,10 +21,18 @@ import {
   PG_UNIQUE_VIOLATION,
 } from "./errors";
 import { HttpError } from "@/server/http/api-helpers";
+import { checkCreateDistance } from "./geo";
+
+export interface DeviceFix {
+  lat: number;
+  lng: number;
+  accuracy: number;
+}
 import type { SQL } from "drizzle-orm";
 
 const ORDER_BY: Record<CommentSort, SQL> = {
-  popular: sql`(c.likes_count - c.dislikes_count) DESC, c.likes_count DESC, c.created_at DESC, c.id`,
+  // Written on site counts as one extra vote.
+  popular: sql`(c.likes_count - c.dislikes_count + c.verified_visit::int) DESC, c.likes_count DESC, c.created_at DESC, c.id`,
   newest: sql`c.created_at DESC, c.id`,
   oldest: sql`c.created_at ASC, c.id`,
 };
@@ -135,21 +143,35 @@ function assertOwnedPhoto(url: string, userId: string) {
   }
 }
 
-/** POST /api/pins/:id/comments */
+/** Pin owner + coordinates, for block and "Was here" checks. */
+async function getPinForComment(pinId: string) {
+  const [pin] = (await db.execute(sql`
+    SELECT user_id, ST_Y(location) AS lat, ST_X(location) AS lng FROM pins WHERE id = ${pinId}
+  `)) as unknown as Array<{ user_id: string; lat: number; lng: number }>;
+  return pin ? { userId: pin.user_id, lat: Number(pin.lat), lng: Number(pin.lng) } : null;
+}
+
+/**
+ * POST /api/pins/:id/comments. With a device fix near the pin the comment
+ * is "Was here"; a fix that is too far just doesn't earn it.
+ */
 export async function createComment(params: {
   pinId: string;
   userId: string;
   text: string;
   photoUrl?: string | null;
+  device?: DeviceFix | null;
 }): Promise<CommentItem> {
   const { pinId, userId, text } = params;
   const photoUrl = params.photoUrl || null;
   if (photoUrl) assertOwnedPhoto(photoUrl, userId);
 
-  const [pin] = (await db.execute(sql`
-    SELECT user_id FROM pins WHERE id = ${pinId}
-  `)) as unknown as Array<{ user_id: string }>;
-  if (!pin) throw notFound("Pin");
+  const found = await getPinForComment(pinId);
+  if (!found) throw notFound("Pin");
+  const pin = { user_id: found.userId };
+  const verified = params.device
+    ? checkCreateDistance(found, params.device, params.device.accuracy).ok
+    : false;
   if (await isBlockedRelation(userId, pin.user_id)) {
     throw HttpError.forbidden("You cannot comment on this pin");
   }
@@ -158,9 +180,9 @@ export async function createComment(params: {
   const id = crypto.randomUUID();
   try {
     await db.execute(sql`
-      INSERT INTO comments (id, pin_id, user_id, text, photo_url, photo_metadata)
+      INSERT INTO comments (id, pin_id, user_id, text, photo_url, photo_metadata, verified_visit)
       VALUES (${id}, ${pinId}, ${userId}, ${text}, ${photoUrl},
-              ${photoMetadata ? JSON.stringify(photoMetadata) : null}::jsonb)
+              ${photoMetadata ? JSON.stringify(photoMetadata) : null}::jsonb, ${verified})
     `);
   } catch (error) {
     const code = pgErrorCode(error);
@@ -177,24 +199,30 @@ export async function createComment(params: {
   return item;
 }
 
-/** PATCH /api/comments/:id — owner only (404 otherwise). */
+/**
+ * PATCH /api/comments/:id — owner only (404 otherwise). A device fix near
+ * the pin marks the comment "Was here" ("I'm here now"; 422 TOO_FAR when
+ * too far) without counting as an edit.
+ */
 export async function updateComment(params: {
   commentId: string;
   userId: string;
   text?: string;
   /** undefined = keep, null = remove, string = replace */
   photoUrl?: string | null;
+  device?: DeviceFix | null;
 }): Promise<CommentItem> {
-  const { commentId, userId, text, photoUrl } = params;
+  const { commentId, userId, text, photoUrl, device } = params;
   if (photoUrl) assertOwnedPhoto(photoUrl, userId);
   const photoMetadata = photoUrl ? await readPhotoMetadata(photoUrl) : null;
 
   const oldPhoto = await db.transaction(async (tx) => {
     const [current] = (await tx.execute(sql`
-      SELECT photo_url FROM comments
-      WHERE id = ${commentId} AND user_id = ${userId}
-      FOR UPDATE
-    `)) as unknown as Array<{ photo_url: string | null }>;
+      SELECT c.photo_url, ST_Y(p.location) AS lat, ST_X(p.location) AS lng
+      FROM comments c JOIN pins p ON p.id = c.pin_id
+      WHERE c.id = ${commentId} AND c.user_id = ${userId}
+      FOR UPDATE OF c
+    `)) as unknown as Array<{ photo_url: string | null; lat: number; lng: number }>;
     if (!current) throw notFound("Comment");
 
     const sets: SQL[] = [];
@@ -205,8 +233,26 @@ export async function updateComment(params: {
         sql`photo_metadata = ${photoMetadata ? JSON.stringify(photoMetadata) : null}::jsonb`
       );
     }
+    if (sets.length > 0) sets.push(sql`updated_at = now()`);
+    if (device) {
+      const pin = { lat: Number(current.lat), lng: Number(current.lng) };
+      const distance = checkCreateDistance(pin, device, device.accuracy);
+      if (!distance.ok) {
+        throw new HttpError(
+          422,
+          "TOO_FAR",
+          `You must be within ${Math.round(distance.maxDistance)} m of the place`,
+          {
+            distance_m: Math.round(distance.distance),
+            max_distance_m: Math.round(distance.maxDistance),
+          }
+        );
+      }
+      sets.push(sql`verified_visit = true`);
+    }
+    if (sets.length === 0) return current.photo_url;
     await tx.execute(sql`
-      UPDATE comments SET ${sql.join(sets, sql`, `)}, updated_at = now()
+      UPDATE comments SET ${sql.join(sets, sql`, `)}
       WHERE id = ${commentId}
     `);
     return current.photo_url;

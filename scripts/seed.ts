@@ -403,8 +403,8 @@ async function main() {
       }
       for (const part of chunks(data.comments, 5000)) {
         await tx`
-          INSERT INTO comments (id, pin_id, user_id, text, is_first_comment, created_at, updated_at)
-          SELECT t.id, t.pin_id, t.user_id, t.text, t.is_first, t.ts, t.ts
+          INSERT INTO comments (id, pin_id, user_id, text, is_first_comment, verified_visit, created_at, updated_at)
+          SELECT t.id, t.pin_id, t.user_id, t.text, t.is_first, t.is_first, t.ts, t.ts
           FROM unnest(
             ${part.map((c) => c.id)}::text[],
             ${part.map((c) => c.pinId)}::text[],

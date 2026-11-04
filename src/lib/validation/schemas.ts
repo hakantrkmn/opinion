@@ -72,21 +72,55 @@ export const pinCommentsQuerySchema = z.object({
 
 const commentPhotoUrlSchema = z.string().min(1).max(MAX_PHOTO_URL_LEN);
 
-/** POST /api/pins/:id/comments */
-export const createCommentSchema = z.object({
-  text: z.string().trim().min(1).max(MAX_COMMENT_LEN),
-  photo_url: commentPhotoUrlSchema.nullish(),
-});
+/**
+ * Optional device fix proving the author is at the pin ("Was here"); all
+ * three fields or none. Same names as POST /api/pins.
+ */
+const deviceFixFields = {
+  user_lat: z.number().min(-90).max(90).optional(),
+  user_lng: z.number().min(-180).max(180).optional(),
+  accuracy: z.number().min(0).max(100_000).optional(),
+};
+type DeviceFixFields = { user_lat?: number; user_lng?: number; accuracy?: number };
+const fixIsComplete = (b: DeviceFixFields) =>
+  [b.user_lat, b.user_lng, b.accuracy].every((v) => v === undefined) ||
+  [b.user_lat, b.user_lng, b.accuracy].every((v) => v !== undefined);
+const fixRefine = {
+  message: "user_lat, user_lng and accuracy go together",
+  path: ["user_lat"],
+};
 
-/** PATCH /api/comments/:id — `photo_url: null` removes the photo. */
+/** POST /api/pins/:id/comments */
+export const createCommentSchema = z
+  .object({
+    text: z.string().trim().min(1).max(MAX_COMMENT_LEN),
+    photo_url: commentPhotoUrlSchema.nullish(),
+    ...deviceFixFields,
+  })
+  .refine(fixIsComplete, fixRefine);
+
+/**
+ * PATCH /api/comments/:id — `photo_url: null` removes the photo; a device
+ * fix marks the comment "Was here" (422 TOO_FAR when it is too far).
+ */
 export const updateCommentSchema = z
   .object({
     text: z.string().trim().min(1).max(MAX_COMMENT_LEN).optional(),
     photo_url: commentPhotoUrlSchema.nullable().optional(),
+    ...deviceFixFields,
   })
-  .refine((b) => b.text !== undefined || b.photo_url !== undefined, {
-    message: "Nothing to update",
-  });
+  .refine(fixIsComplete, fixRefine)
+  .refine(
+    (b) => b.text !== undefined || b.photo_url !== undefined || b.user_lat !== undefined,
+    { message: "Nothing to update" }
+  );
+
+/** The device fix of a comment create / update body, if given. */
+export function deviceFixOf(b: DeviceFixFields) {
+  return b.user_lat !== undefined && b.user_lng !== undefined && b.accuracy !== undefined
+    ? { lat: b.user_lat, lng: b.user_lng, accuracy: b.accuracy }
+    : null;
+}
 
 /** PUT /api/comments/:id/vote — 0 removes the vote. */
 export const voteCommentSchema = z.object({

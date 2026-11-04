@@ -111,6 +111,7 @@ function PinDetail({
         <ScrollArea className="min-h-0 flex-1 border-t border-border/50 px-5 sm:px-6 [&_[data-radix-scroll-area-viewport]]:overscroll-contain">
           <CommentList
             pinId={pinId}
+            pin={pin}
             query={comments}
             currentUserId={user?.id ?? null}
             onRequireSignIn={onRequireSignIn}
@@ -121,6 +122,7 @@ function PinDetail({
         <div className="border-t border-border/50 bg-background px-5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:px-6 sm:pb-4">
           <CommentComposer
             pinId={pinId}
+            pin={pin}
             currentUserId={user?.id ?? null}
             alreadyCommented={!!comments.myCommentId}
           />

@@ -202,8 +202,9 @@ export async function createPin(input: CreatePinInput): Promise<CreatePinRespons
     `)) as unknown as Array<{ id: string }>;
 
     const [comment] = (await tx.execute(sql`
-      INSERT INTO comments (id, pin_id, user_id, text, is_first_comment, photo_url, photo_metadata)
-      VALUES (${crypto.randomUUID()}, ${pin.id}, ${input.userId}, ${input.comment}, true,
+      INSERT INTO comments
+        (id, pin_id, user_id, text, is_first_comment, verified_visit, photo_url, photo_metadata)
+      VALUES (${crypto.randomUUID()}, ${pin.id}, ${input.userId}, ${input.comment}, true, true,
               ${input.photo?.url ?? null},
               ${input.photo ? JSON.stringify(input.photo.metadata) : null}::jsonb)
       RETURNING id

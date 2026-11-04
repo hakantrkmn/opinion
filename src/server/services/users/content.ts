@@ -67,6 +67,7 @@ export async function listUserComments(
       photoUrl: comments.photoUrl,
       photoMetadata: comments.photoMetadata,
       isFirstComment: comments.isFirstComment,
+      verifiedVisit: comments.verifiedVisit,
       createdAt: comments.createdAt,
       updatedAt: comments.updatedAt,
       pinName: pins.name,
@@ -97,6 +98,7 @@ export async function listUserComments(
       photo_url: r.photoUrl,
       photo_metadata: toPhotoMetadata(r.photoMetadata),
       is_first_comment: r.isFirstComment,
+      verified_visit: r.verifiedVisit,
       created_at: isoRequired(r.createdAt),
       updated_at: isoRequired(r.updatedAt),
       user: toUserSummary({
