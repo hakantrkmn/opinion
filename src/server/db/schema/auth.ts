@@ -33,10 +33,10 @@ export const user = pgTable(
     index("idx_user_deleted_at")
       .on(table.deletedAt)
       .where(sql`${table.deletedAt} IS NOT NULL`),
-    // User search uses `display_name ILIKE '%q%'`.
-    index("idx_user_display_name_trgm").using(
+    // User search: containsText(display_name, q) (src/server/db/search.ts).
+    index("idx_user_display_name_search_trgm").using(
       "gin",
-      table.displayName.op("gin_trgm_ops")
+      sql`f_search_norm(${table.displayName}) gin_trgm_ops`
     ),
   ]
 );

@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { db, sql } from "@/server/db";
 import { toIso } from "./sql";
-import { escapeLike } from "./like";
+import { containsText } from "@/server/db/search";
 
 /** Data loaders for the SSR pages (/pin/[id], /location/[slug], sitemap). */
 
@@ -132,8 +132,8 @@ export interface LocationPin {
 }
 
 /**
- * Pins whose name contains `term` (case-insensitive). Served by the
- * pg_trgm GIN index idx_pins_name_trgm for terms of 3+ characters.
+ * Pins whose name contains `term` (case- and accent-insensitive). Served by
+ * the trigram index idx_pins_name_search_trgm for terms of 3+ characters.
  */
 export async function searchPinsByName(term: string, limit = 50): Promise<LocationPin[]> {
   const needle = term.trim().slice(0, 100);
@@ -145,7 +145,7 @@ export async function searchPinsByName(term: string, limit = 50): Promise<Locati
            CASE WHEN u.deleted_at IS NULL THEN u.avatar_url END AS avatar_url
     FROM pins p
     JOIN "user" u ON u.id = p.user_id
-    WHERE p.name ILIKE ${`%${escapeLike(needle)}%`}
+    WHERE ${containsText(sql`p.name`, needle)}
       AND p.comments_count > 0
     ORDER BY p.created_at DESC
     LIMIT ${limit}

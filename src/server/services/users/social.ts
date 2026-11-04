@@ -1,6 +1,7 @@
 import "server-only";
-import { and, desc, eq, ilike, isNull, isNotNull, notInArray } from "drizzle-orm";
+import { and, desc, eq, isNull, isNotNull, notInArray } from "drizzle-orm";
 import { db } from "@/server/db";
+import { containsText } from "@/server/db/search";
 import { user } from "@/server/db/schema/auth";
 import { userFollows } from "@/server/db/schema/app";
 import { HttpError } from "@/server/http/api-helpers";
@@ -160,7 +161,6 @@ export async function searchUsers(
   viewerId: string,
   page: OffsetPagination
 ): Promise<Paginated<UserSummary>> {
-  const escaped = query.trim().replace(/[\\%_]/g, (ch) => `\\${ch}`);
   const excluded = [viewerId, ...(await getInvisibleUserIds(viewerId))];
 
   const rows = await db
@@ -174,7 +174,7 @@ export async function searchUsers(
       and(
         isNull(user.deletedAt),
         isNotNull(user.displayName),
-        ilike(user.displayName, `%${escaped}%`),
+        containsText(user.displayName, query.trim()),
         notInArray(user.id, excluded)
       )
     )

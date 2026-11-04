@@ -51,7 +51,11 @@ export const pins = pgTable(
     index("idx_pins_location").using("gist", table.location),
     index("idx_pins_created_at").on(table.createdAt),
     index("idx_pins_user_created").on(table.userId, table.createdAt.desc()),
-    index("idx_pins_name_trgm").using("gin", table.name.op("gin_trgm_ops")),
+    // Pin name search (containsText in src/server/db/search.ts).
+    index("idx_pins_name_search_trgm").using(
+      "gin",
+      sql`f_search_norm(${table.name}) gin_trgm_ops`
+    ),
   ]
 );
 

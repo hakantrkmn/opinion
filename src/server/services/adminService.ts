@@ -13,6 +13,7 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { db } from "@/server/db";
+import { containsText } from "@/server/db/search";
 import { lockPinOfComment } from "@/server/services/pins/comments";
 import { user } from "@/server/db/schema/auth";
 import {
@@ -84,7 +85,7 @@ function authorWithEmail(
 
 export async function listUsers(params: ListParams): Promise<AdminPage<AdminUser>> {
   const where = params.q
-    ? or(ilike(user.email, likePattern(params.q)), ilike(user.displayName, likePattern(params.q)))
+    ? or(ilike(user.email, likePattern(params.q)), containsText(user.displayName, params.q))
     : undefined;
 
   const [[{ total }], rows] = await Promise.all([
@@ -129,7 +130,7 @@ export async function listUsers(params: ListParams): Promise<AdminPage<AdminUser
 }
 
 export async function listPins(params: ListParams): Promise<AdminPage<AdminPin>> {
-  const where = params.q ? ilike(pins.name, likePattern(params.q)) : undefined;
+  const where = params.q ? containsText(pins.name, params.q) : undefined;
   const [[{ total }], rows] = await Promise.all([
     db.select({ total: count() }).from(pins).where(where),
     db
@@ -177,7 +178,7 @@ export async function listPins(params: ListParams): Promise<AdminPage<AdminPin>>
 export async function listComments(
   params: ListParams
 ): Promise<AdminPage<AdminComment>> {
-  const where = params.q ? ilike(comments.text, likePattern(params.q)) : undefined;
+  const where = params.q ? containsText(comments.text, params.q) : undefined;
   const [[{ total }], rows] = await Promise.all([
     db.select({ total: count() }).from(comments).where(where),
     db
