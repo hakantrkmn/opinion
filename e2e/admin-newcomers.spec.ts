@@ -26,6 +26,11 @@ test.describe("admin newcomers queue", () => {
       expect(before.post!.user).toMatchObject({ id: freshUser.id, total_comments: 1 });
       expect(before.page.waiting).toBeGreaterThanOrEqual(1);
 
+      // Liking your own post doesn't count as being welcomed.
+      const own = await freshUser.api.put(`/api/comments/${posted.comment.id}/vote`, { data: { value: 1 } });
+      expect(own.status()).toBe(200);
+      expect((await find()).post?.answered).toBe(false);
+
       const vote = await admin.put(`/api/comments/${posted.comment.id}/vote`, { data: { value: 1 } });
       expect(vote.status()).toBe(200);
       const after = await find();

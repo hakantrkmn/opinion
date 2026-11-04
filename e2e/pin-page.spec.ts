@@ -102,4 +102,27 @@ test.describe("shareable pin page", () => {
       await owner.api.dispose();
     }
   });
+
+  test("a leftover draft is offered back, never posted by itself", async ({ page, context, freshUser }) => {
+    const owner = await signUpUser();
+    const created = await createPin(owner.api, { name: `E2E stale ${uniqueSuffix()}`, comment: "Owner", at: spot() });
+    try {
+      await signInContext(context, freshUser);
+      // A draft from earlier (e.g. someone else on this browser), no resume marker.
+      await context.addInitScript(([id]) => {
+        localStorage.setItem(`dropinion:pin-draft:${id}`, JSON.stringify({ text: "Not mine to post", at: Date.now() }));
+      }, [created.pin.id]);
+      await page.goto(`/pin/${created.pin.id}`);
+      await expect(page.locator("#pin-page-opinion")).toHaveValue("Not mine to post");
+      await page.waitForTimeout(1500);
+      const comments = await expectJson<PinCommentsResponse>(
+        await freshUser.api.get(`/api/pins/${created.pin.id}/comments`),
+        200
+      );
+      expect(comments.my_comment_id).toBeNull();
+    } finally {
+      await deleteComment(owner.api, created.comment.id);
+      await owner.api.dispose();
+    }
+  });
 });

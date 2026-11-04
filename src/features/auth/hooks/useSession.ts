@@ -1,6 +1,7 @@
 "use client";
 
 import { AuthClientError } from "@/features/auth/lib/auth-errors";
+import { clearAllDrafts } from "@/features/pins/lib/pin-drafts";
 import { authClient } from "@/lib/auth-client";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -48,6 +49,7 @@ export function useSession() {
     },
     onSettled: () => {
       queryClient.clear();
+      clearAllDrafts();
       router.replace("/");
       router.refresh();
     },

@@ -28,8 +28,15 @@ export async function GET(request: NextRequest, { params }: Ctx) {
 
   const { id } = await params;
   const valid = /^[\w-]{1,64}$/.test(id);
+  // A DB hiccup degrades to the brand card (cached briefly), not a 500
+  // that crawlers would keep.
+  let failed = false;
   const [pin, quote] = valid
-    ? await Promise.all([getPinPageData(id), getPinShareQuote(id)])
+    ? await Promise.all([getPinPageData(id), getPinShareQuote(id)]).catch((error) => {
+        console.error("[og/pin]", id, error);
+        failed = true;
+        return [null, null] as const;
+      })
     : [null, null];
 
   const count = pin?.commentsCount ?? 0;
@@ -140,7 +147,9 @@ export async function GET(request: NextRequest, { params }: Ctx) {
       ...SIZE,
       headers: {
         // New opinions change the quote: keep it reasonably fresh.
-        "Cache-Control": "public, max-age=600, stale-while-revalidate=3600",
+        "Cache-Control": failed
+          ? "public, max-age=60"
+          : "public, max-age=600, stale-while-revalidate=3600",
       },
     }
   );

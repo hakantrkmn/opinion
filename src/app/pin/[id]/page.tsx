@@ -243,7 +243,7 @@ export default async function PinPage({
             <PinPageComposer
               pinId={pin.id}
               pinName={pin.name || "this place"}
-              commentsCount={pinComments.length}
+              commentsCount={pin.commentsCount}
             />
           </div>
 

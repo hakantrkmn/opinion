@@ -10,31 +10,12 @@ import { CheckCircle2, Loader2, Send } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-
-/** A visitor's unsent opinion survives the trip through sign-up. */
-const DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
-const draftKey = (pinId: string) => `dropinion:pin-draft:${pinId}`;
-
-function readDraft(pinId: string): string | null {
-  try {
-    const raw = localStorage.getItem(draftKey(pinId));
-    if (!raw) return null;
-    const draft = JSON.parse(raw) as { text?: unknown; at?: unknown };
-    if (typeof draft.text !== "string" || typeof draft.at !== "number") return null;
-    if (Date.now() - draft.at > DRAFT_TTL_MS) return null;
-    return draft.text;
-  } catch {
-    return null;
-  }
-}
-
-function writeDraft(pinId: string, text: string) {
-  try {
-    localStorage.setItem(draftKey(pinId), JSON.stringify({ text, at: Date.now() }));
-  } catch {
-    // storage blocked: the visitor retypes after signing in
-  }
-}
+import {
+  clearDraft,
+  readDraft,
+  saveDraftForSignIn,
+  takeResume,
+} from "@/features/pins/lib/pin-drafts";
 
 /**
  * "Opinion #n" survives the router.refresh() that follows a post (the
@@ -56,14 +37,6 @@ function takePosted(pinId: string): number | null {
 function rememberPosted(pinId: string, position: number) {
   try {
     sessionStorage.setItem(postedKey(pinId), String(position));
-  } catch {
-    // ignore
-  }
-}
-
-function clearDraft(pinId: string) {
-  try {
-    localStorage.removeItem(draftKey(pinId));
   } catch {
     // ignore
   }
@@ -122,8 +95,9 @@ export function PinPageComposer({
     }
   };
 
-  // Back from sign-up / sign-in with a draft: post it once. Keyed on the
-  // user id: the session object is re-created on refetch.
+  // Back from sign-up / sign-in with a draft: post it once, but only on the
+  // return this tab armed (a stale draft is just offered back). Keyed on
+  // the user id: the session object is re-created on refetch.
   const userId = user?.id ?? null;
   useEffect(() => {
     if (isLoading || resumed.current) return;
@@ -133,6 +107,7 @@ export function PinPageComposer({
       return;
     }
     resumed.current = true;
+    const autoPost = takeResume(pinId);
     void fetchPinComments(pinId, "newest", 0)
       .then((page) => {
         // The user may have posted meanwhile: only act while still idle.
@@ -143,7 +118,9 @@ export function PinPageComposer({
           setStatus(position ? { kind: "posted", position } : { kind: "already" });
         } else if (draft) {
           setText(draft);
-          void submit(draft);
+          // Tried once; on failure the text stays here to edit and resend.
+          clearDraft(pinId);
+          if (autoPost) void submit(draft);
         }
       })
       .catch(() => {
@@ -157,7 +134,7 @@ export function PinPageComposer({
     // Until the session is known we can't tell visitors from members.
     if (!trimmed || status.kind === "posting" || isLoading) return;
     if (!user) {
-      writeDraft(pinId, trimmed);
+      saveDraftForSignIn(pinId, trimmed);
       router.push(`/auth?mode=signup&redirect=${encodeURIComponent(returnTo)}`);
       return;
     }

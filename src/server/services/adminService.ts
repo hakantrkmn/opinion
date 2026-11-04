@@ -98,7 +98,11 @@ export async function listNewcomerPosts(params: ListParams): Promise<AdminNewcom
     JOIN pins p ON p.id = c.pin_id
     LEFT JOIN user_stats s ON s.user_id = u.id
     CROSS JOIN LATERAL (
-      SELECT c.likes_count > 0 OR EXISTS (
+      -- Someone else liked it (self-likes don't count) or added an opinion.
+      SELECT EXISTS (
+        SELECT 1 FROM comment_votes v
+        WHERE v.comment_id = c.id AND v.value = 1 AND v.user_id <> c.user_id
+      ) OR EXISTS (
         SELECT 1 FROM comments o
         WHERE o.pin_id = c.pin_id AND o.user_id <> c.user_id AND o.created_at > c.created_at
       ) AS answered
