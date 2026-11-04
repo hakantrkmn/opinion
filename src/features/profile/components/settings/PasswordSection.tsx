@@ -1,6 +1,6 @@
 "use client";
 
-import { authErrorMessage } from "@/features/auth/lib/auth-errors";
+import { useAuthErrorMessage } from "@/features/auth/lib/auth-errors";
 import { FormField } from "@/features/auth/components/form-field";
 import { PasswordInput } from "@/features/auth/components/password-input";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { queryKeys } from "@/lib/api/query-keys";
 import { PASSWORD_MAX, PASSWORD_MIN } from "@/lib/validation/user-schemas";
 import { useQueryClient } from "@tanstack/react-query";
 import { KeyRound, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { InlineError, SettingsSection, settingsButton, settingsInput } from "@/features/profile/components/settings/SettingsSection";
@@ -16,6 +17,9 @@ import { InlineError, SettingsSection, settingsButton, settingsInput } from "@/f
 type FieldKey = "current" | "next" | "confirm";
 
 export function PasswordSection({ email }: { email: string }) {
+  const t = useTranslations("profile.password");
+  const tSettings = useTranslations("profile.settings");
+  const authErrorMessage = useAuthErrorMessage();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState("");
@@ -44,14 +48,14 @@ export function PasswordSection({ email }: { email: string }) {
     e.preventDefault();
     if (busy) return;
     clear();
-    if (!current) return setFieldError({ field: "current", message: "Enter your current password." });
+    if (!current) return setFieldError({ field: "current", message: t("enterCurrent") });
     if (next.length < PASSWORD_MIN || next.length > PASSWORD_MAX) {
-      return setFieldError({ field: "next", message: `Use ${PASSWORD_MIN}–${PASSWORD_MAX} characters.` });
+      return setFieldError({ field: "next", message: t("length", { min: PASSWORD_MIN, max: PASSWORD_MAX }) });
     }
     if (next === current) {
-      return setFieldError({ field: "next", message: "Choose a password different from the current one." });
+      return setFieldError({ field: "next", message: t("different") });
     }
-    if (next !== confirm) return setFieldError({ field: "confirm", message: "Passwords don't match." });
+    if (next !== confirm) return setFieldError({ field: "confirm", message: t("mismatch") });
 
     setBusy(true);
     try {
@@ -68,11 +72,11 @@ export function PasswordSection({ email }: { email: string }) {
       }
       close();
       void queryClient.invalidateQueries({ queryKey: queryKeys.auth.sessions });
-      toast.success("Password changed", {
-        description: revokeOthers ? "Other devices were signed out." : undefined,
+      toast.success(t("changed"), {
+        description: revokeOthers ? t("othersSignedOut") : undefined,
       });
     } catch {
-      setFormError("Couldn't reach the server. Check your connection and try again.");
+      setFormError(tSettings("networkError"));
     } finally {
       setBusy(false);
     }
@@ -81,12 +85,12 @@ export function PasswordSection({ email }: { email: string }) {
   if (!open) {
     return (
       <SettingsSection
-        title="Password"
-        description="Use a long password you don't use anywhere else."
+        title={t("title")}
+        description={t("description")}
         aside={
           <Button variant="outline" className={settingsButton} onClick={() => setOpen(true)}>
             <KeyRound aria-hidden />
-            Change
+            {t("change")}
           </Button>
         }
       />
@@ -94,11 +98,11 @@ export function PasswordSection({ email }: { email: string }) {
   }
 
   return (
-    <SettingsSection title="Password" description="Use a long password you don't use anywhere else.">
+    <SettingsSection title={t("title")} description={t("description")}>
       <form className="flex flex-col gap-4" onSubmit={submit} noValidate>
         {/* Lets password managers update the right account. */}
         <input type="email" name="username" autoComplete="username" value={email} readOnly hidden />
-        <FormField id="current-password" label="Current password" error={errorFor("current")}>
+        <FormField id="current-password" label={t("current")} error={errorFor("current")}>
           <PasswordInput
             autoComplete="current-password"
             autoFocus
@@ -112,8 +116,8 @@ export function PasswordSection({ email }: { email: string }) {
         </FormField>
         <FormField
           id="new-password"
-          label="New password"
-          hint={`At least ${PASSWORD_MIN} characters.`}
+          label={t("new")}
+          hint={t("newHint", { min: PASSWORD_MIN })}
           error={errorFor("next")}
         >
           <PasswordInput
@@ -127,7 +131,7 @@ export function PasswordSection({ email }: { email: string }) {
             className={settingsInput}
           />
         </FormField>
-        <FormField id="confirm-password" label="Confirm new password" error={errorFor("confirm")}>
+        <FormField id="confirm-password" label={t("confirm")} error={errorFor("confirm")}>
           <PasswordInput
             autoComplete="new-password"
             maxLength={PASSWORD_MAX}
@@ -146,16 +150,16 @@ export function PasswordSection({ email }: { email: string }) {
             onChange={(e) => setRevokeOthers(e.target.checked)}
             className="size-4 rounded border-input accent-primary"
           />
-          Sign out of all other devices
+          {t("signOutOthers")}
         </label>
         <InlineError>{formError}</InlineError>
         <div className="flex gap-2">
           <Button type="submit" className={settingsButton} disabled={busy}>
             {busy ? <Loader2 aria-hidden className="animate-spin" /> : null}
-            {busy ? "Updating…" : "Update password"}
+            {busy ? t("updating") : t("update")}
           </Button>
           <Button type="button" variant="ghost" className={settingsButton} onClick={close} disabled={busy}>
-            Cancel
+            {tSettings("cancel")}
           </Button>
         </div>
       </form>

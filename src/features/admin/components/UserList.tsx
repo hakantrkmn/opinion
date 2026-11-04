@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import type { useAdminUsers } from "@/features/admin/hooks/use-admin";
 import { cn } from "@/lib/utils";
 import { Trash2 } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { AdminListShell } from "@/features/admin/components/AdminListShell";
 import { adminIconAction, adminInlineLink, adminRow } from "@/features/admin/components/row-styles";
@@ -20,13 +21,15 @@ interface UserListProps {
 }
 
 export function UserList({ query, currentUserId, onDelete, pending }: UserListProps) {
+  const t = useTranslations("admin");
+  const locale = useLocale();
   const items = query.items;
   return (
     <AdminListShell
-      label="Members"
+      label={t("users.listLabel")}
       count={items.length}
       total={query.firstPage?.total}
-      emptyLabel="No members match your search."
+      emptyLabel={t("users.empty")}
       isLoading={query.isLoading}
       error={query.error}
       hasMore={query.hasNextPage}
@@ -38,7 +41,7 @@ export function UserList({ query, currentUserId, onDelete, pending }: UserListPr
         const deleted = !!u.deleted_at;
         const isSelf = u.id === currentUserId;
         const canDelete = !deleted && u.role !== "admin" && !isSelf;
-        const name = deleted ? "Deleted user" : u.display_name || u.email;
+        const name = deleted ? t("list.deletedUser") : u.display_name || u.email;
         return (
           <li key={u.id} className={adminRow}>
             <Avatar src={deleted ? null : u.avatar_url} alt="" size="md" fallbackText={name} />
@@ -51,15 +54,19 @@ export function UserList({ query, currentUserId, onDelete, pending }: UserListPr
                     {name}
                   </Link>
                 )}
-                {u.role === "admin" ? <Badge variant="secondary" className="shrink-0 font-medium">Admin</Badge> : null}
-                {deleted ? <Badge variant="outline" className="shrink-0 font-medium">Deleted</Badge> : null}
+                {u.role === "admin" ? <Badge variant="secondary" className="shrink-0 font-medium">{t("users.admin")}</Badge> : null}
+                {deleted ? <Badge variant="outline" className="shrink-0 font-medium">{t("users.deleted")}</Badge> : null}
                 {!deleted && !u.email_verified ? (
-                  <Badge variant="outline" className="shrink-0 font-medium text-muted-foreground">Unverified</Badge>
+                  <Badge variant="outline" className="shrink-0 font-medium text-muted-foreground">{t("users.unverified")}</Badge>
                 ) : null}
               </div>
               <p className="truncate text-xs text-muted-foreground">
-                {deleted ? u.id : u.email} · joined {formatDate(u.created_at)}
-                {deleted && u.deleted_at ? ` · deleted ${formatDate(u.deleted_at)}` : ""}
+                {t("users.meta", {
+                  who: deleted ? u.id : u.email,
+                  joined: formatDate(u.created_at, locale),
+                  isDeleted: String(deleted && !!u.deleted_at),
+                  deletedAt: u.deleted_at ? formatDate(u.deleted_at, locale) : "",
+                })}
               </p>
             </div>
             {canDelete ? (
@@ -69,8 +76,8 @@ export function UserList({ query, currentUserId, onDelete, pending }: UserListPr
                 onClick={() => onDelete(u)}
                 disabled={pending}
                 className={adminIconAction}
-                aria-label={`Delete account of ${name}`}
-                title="Delete account"
+                aria-label={t("users.deleteLabel", { name })}
+                title={t("users.deleteTitle")}
               >
                 <Trash2 aria-hidden />
               </Button>

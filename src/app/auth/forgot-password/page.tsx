@@ -2,9 +2,13 @@ import ForgotPasswordForm from "@/features/auth/components/ForgotPasswordForm";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 import { getServerSession } from "@/server/auth/session";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Reset password" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("auth.meta");
+  return { title: t("resetPassword") };
+}
 
 export default async function ForgotPasswordPage({
   searchParams,

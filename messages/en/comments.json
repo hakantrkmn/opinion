@@ -1,1 +1,91 @@
-{}
+{
+  "sort": {
+    "label": "Sort comments",
+    "newest": "Newest",
+    "popular": "Most popular",
+    "oldest": "Oldest"
+  },
+  "card": {
+    "deletedUser": "Deleted user",
+    "opTitle": "Original poster: dropped this pin",
+    "op": "OP",
+    "wasHereTitle": "Written on site",
+    "wasHere": "Was here",
+    "edited": "edited",
+    "verifyLabel": "I'm here now: add a “Was here” badge",
+    "verifyTitle": "I'm here now",
+    "editLabel": "Edit comment",
+    "deleteLabel": "Delete comment",
+    "deleteTitle": "Delete this comment?",
+    "deleteFirstDescription": "This is the pin's first comment. If it's the only one left, the pin is removed too.",
+    "deleteDescription": "This can't be undone.",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "showLess": "Show less",
+    "readMore": "Read more"
+  },
+  "voting": {
+    "like": "Like ({count})",
+    "removeLike": "Remove like ({count})",
+    "dislike": "Dislike ({count})",
+    "removeDislike": "Remove dislike ({count})",
+    "scoreTitle": "Score (likes minus dislikes)"
+  },
+  "photo": {
+    "unavailable": "Photo unavailable",
+    "open": "Open photo",
+    "title": "Comment photo",
+    "alt": "Comment photo",
+    "close": "Close photo"
+  },
+  "edit": {
+    "label": "Edit your comment",
+    "removePhoto": "Remove photo",
+    "undoPhoto": "Undo photo change",
+    "cancel": "Cancel",
+    "save": "Save"
+  },
+  "composer": {
+    "signInPrompt": "Sign in to share your droPINion",
+    "signIn": "Sign in",
+    "alreadyCommented": "You've shared your opinion here — edit or delete it above.",
+    "photoAttached": "Photo attached",
+    "removePhoto": "Remove photo",
+    "hereActive": "You're here: your opinion gets a “Was here” badge.",
+    "placeholder": "Share your thoughts…",
+    "label": "Your comment",
+    "hereUndoLabel": "You're here (tap to undo)",
+    "hereAddLabel": "I'm here: add a “Was here” badge",
+    "hereActiveTitle": "You're here",
+    "hereTitle": "I'm here",
+    "post": "Post comment",
+    "postTitle": "Post (⌘/Ctrl + Enter)"
+  },
+  "list": {
+    "loadError": "Couldn't load comments",
+    "loadErrorHint": "Check your connection and try again.",
+    "retry": "Retry",
+    "emptyTitle": "No comments yet",
+    "emptyDescription": "Be the first to share your opinion about this place.",
+    "showMore": "Show more comments",
+    "loading": "Loading comments"
+  },
+  "toast": {
+    "posted": "Comment posted",
+    "postFailed": "Couldn't post your comment",
+    "updated": "Comment updated",
+    "updateFailed": "Couldn't update your comment",
+    "verified": "Marked as “Was here”",
+    "verifyFailed": "Couldn't confirm you're here",
+    "deleted": "Comment deleted",
+    "deletedPinRemoved": "It was the last comment, so the pin was removed too.",
+    "deleteFailed": "Couldn't delete the comment",
+    "voteFailed": "Couldn't save your vote",
+    "somethingWentWrong": "Something went wrong"
+  },
+  "here": {
+    "notHere": "You're not at this place",
+    "notHereDescription": "You're {distance} away. \"Was here\" needs you within {max} m.",
+    "locationFailed": "Couldn't get your location"
+  }
+}

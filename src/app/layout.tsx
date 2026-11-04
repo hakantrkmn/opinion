@@ -9,7 +9,7 @@ import {
 
 import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider } from "next-intl";
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { Geist, Geist_Mono } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
@@ -37,79 +37,84 @@ export const viewport: Viewport = {
   ],
 };
 
-export const metadata: Metadata = {
-  icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
-    apple: "/favicon.svg",
-  },
-  metadataBase: new URL(getBaseUrl()),
-  title: {
-    default: "droPINion — Discover & Share Place Reviews on the Map",
-    template: "%s | droPINion",
-  },
-  description:
-    "Drop a pin, share your honest opinion on any location, and discover what locals think. Reviews, ratings, and stories from a global community.",
-  authors: [{ name: "droPINion Team" }],
-  creator: "droPINion Team",
-  publisher: "droPINion",
-  formatDetection: {
-    email: false,
-    address: false,
-    telephone: false,
-  },
-  alternates: {
-    canonical: "/",
-  },
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    url: "/",
-    siteName: "droPINion",
-    title: "droPINion — Discover & Share Place Reviews on the Map",
-    description:
-      "Drop a pin, share your honest opinion on any location, and discover what locals think. Reviews, ratings, and stories from a global community.",
-    images: [
-      {
-        url: "/api/og?type=default",
-        width: 1200,
-        height: 630,
-        alt: "droPINion - Interactive Opinion Map",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "droPINion — Discover & Share Place Reviews on the Map",
-    description:
-      "Drop a pin, share your honest opinion on any location, and discover what locals think.",
-    creator: "@opinion_map",
-    images: [
-      "/api/og?type=default",
-    ],
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
+const OG_LOCALE = { en: "en_US", tr: "tr_TR" } as const;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const [t, locale] = await Promise.all([getTranslations("pages.layout"), getLocale()]);
+  const title = t("title");
+  const description = t("description");
+
+  return {
+    icons: {
+      icon: "/favicon.svg",
+      shortcut: "/favicon.svg",
+      apple: "/favicon.svg",
+    },
+    metadataBase: new URL(getBaseUrl()),
+    title: {
+      default: title,
+      template: "%s | droPINion",
+    },
+    description,
+    authors: [{ name: "droPINion Team" }],
+    creator: "droPINion Team",
+    publisher: "droPINion",
+    formatDetection: {
+      email: false,
+      address: false,
+      telephone: false,
+    },
+    alternates: {
+      canonical: "/",
+    },
+    openGraph: {
+      type: "website",
+      locale: OG_LOCALE[locale],
+      url: "/",
+      siteName: "droPINion",
+      title,
+      description,
+      images: [
+        {
+          url: "/api/og?type=default",
+          width: 1200,
+          height: 630,
+          alt: t("ogImageAlt"),
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description: t("twitterDescription"),
+      creator: "@opinion_map",
+      images: [
+        "/api/og?type=default",
+      ],
+    },
+    robots: {
       index: true,
       follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-video-preview": -1,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+      },
     },
-  },
-  verification: {
-    google: "googleb77d2e6c4cda70af.html",
-  },
-  category: "Social Platform",
-  classification: "Interactive Map Platform",
-  other: {
-    "mobile-web-app-capable": "yes",
-    "apple-mobile-web-app-capable": "yes",
-    "application-name": "droPINion",
-  },
-};
+    verification: {
+      google: "googleb77d2e6c4cda70af.html",
+    },
+    category: "Social Platform",
+    classification: "Interactive Map Platform",
+    other: {
+      "mobile-web-app-capable": "yes",
+      "apple-mobile-web-app-capable": "yes",
+      "application-name": "droPINion",
+    },
+  };
+}
 
 export default async function RootLayout({
   children,

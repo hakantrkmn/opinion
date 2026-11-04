@@ -11,6 +11,7 @@ import { ListMessage, UserListSkeleton, UserRow } from "@/features/users/compone
 import { useUnblockUser } from "@/features/moderation/hooks/use-block-mutations";
 import { useBlockedUsers } from "@/features/moderation/hooks/use-blocks";
 import { AlertCircle, Loader2, RotateCcw, ShieldOff } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface BlockedUsersDialogProps {
   open: boolean;
@@ -18,6 +19,7 @@ interface BlockedUsersDialogProps {
 }
 
 export function BlockedUsersDialog({ open, onOpenChange }: BlockedUsersDialogProps) {
+  const t = useTranslations("moderation.blocked");
   const blockedQuery = useBlockedUsers(open);
   const unblockMutation = useUnblockUser();
   const items = blockedQuery.items;
@@ -29,8 +31,8 @@ export function BlockedUsersDialog({ open, onOpenChange }: BlockedUsersDialogPro
         mobileClassName="max-h-[85dvh] overflow-hidden"
       >
         <ResponsiveDialogPanel
-          title="Blocked users"
-          description="You don't see each other's pins and comments, and they can't open your profile."
+          title={t("title")}
+          description={t("description")}
         >
           <div className="max-h-[60dvh] overflow-y-auto overscroll-contain px-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-4">
             {blockedQuery.isLoading ? (
@@ -39,7 +41,7 @@ export function BlockedUsersDialog({ open, onOpenChange }: BlockedUsersDialogPro
               <ListMessage
                 tone="error"
                 icon={<AlertCircle aria-hidden />}
-                title="Couldn't load blocked users"
+                title={t("loadError")}
                 description={blockedQuery.error.message}
                 action={
                   <Button
@@ -48,21 +50,21 @@ export function BlockedUsersDialog({ open, onOpenChange }: BlockedUsersDialogPro
                     onClick={() => void blockedQuery.refetch()}
                   >
                     <RotateCcw aria-hidden />
-                    Try again
+                    {t("tryAgain")}
                   </Button>
                 }
               />
             ) : items.length === 0 ? (
               <ListMessage
                 icon={<ShieldOff aria-hidden />}
-                title="You haven't blocked anyone"
-                description="Block someone from the menu on their profile."
+                title={t("emptyTitle")}
+                description={t("emptyDescription")}
               />
             ) : (
               <>
                 <ul className="flex flex-col gap-0.5">
                   {items.map((blocked) => {
-                    const name = blocked.display_name || "Deleted user";
+                    const name = blocked.display_name || t("deletedUser");
                     const isPending =
                       unblockMutation.isPending && unblockMutation.variables === blocked.id;
                     return (
@@ -79,10 +81,10 @@ export function BlockedUsersDialog({ open, onOpenChange }: BlockedUsersDialogPro
                             onClick={() => unblockMutation.mutate(blocked.id)}
                             size="sm"
                             variant="outline"
-                            aria-label={`Unblock ${name}`}
+                            aria-label={t("unblockLabel", { name })}
                           >
                             {isPending ? <Loader2 aria-hidden className="animate-spin" /> : null}
-                            {isPending ? "Unblocking…" : "Unblock"}
+                            {isPending ? t("unblocking") : t("unblock")}
                           </Button>
                         }
                       />

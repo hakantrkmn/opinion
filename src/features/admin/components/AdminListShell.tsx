@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, Inbox, RotateCcw } from "lucide-react";
 import { formatNumber } from "@/features/admin/components/utils";
+import { useLocale, useTranslations } from "next-intl";
 
 interface AdminListShellProps {
   count: number;
@@ -34,10 +35,12 @@ export function AdminListShell({
   label,
   children,
 }: AdminListShellProps) {
+  const t = useTranslations("admin.list");
+  const locale = useLocale();
   if (isLoading) {
     return (
       <div aria-busy className="overflow-hidden rounded-2xl border border-border/60">
-        <span className="sr-only">Loading {label.toLowerCase()}…</span>
+        <span className="sr-only">{t("loading", { label: label.toLocaleLowerCase(locale) })}</span>
         {[0, 1, 2, 3, 4].map((i) => (
           <div key={i} className="flex items-center gap-4 border-b border-border/60 px-4 py-3 last:border-0">
             <Skeleton className="size-9 shrink-0 rounded-full" />
@@ -62,7 +65,7 @@ export function AdminListShell({
         {onRetry ? (
           <Button variant="outline" className="h-10 rounded-xl" onClick={onRetry}>
             <RotateCcw aria-hidden />
-            Try again
+            {t("tryAgain")}
           </Button>
         ) : null}
       </div>
@@ -81,13 +84,13 @@ export function AdminListShell({
   return (
     <div className="flex flex-col gap-3">
       <p className="text-xs text-muted-foreground" aria-live="polite">
-        Showing <span className="tabular-nums text-foreground">{formatNumber(count)}</span>
-        {typeof total === "number" && count !== total ? (
-          <>
-            {" "}
-            of <span className="tabular-nums">{formatNumber(total)}</span>
-          </>
-        ) : null}
+        {t.rich("showing", {
+          shown: formatNumber(count, locale),
+          total: formatNumber(total, locale),
+          hasTotal: String(typeof total === "number" && count !== total),
+          shownNum: (chunks) => <span className="tabular-nums text-foreground">{chunks}</span>,
+          totalNum: (chunks) => <span className="tabular-nums">{chunks}</span>,
+        })}
       </p>
       <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
         <ul aria-label={label} className="divide-y divide-border/60">

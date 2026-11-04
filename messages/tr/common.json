@@ -1,4 +1,8 @@
 {
   "switchLanguage": "{language} diline geç",
-  "language": "Dil"
+  "language": "Dil",
+  "avatar": "Profil fotoğrafı",
+  "close": "Kapat",
+  "toastRegion": "Bildirimler",
+  "closeToast": "Bildirimi kapat"
 }

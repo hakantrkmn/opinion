@@ -10,6 +10,7 @@ import { pinMapHref } from "@/features/profile/components/sections/ProfileLists"
 import { formatTimeAgo } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { MessageCircleReply } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 
 interface NewcomerListProps {
@@ -21,25 +22,25 @@ interface NewcomerListProps {
  * map moves a post down (it counts as answered); nothing is stored here.
  */
 export function NewcomerList({ query }: NewcomerListProps) {
+  const t = useTranslations("admin.newcomers");
+  const locale = useLocale();
   const items = query.items;
   const waiting = query.firstPage?.waiting ?? 0;
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-muted-foreground">
-        Posts by members who joined in the last 14 days.{" "}
+        {t("intro")}{" "}
         {waiting > 0 ? (
-          <span className="font-medium text-foreground">
-            {waiting} still {waiting === 1 ? "waits" : "wait"} for a first reply or like.
-          </span>
+          <span className="font-medium text-foreground">{t("waiting", { count: waiting })}</span>
         ) : query.firstPage ? (
-          "Everyone has heard back."
+          t("allAnswered")
         ) : null}
       </p>
       <AdminListShell
-        label="Newcomer posts"
+        label={t("listLabel")}
         count={items.length}
         total={query.firstPage?.total}
-        emptyLabel="No posts from new members yet."
+        emptyLabel={t("empty")}
         isLoading={query.isLoading}
         error={query.error}
         hasMore={query.hasNextPage}
@@ -48,7 +49,7 @@ export function NewcomerList({ query }: NewcomerListProps) {
         onRetry={() => void query.refetch()}
       >
         {items.map((post) => {
-          const name = post.user.display_name || post.user.email || "New member";
+          const name = post.user.display_name || post.user.email || t("newMember");
           return (
             <li key={post.id} className={cn(adminRow, "items-start", post.answered && "opacity-70")}>
               <Avatar src={post.user.avatar_url} alt="" size="sm" fallbackText={name} className="mt-0.5" />
@@ -57,11 +58,9 @@ export function NewcomerList({ query }: NewcomerListProps) {
                   <Link href={`/u/${post.user.id}`} className={cn(adminInlineLink, "font-semibold text-foreground")}>
                     {name}
                   </Link>
-                  <span>joined {formatTimeAgo(post.user.joined_at)}</span>
+                  <span>{t("joined", { timeAgo: formatTimeAgo(post.user.joined_at, locale) })}</span>
                   <span aria-hidden>·</span>
-                  <span>
-                    {post.user.total_comments} {post.user.total_comments === 1 ? "opinion" : "opinions"}
-                  </span>
+                  <span>{t("opinions", { count: post.user.total_comments })}</span>
                 </div>
                 <p className="mt-1.5 line-clamp-3 whitespace-pre-line break-words text-sm">{post.text}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
@@ -69,14 +68,14 @@ export function NewcomerList({ query }: NewcomerListProps) {
                     {post.pin.name}
                   </Link>
                   <span aria-hidden>·</span>
-                  <span>{formatTimeAgo(post.created_at)}</span>
-                  {post.is_first_comment ? <Badge variant="outline">Dropped this pin</Badge> : null}
-                  {post.verified_visit ? <Badge variant="outline">Was here</Badge> : null}
+                  <span>{formatTimeAgo(post.created_at, locale)}</span>
+                  {post.is_first_comment ? <Badge variant="outline">{t("droppedPin")}</Badge> : null}
+                  {post.verified_visit ? <Badge variant="outline">{t("wasHere")}</Badge> : null}
                   {post.answered ? (
-                    <Badge variant="secondary">Answered</Badge>
+                    <Badge variant="secondary">{t("answered")}</Badge>
                   ) : (
                     <Badge className="border-transparent bg-amber-500/15 text-amber-800 dark:text-amber-300">
-                      Waiting for a reply
+                      {t("waitingBadge")}
                     </Badge>
                   )}
                 </div>
@@ -84,7 +83,7 @@ export function NewcomerList({ query }: NewcomerListProps) {
               <Button asChild variant="outline" size="sm" className="h-9 shrink-0 gap-1.5 rounded-xl">
                 <Link href={pinMapHref(post.pin)}>
                   <MessageCircleReply aria-hidden className="size-4" />
-                  Reply
+                  {t("reply")}
                 </Link>
               </Button>
             </li>

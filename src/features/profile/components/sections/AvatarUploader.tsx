@@ -8,6 +8,7 @@ import {
 } from "@/features/profile/hooks/use-profile-mutations";
 import { cn } from "@/lib/utils";
 import { Camera, ImageUp, Loader2, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -27,6 +28,7 @@ export function AvatarUploader({
   src: string | null | undefined;
   name: string;
 }) {
+  const t = useTranslations("profile.avatar");
   const upload = useUploadAvatar();
   const remove = useDeleteAvatar();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -45,11 +47,11 @@ export function AvatarUploader({
   const onFile = (file: File | undefined) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      toast.error("That file isn't an image", { description: "Choose a JPG, PNG, WebP or HEIC photo." });
+      toast.error(t("notImage"), { description: t("notImageHint") });
       return;
     }
     if (file.size > MAX_BYTES) {
-      toast.error("Photo is too large", { description: "Choose an image under 10 MB." });
+      toast.error(t("tooLarge"), { description: t("tooLargeHint") });
       return;
     }
     setPreview(URL.createObjectURL(file));
@@ -113,11 +115,11 @@ export function AvatarUploader({
         }}
       />
       <span className="sr-only" aria-live="polite">
-        {upload.isPending ? "Uploading photo…" : remove.isPending ? "Removing photo…" : ""}
+        {upload.isPending ? t("uploading") : remove.isPending ? t("removing") : ""}
       </span>
       {src && !busy ? (
         <ActionMenu
-          label="Change profile photo"
+          label={t("change")}
           align="start"
           triggerClassName={triggerClass}
           trigger={
@@ -127,9 +129,9 @@ export function AvatarUploader({
             </>
           }
           items={[
-            { label: "Upload new photo", icon: ImageUp, onSelect: pick },
+            { label: t("upload"), icon: ImageUp, onSelect: pick },
             {
-              label: "Remove photo",
+              label: t("remove"),
               icon: Trash2,
               destructive: true,
               onSelect: () => remove.mutate(),
@@ -141,7 +143,7 @@ export function AvatarUploader({
           type="button"
           onClick={pick}
           disabled={busy}
-          aria-label={busy ? "Updating profile photo" : "Add profile photo"}
+          aria-label={busy ? t("updating") : t("add")}
           className={triggerClass}
         >
           {avatar}

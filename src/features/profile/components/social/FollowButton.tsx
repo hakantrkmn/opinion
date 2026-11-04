@@ -8,6 +8,7 @@ import {
 import { useSession } from "@/features/auth/hooks/useSession";
 import { cn } from "@/lib/utils";
 import { UserCheck, UserMinus, UserPlus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -32,6 +33,7 @@ export function FollowButton({
   disabled = false,
   className,
 }: FollowButtonProps) {
+  const t = useTranslations("profile.follow");
   const { user } = useSession();
   const followMutation = useFollowUser();
   const unfollowMutation = useUnfollowUser();
@@ -44,7 +46,7 @@ export function FollowButton({
       <Button asChild className={cn("h-10 rounded-xl", className)}>
         <Link href={`/auth?redirect=${encodeURIComponent(`/u/${userId}`)}`}>
           <UserPlus aria-hidden />
-          Sign in to follow
+          {t("signIn")}
         </Link>
       </Button>
     );
@@ -54,7 +56,6 @@ export function FollowButton({
 
   // State already flipped optimistically: ignore presses until the request settles.
   const isBusy = followMutation.isPending || unfollowMutation.isPending;
-  const who = userName ? ` ${userName}` : "";
 
   return (
     <Button
@@ -74,7 +75,15 @@ export function FollowButton({
       onMouseLeave={() => setHoverArmed(true)}
       disabled={disabled}
       aria-disabled={isBusy || undefined}
-      aria-label={isFollowing ? `Following${who}. Press to unfollow` : `Follow${who}`}
+      aria-label={
+        isFollowing
+          ? userName
+            ? t("followingLabel", { name: userName })
+            : t("followingLabelAnon")
+          : userName
+            ? t("followLabel", { name: userName })
+            : t("followLabelAnon")
+      }
       onClickCapture={(e) => {
         if (isBusy) {
           e.preventDefault();
@@ -86,17 +95,17 @@ export function FollowButton({
         <>
           <span className={cn("inline-flex items-center gap-2", hoverArmed && "group-hover/follow:hidden")}>
             <UserCheck aria-hidden className="size-4" />
-            Following
+            {t("following")}
           </span>
           <span className={cn("hidden items-center gap-2", hoverArmed && "group-hover/follow:inline-flex")}>
             <UserMinus aria-hidden className="size-4" />
-            Unfollow
+            {t("unfollow")}
           </span>
         </>
       ) : (
         <>
           <UserPlus aria-hidden />
-          Follow
+          {t("follow")}
         </>
       )}
     </Button>

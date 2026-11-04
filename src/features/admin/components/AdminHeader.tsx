@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Activity, Loader2, RefreshCw } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface AdminHeaderProps {
   onRefresh: () => void;
@@ -16,13 +17,12 @@ export function AdminHeader({
   onRecomputeStats,
   recomputing,
 }: AdminHeaderProps) {
+  const t = useTranslations("admin.header");
   return (
     <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Admin</h1>
-        <p className="text-sm text-muted-foreground">
-          Moderate reports, members, pins and comments, and send notifications.
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("description")}</p>
       </div>
       <div className="flex gap-2">
         <Button
@@ -30,10 +30,10 @@ export function AdminHeader({
           className="h-10 flex-1 rounded-xl sm:flex-none"
           onClick={onRecomputeStats}
           disabled={recomputing}
-          title="Rebuild the per-user statistics tables"
+          title={t("recomputeTitle")}
         >
           {recomputing ? <Loader2 aria-hidden className="animate-spin" /> : <Activity aria-hidden />}
-          {recomputing ? "Recomputing…" : "Recompute stats"}
+          {recomputing ? t("recomputing") : t("recompute")}
         </Button>
         <Button
           variant="outline"
@@ -42,7 +42,7 @@ export function AdminHeader({
           disabled={refreshing}
         >
           <RefreshCw aria-hidden className={refreshing ? "animate-spin" : undefined} />
-          Refresh
+          {t("refresh")}
         </Button>
       </div>
     </header>

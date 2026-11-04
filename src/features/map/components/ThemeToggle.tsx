@@ -2,10 +2,12 @@
 
 import { cn } from "@/lib/utils";
 import { Moon, Sun } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { mapControl } from "./control-styles";
 
 export function ThemeToggle() {
+  const t = useTranslations("map.theme");
   const { resolvedTheme, setTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   return (
@@ -13,8 +15,8 @@ export function ThemeToggle() {
       type="button"
       onClick={() => setTheme(isDark ? "light" : "dark")}
       className={mapControl}
-      aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
-      title={isDark ? "Light theme" : "Dark theme"}
+      aria-label={isDark ? t("toLight") : t("toDark")}
+      title={isDark ? t("lightTitle") : t("darkTitle")}
     >
       <span className="relative size-[18px]">
         <Sun

@@ -7,6 +7,7 @@ import { useSession } from "@/features/auth/hooks/useSession";
 import { fetchPinComments, postComment } from "@/features/comments/lib/api";
 import { errorMessage } from "@/lib/api/client";
 import { CheckCircle2, Loader2, Send } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -63,6 +64,7 @@ export function PinPageComposer({
   pinName: string;
   commentsCount: number;
 }) {
+  const t = useTranslations("pages.composer");
   const router = useRouter();
   const { user, isLoading } = useSession();
   const [text, setText] = useState("");
@@ -90,7 +92,7 @@ export function PinPageComposer({
         clearDraft(pinId);
         setStatus({ kind: "already" });
       } else {
-        setStatus({ kind: "error", message: errorMessage(error) });
+        setStatus({ kind: "error", message: errorMessage(error, t("somethingWentWrong")) });
       }
     }
   };
@@ -153,15 +155,18 @@ export function PinPageComposer({
           <p className="font-semibold text-foreground">
             {status.kind === "posted"
               ? status.position <= 1
-                ? "You're the first opinion here!"
-                : `Yours is opinion #${status.position} here.`
-              : "You've shared your opinion on this place."}
+                ? t("firstOpinion")
+                : t("yourPosition", { position: status.position })
+              : t("alreadyShared")}
           </p>
           <p className="mt-0.5 text-muted-foreground">
-            We&apos;ll let you know when someone answers.{" "}
-            <Link href={`/?pin=${encodeURIComponent(pinId)}`} className="font-medium text-primary hover:underline">
-              See it on the map
-            </Link>
+            {t.rich("postedNote", {
+              link: (chunks) => (
+                <Link href={`/?pin=${encodeURIComponent(pinId)}`} className="font-medium text-primary hover:underline">
+                  {chunks}
+                </Link>
+              ),
+            })}
           </p>
         </div>
       </div>
@@ -176,13 +181,13 @@ export function PinPageComposer({
       className="scroll-mt-24 rounded-2xl border border-border/60 bg-card p-4"
     >
       <label htmlFor="pin-page-opinion" className="text-sm font-semibold text-foreground">
-        What do you think about {pinName}?
+        {t("label", { pinName })}
       </label>
       <Textarea
         id="pin-page-opinion"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Share your honest take…"
+        placeholder={t("placeholder")}
         rows={3}
         maxLength={COMMENT_MAX_LENGTH}
         disabled={posting}
@@ -195,13 +200,11 @@ export function PinPageComposer({
       ) : null}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
-          {user || isLoading
-            ? "Posted publicly with your name."
-            : "Free account needed. Your text is kept while you sign up."}
+          {user || isLoading ? t("postedPublicly") : t("accountNeeded")}
         </p>
         <Button type="submit" disabled={!trimmed || posting || isLoading} className="h-10 gap-2 rounded-xl px-4">
           {posting ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Send className="size-4" aria-hidden />}
-          {posting ? "Posting…" : user || isLoading ? "Post opinion" : "Continue"}
+          {posting ? t("posting") : user || isLoading ? t("post") : t("continue")}
         </Button>
       </div>
     </form>

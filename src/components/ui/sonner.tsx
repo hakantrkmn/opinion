@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { useTheme } from "next-themes"
 import { Toaster as Sonner, ToasterProps } from "sonner"
 
@@ -8,6 +9,7 @@ import { Toaster as Sonner, ToasterProps } from "sonner"
  * bottom sheets on phones, and below the sticky header everywhere.
  */
 const Toaster = ({ ...props }: ToasterProps) => {
+  const t = useTranslations("common")
   const { theme = "system" } = useTheme()
 
   return (
@@ -23,7 +25,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }}
       gap={8}
       duration={4000}
+      containerAriaLabel={t("toastRegion")}
       toastOptions={{
+        closeButtonAriaLabel: t("closeToast"),
         classNames: {
           toast:
             "!rounded-2xl !border-border/60 !shadow-[var(--shadow-raised)] !font-sans",

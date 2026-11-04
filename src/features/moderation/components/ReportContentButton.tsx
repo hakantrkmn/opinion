@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useSession } from "@/features/auth/hooks/useSession";
 import type { ReportTargetType } from "@/types/userTypes";
 import { Flag } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { ReportDialog } from "@/features/moderation/components/ReportDialog";
 
@@ -23,12 +24,13 @@ export function ReportContentButton({
   compact = false,
   className,
 }: ReportContentButtonProps) {
+  const t = useTranslations("moderation.reportButton");
   const { user } = useSession();
   const [open, setOpen] = useState(false);
 
   if (!user || user.id === ownerId) return null;
 
-  const label = targetType === "pin" ? "Report pin" : "Report comment";
+  const label = targetType === "pin" ? t("pin") : t("comment");
 
   return (
     <>
@@ -46,7 +48,7 @@ export function ReportContentButton({
         variant={compact ? "ghost" : "outline"}
       >
         <Flag className={compact ? "h-3.5 w-3.5" : "h-3.5 w-3.5"} />
-        {!compact ? <span>Report</span> : null}
+        {!compact ? <span>{t("report")}</span> : null}
       </Button>
 
       <ReportDialog

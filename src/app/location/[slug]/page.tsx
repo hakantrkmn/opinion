@@ -10,7 +10,9 @@ import {
   generateLocationSchema,
 } from "@/lib/structured-data";
 import { searchPinsByName } from "@/server/services/pins/pages";
+import { formatShortDate } from "@/lib/formatters";
 import { Metadata } from "next";
+import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import Header from "@/components/common/Header";
 import { PinIcon } from "@/components/icons/PinIcon";
@@ -25,9 +27,10 @@ export async function generateMetadata({
   const { slug } = await params;
   const locationName = decodeURIComponent(slug);
   const baseUrl = getBaseUrl();
+  const t = await getTranslations("pages.location");
 
-  const title = `Opinions in ${locationName}`;
-  const description = `Discover what people think about ${locationName}. Read ${locationName} opinions, reviews, and community thoughts about locations, restaurants, attractions and more.`;
+  const title = t("title", { location: locationName });
+  const description = t("description", { location: locationName });
 
   const ogMetadata = generateOGMetadata({
     title,
@@ -86,7 +89,12 @@ export default async function LocationPage({
   const baseUrl = getBaseUrl();
 
   // Pins whose name contains the location (trigram index, LIKE-escaped)
-  const locationPins = await searchPinsByName(locationName, 50);
+  const [locationPins, t, tShared, locale] = await Promise.all([
+    searchPinsByName(locationName, 50),
+    getTranslations("pages.location"),
+    getTranslations("pages.shared"),
+    getLocale(),
+  ]);
 
   if (locationPins.length === 0) {
     notFound();
@@ -105,7 +113,7 @@ export default async function LocationPage({
   );
   const breadcrumbSchema = generateBreadcrumbSchema(
     [
-      { name: "Home", url: "/" },
+      { name: tShared("home"), url: "/" },
       {
         name: locationName,
         url: `/location/${encodeURIComponent(locationName)}`,
@@ -129,11 +137,11 @@ export default async function LocationPage({
         <Header />
         <main className="mx-auto max-w-5xl px-4 py-6 pb-[max(4rem,env(safe-area-inset-bottom))] sm:px-6">
           <nav
-            aria-label="Breadcrumb"
+            aria-label={tShared("breadcrumb")}
             className="mb-6 flex items-center gap-1.5 text-xs text-muted-foreground"
           >
             <Link href="/" className="rounded transition-colors duration-150 hover:text-foreground">
-              Home
+              {tShared("home")}
             </Link>
             <ChevronRight className="h-3 w-3" aria-hidden />
             <span className="truncate text-foreground/80" aria-current="page">
@@ -147,12 +155,12 @@ export default async function LocationPage({
             </div>
             <div className="min-w-0">
               <h1 className="text-2xl font-bold leading-tight tracking-tight text-balance [overflow-wrap:anywhere] sm:text-3xl">
-                Opinions in {locationName}
+                {t("title", { location: locationName })}
               </h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                {locationPins.length >= 50 ? "50+" : locationPins.length}{" "}
-                {locationPins.length === 1 ? "place" : "places"} people have pinned in{" "}
-                {locationName}.
+                {locationPins.length >= 50
+                  ? t("placesMany", { location: locationName })
+                  : t("placesCount", { count: locationPins.length, location: locationName })}
               </p>
             </div>
           </header>
@@ -183,17 +191,13 @@ export default async function LocationPage({
                             decoding="async"
                           />
                         ) : null}
-                        <span className="truncate">by {pin.displayName}</span>
+                        <span className="truncate">{t("by", { name: pin.displayName })}</span>
                       </span>
                     ) : (
                       <span />
                     )}
                     <time dateTime={new Date(pin.createdAt).toISOString()} className="shrink-0 tabular-nums">
-                      {new Date(pin.createdAt).toLocaleDateString("en-US", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
+                      {formatShortDate(new Date(pin.createdAt), locale)}
                     </time>
                   </footer>
                 </article>
@@ -203,14 +207,14 @@ export default async function LocationPage({
 
           <div className="mt-10 rounded-2xl border border-border/60 bg-muted/30 p-6 text-center">
             <p className="mb-3 text-sm text-muted-foreground">
-              Been somewhere in {locationName}? Share what you think.
+              {t("cta", { location: locationName })}
             </p>
             <Link
               href="/"
               className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-medium text-primary-foreground shadow-sm transition-[transform,background-color] duration-150 ease-out hover:bg-primary/90 active:scale-[0.97]"
             >
               <MapPin className="h-4 w-4" aria-hidden />
-              Open the map
+              {t("openMap")}
             </Link>
           </div>
         </main>

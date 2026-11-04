@@ -3,6 +3,7 @@
 import { queryKeys } from "@/lib/api/query-keys";
 import type { FollowStatusResponse, PublicUserResponse } from "@/types/userTypes";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { apiSend } from "@/lib/api/send";
 
@@ -11,6 +12,7 @@ import { apiSend } from "@/lib/api/send";
  * (button state + follower count). Rolls back on error.
  */
 function useFollowMutation(follow: boolean) {
+  const t = useTranslations("users.toast");
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (userId: string) =>
@@ -40,7 +42,7 @@ function useFollowMutation(follow: boolean) {
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.users.profile(userId), context.previous);
       }
-      toast.error(follow ? "Couldn't follow user" : "Couldn't unfollow user", {
+      toast.error(follow ? t("followError") : t("unfollowError"), {
         description: error.message,
       });
     },

@@ -1,5 +1,6 @@
 import { PinIcon } from "@/components/icons/PinIcon";
 import { ArrowLeft } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -15,7 +16,7 @@ export function AuthShell({
   title,
   description,
   backHref = "/",
-  backLabel = "Back to map",
+  backLabel,
   children,
 }: {
   title: ReactNode;
@@ -24,6 +25,7 @@ export function AuthShell({
   backLabel?: string;
   children: ReactNode;
 }) {
+  const t = useTranslations("auth.shell");
   return (
     <div className="grid min-h-dvh grid-cols-1 bg-background md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
       {/* Brand panel */}
@@ -43,17 +45,16 @@ export function AuthShell({
         </Link>
         <div className="relative flex flex-col gap-4">
           <p className="max-w-[14ch] text-4xl font-bold leading-[1.05] tracking-tighter text-balance lg:text-5xl">
-            Drop your thoughts on the map.
+            {t("tagline")}
           </p>
           <p className="max-w-[42ch] text-sm leading-relaxed text-zinc-400">
-            Pin your opinions to real places and see what people think about
-            the spots around you.
+            {t("pitch")}
           </p>
         </div>
         <p className="relative text-xs text-zinc-500">
           &copy; {new Date().getFullYear()} droPINion ·{" "}
           <Link href="/privacy" className="underline-offset-4 hover:text-zinc-300 hover:underline">
-            Privacy
+            {t("privacy")}
           </Link>
         </p>
       </aside>
@@ -66,7 +67,7 @@ export function AuthShell({
             className="-ml-2 inline-flex h-10 items-center gap-1.5 rounded-lg px-2 text-sm text-muted-foreground outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
           >
             <ArrowLeft aria-hidden className="size-4" />
-            {backLabel}
+            {backLabel ?? t("backToMap")}
           </Link>
         </div>
 

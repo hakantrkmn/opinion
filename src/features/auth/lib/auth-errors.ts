@@ -1,36 +1,73 @@
+import { useTranslations } from "next-intl";
+import { useCallback } from "react";
+import enAuth from "../../../../messages/en/auth.json";
+
+type AuthErrorInfo = { code?: string; message?: string; status?: number };
+export type AuthErrorKey = keyof typeof enAuth.errors;
+
 /**
- * Human-friendly messages for better-auth error codes (and our own hook
- * codes). Falls back to the server message.
+ * better-auth error codes (and our own hook codes) → message keys in the
+ * `auth.errors` namespace. Unknown codes fall back to the server message.
  */
-const MESSAGES: Record<string, string> = {
-  INVALID_EMAIL_OR_PASSWORD: "Incorrect email or password.",
-  INVALID_EMAIL: "Enter a valid email address.",
-  INVALID_PASSWORD: "Incorrect password.",
-  PASSWORD_TOO_SHORT: "Password must be at least 8 characters.",
-  PASSWORD_TOO_LONG: "Password must be at most 128 characters.",
-  USER_ALREADY_EXISTS: "An account with this email already exists.",
-  USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: "An account with this email already exists.",
-  INVALID_DISPLAY_NAME: "Display name must be 2–50 characters.",
-  ACCOUNT_DELETED: "This account has been deleted.",
-  INVALID_OTP: "That code is incorrect.",
-  OTP_EXPIRED: "That code has expired. Request a new one.",
-  TOO_MANY_ATTEMPTS: "Too many attempts. Request a new code.",
-  SESSION_EXPIRED: "Please sign in again to continue.",
-  USER_NOT_FOUND: "No account found for this email.",
+const ERROR_KEYS: Record<string, AuthErrorKey> = {
+  INVALID_EMAIL_OR_PASSWORD: "invalidEmailOrPassword",
+  INVALID_EMAIL: "invalidEmail",
+  INVALID_PASSWORD: "invalidPassword",
+  PASSWORD_TOO_SHORT: "passwordTooShort",
+  PASSWORD_TOO_LONG: "passwordTooLong",
+  USER_ALREADY_EXISTS: "userAlreadyExists",
+  USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: "userAlreadyExists",
+  INVALID_DISPLAY_NAME: "invalidDisplayName",
+  ACCOUNT_DELETED: "accountDeleted",
+  INVALID_OTP: "invalidOtp",
+  OTP_EXPIRED: "otpExpired",
+  TOO_MANY_ATTEMPTS: "tooManyAttempts",
+  SESSION_EXPIRED: "sessionExpired",
+  USER_NOT_FOUND: "userNotFound",
 };
 
+/** Message key for a known error, or null to show the server message as-is. */
+export function authErrorKey(error: AuthErrorInfo | null | undefined): AuthErrorKey | null {
+  if (!error) return null;
+  if (error.status === 429) return "rateLimited";
+  return (error.code && ERROR_KEYS[error.code]) || null;
+}
+
+/**
+ * Translated message for an auth error, in the viewer's language. Unknown
+ * server messages are shown as they come; `fallback` (already translated)
+ * replaces the generic message when there is nothing better.
+ */
+export function useAuthErrorMessage() {
+  const t = useTranslations("auth.errors");
+  return useCallback(
+    (error: AuthErrorInfo | null | undefined, fallback?: string): string => {
+      const generic = fallback ?? t("generic");
+      if (!error) return generic;
+      const key = authErrorKey(error);
+      if (key) return t(key);
+      return error.message || generic;
+    },
+    [t]
+  );
+}
+
+/**
+ * English-only variant for non-React code (e.g. Error.message). UI should
+ * use useAuthErrorMessage() so the text follows the viewer's language.
+ */
 export function authErrorMessage(
-  error: { code?: string; message?: string; status?: number } | null | undefined,
-  fallback = "Something went wrong. Please try again."
+  error: AuthErrorInfo | null | undefined,
+  fallback: string = enAuth.errors.generic
 ): string {
   if (!error) return fallback;
-  if (error.status === 429) return "Too many attempts. Please wait a minute and try again.";
-  if (error.code && MESSAGES[error.code]) return MESSAGES[error.code];
+  const key = authErrorKey(error);
+  if (key) return enAuth.errors[key];
   return error.message || fallback;
 }
 
 export class AuthClientError extends Error {
-  constructor(public info: { code?: string; message?: string; status?: number }) {
+  constructor(public info: AuthErrorInfo) {
     super(authErrorMessage(info));
     this.name = "AuthClientError";
   }

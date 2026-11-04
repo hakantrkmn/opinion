@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { Crosshair, Loader2, LocateFixed, LocateOff } from "lucide-react";
 import type { Map as MapLibreMap } from "maplibre-gl";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { startLocationWatch } from "../hooks/useLocationWatch";
@@ -12,6 +13,7 @@ import { mapControl } from "./control-styles";
 const LOCATE_ZOOM = 16;
 
 export function LocateButton({ map }: { map: MapLibreMap | null }) {
+  const t = useTranslations("map.locate");
   const fix = useLocationStore((s) => s.fix);
   const permission = useLocationStore((s) => s.permission);
   const locating = useLocationStore((s) => s.locating);
@@ -37,13 +39,13 @@ export function LocateButton({ map }: { map: MapLibreMap | null }) {
       return;
     }
     if (permission === "denied") {
-      toast.error("Location is blocked", {
-        description: "Allow location access for this site in your browser settings.",
+      toast.error(t("blockedToast"), {
+        description: t("blockedToastDescription"),
       });
       return;
     }
     if (permission === "unsupported") {
-      toast.error("Your browser doesn't support location");
+      toast.error(t("unsupportedToast"));
       return;
     }
     flyOnFixRef.current = true;
@@ -51,10 +53,10 @@ export function LocateButton({ map }: { map: MapLibreMap | null }) {
   };
 
   const label = fix
-    ? "Show my location"
+    ? t("show")
     : permission === "denied"
-      ? "Location blocked"
-      : "Find my location";
+      ? t("blocked")
+      : t("find");
 
   return (
     <button

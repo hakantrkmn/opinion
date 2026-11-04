@@ -16,7 +16,9 @@ import {
   getPinPageData,
   getPinShareQuote,
 } from "@/server/services/pins/pages";
+import { formatRelativeDateTime, formatShortDate } from "@/lib/formatters";
 import { Metadata } from "next";
+import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -40,24 +42,31 @@ export async function generateMetadata({
   const { id } = await params;
   const baseUrl = getBaseUrl();
 
-  const [pin, quote] = await Promise.all([getPinPageData(id), getPinShareQuote(id)]);
+  const [pin, quote, t] = await Promise.all([
+    getPinPageData(id),
+    getPinShareQuote(id),
+    getTranslations("pages.pin"),
+  ]);
 
   if (!pin) {
     return {
-      title: "Pin Not Found",
-      description: "The requested pin could not be found.",
+      title: t("notFoundTitle"),
+      description: t("notFoundDescription"),
       robots: { index: false, follow: false },
     };
   }
 
-  const pinName = pin.name || "this place";
-  const title = `Reviews of ${pinName}`;
+  const pinName = pin.name || t("thisPlace");
+  const title = t("reviewsOf", { name: pinName });
   // Link previews quote the pin's best opinion (same one as the image).
-  const opinions = `${pin.commentsCount} ${pin.commentsCount === 1 ? "opinion" : "opinions"}`;
   const description = quote
-    ? `“${quote.text.length > 140 ? `${quote.text.slice(0, 139).trimEnd()}…` : quote.text}” — ${quote.displayName} · ${opinions} on droPINion`
-    : `Discover opinions and thoughts about ${pinName}. Read what the community thinks about this location on droPINion.`;
-  const locationName = pin.name || "Unknown Location";
+    ? t("quoteDescription", {
+        quote: quote.text.length > 140 ? `${quote.text.slice(0, 139).trimEnd()}…` : quote.text,
+        name: quote.displayName,
+        count: pin.commentsCount,
+      })
+    : t("description", { name: pinName });
+  const locationName = pin.name || t("unknownLocation");
   const imageUrl = `${baseUrl}/api/og/pin/${encodeURIComponent(id)}`;
 
   const ogMetadata = generateOGMetadata({
@@ -120,7 +129,12 @@ export default async function PinPage({
   const { id } = await params;
   const baseUrl = getBaseUrl();
 
-  const pin = await getPinPageData(id);
+  const [pin, t, tShared, locale] = await Promise.all([
+    getPinPageData(id),
+    getTranslations("pages.pin"),
+    getTranslations("pages.shared"),
+    getLocale(),
+  ]);
 
   if (!pin) {
     notFound();
@@ -144,8 +158,8 @@ export default async function PinPage({
   const placeSchema = generatePlaceSchema(pinData, { baseUrl });
   const breadcrumbSchema = generateBreadcrumbSchema(
     [
-      { name: "Home", url: "/" },
-      { name: pin.name || "Pin Details", url: `/pin/${id}` },
+      { name: tShared("home"), url: "/" },
+      { name: pin.name || t("pinDetailsSchema"), url: `/pin/${id}` },
     ],
     { baseUrl }
   );
@@ -166,12 +180,12 @@ export default async function PinPage({
 
         <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 pb-[max(4rem,env(safe-area-inset-bottom))]">
           {/* Breadcrumb */}
-          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-muted-foreground mb-6">
+          <nav aria-label={tShared("breadcrumb")} className="flex items-center gap-1.5 text-xs text-muted-foreground mb-6">
             <Link href="/" className="rounded hover:text-foreground transition-colors duration-150">
-              Home
+              {tShared("home")}
             </Link>
             <ChevronRight className="h-3 w-3" aria-hidden />
-            <span className="text-foreground/80" aria-current="page">Pin details</span>
+            <span className="text-foreground/80" aria-current="page">{t("pinDetails")}</span>
           </nav>
 
           {/* Pin Header */}
@@ -182,20 +196,16 @@ export default async function PinPage({
               </div>
               <div className="flex-1 min-w-0">
                 <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground leading-tight text-balance [overflow-wrap:anywhere]">
-                  Reviews of {pin.name || "Untitled Pin"}
+                  {t("reviewsOf", { name: pin.name || t("untitledPin") })}
                 </h1>
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
                   <span className="text-sm text-muted-foreground flex items-center gap-1.5 tabular-nums">
                     <MessageCircle className="h-3.5 w-3.5" />
-                    {pinComments.length} {pinComments.length === 1 ? "comment" : "comments"}
+                    {t("commentsCount", { count: pinComments.length })}
                   </span>
                   <span className="text-sm text-muted-foreground flex items-center gap-1.5">
                     <Calendar className="h-3.5 w-3.5" />
-                    {new Date(pin.createdAt).toLocaleDateString("en-US", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
+                    {formatShortDate(new Date(pin.createdAt), locale)}
                   </span>
                 </div>
               </div>
@@ -208,7 +218,7 @@ export default async function PinPage({
               {pin.avatarUrl ? (
                 <img
                   src={pin.avatarUrl}
-                  alt={pin.displayName || "User"}
+                  alt={pin.displayName || t("user")}
                   width={36}
                   height={36}
                   className="w-full h-full object-cover"
@@ -221,9 +231,9 @@ export default async function PinPage({
             </div>
             <div>
               <p className="text-sm font-semibold text-foreground leading-tight">
-                {pin.displayName || "Anonymous"}
+                {pin.displayName || t("anonymous")}
               </p>
-              <p className="text-xs text-muted-foreground">Dropped this pin</p>
+              <p className="text-xs text-muted-foreground">{t("droppedThisPin")}</p>
             </div>
           </div>
 
@@ -234,7 +244,7 @@ export default async function PinPage({
               className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-medium shadow-sm transition-[transform,background-color] duration-150 ease-out active:scale-[0.97] hover:bg-primary/90"
             >
               <MapPin className="h-4 w-4" aria-hidden />
-              See on map
+              {t("seeOnMap")}
             </Link>
             <ShareButton url={shareUrl} pinName={pin.name} />
           </div>
@@ -242,7 +252,7 @@ export default async function PinPage({
           <div className="mb-10">
             <PinPageComposer
               pinId={pin.id}
-              pinName={pin.name || "this place"}
+              pinName={pin.name || t("thisPlace")}
               commentsCount={pin.commentsCount}
             />
           </div>
@@ -250,7 +260,12 @@ export default async function PinPage({
           {/* Comments */}
           <section aria-labelledby="comments-heading">
             <h2 id="comments-heading" className="text-base font-semibold text-foreground mb-4">
-              Comments <span className="font-normal text-muted-foreground tabular-nums">({pinComments.length})</span>
+              {t.rich("commentsHeading", {
+                count: pinComments.length,
+                muted: (chunks) => (
+                  <span className="font-normal text-muted-foreground tabular-nums">{chunks}</span>
+                ),
+              })}
             </h2>
 
             {pinComments.length === 0 ? (
@@ -258,9 +273,9 @@ export default async function PinPage({
                 <div className="size-12 rounded-2xl bg-muted flex items-center justify-center mb-3">
                   <MessageCircle className="size-5 text-muted-foreground" />
                 </div>
-                <h3 className="text-sm font-semibold text-foreground mb-1">No comments yet</h3>
+                <h3 className="text-sm font-semibold text-foreground mb-1">{t("noComments")}</h3>
                 <p className="text-xs text-muted-foreground max-w-[220px]">
-                  Be the first to share your opinion above.
+                  {t("beFirst")}
                 </p>
               </div>
             ) : (
@@ -276,7 +291,7 @@ export default async function PinPage({
                         {comment.avatarUrl ? (
                           <img
                             src={comment.avatarUrl}
-                            alt={comment.displayName || "User"}
+                            alt={comment.displayName || t("user")}
                             width={32}
                             height={32}
                             className="w-full h-full object-cover"
@@ -289,29 +304,24 @@ export default async function PinPage({
                       </div>
                       <div className="flex-1 min-w-0">
                         <span className="font-semibold text-sm text-foreground truncate block leading-tight">
-                          {comment.displayName || "Anonymous"}
+                          {comment.displayName || t("anonymous")}
                         </span>
                         <span className="text-[11px] text-muted-foreground">
-                          {new Date(comment.createdAt).toLocaleDateString("en-US", {
-                            day: "numeric",
-                            month: "short",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                          {formatRelativeDateTime(new Date(comment.createdAt), locale)}
                         </span>
                       </div>
                       {comment.verifiedVisit && (
                         <span
-                          title="Written on site"
+                          title={t("writtenOnSite")}
                           className="flex flex-shrink-0 items-center gap-0.5 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400"
                         >
                           <MapPinCheck className="size-3" aria-hidden />
-                          Was here
+                          {t("wasHere")}
                         </span>
                       )}
                       {comment.isFirstComment && (
                         <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-md flex-shrink-0">
-                          OP
+                          {t("op")}
                         </span>
                       )}
                     </div>
@@ -326,7 +336,7 @@ export default async function PinPage({
                       <div className="mt-3">
                         <img
                           src={comment.photoUrl}
-                          alt="Comment photo"
+                          alt={t("commentPhoto")}
                           width={400}
                           height={300}
                           className="aspect-[4/3] w-full max-w-sm rounded-xl border border-border/40 bg-muted object-cover"
@@ -338,11 +348,11 @@ export default async function PinPage({
 
                     {/* Votes */}
                     <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border/40">
-                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" aria-label={`${Number(comment.likeCount)} likes`}>
+                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" aria-label={t("likes", { count: Number(comment.likeCount) })}>
                         <ThumbsUp className="h-3 w-3" aria-hidden />
                         <span className="tabular-nums">{Number(comment.likeCount)}</span>
                       </span>
-                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" aria-label={`${Number(comment.dislikeCount)} dislikes`}>
+                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" aria-label={t("dislikes", { count: Number(comment.dislikeCount) })}>
                         <ThumbsDown className="h-3 w-3" aria-hidden />
                         <span className="tabular-nums">{Number(comment.dislikeCount)}</span>
                       </span>

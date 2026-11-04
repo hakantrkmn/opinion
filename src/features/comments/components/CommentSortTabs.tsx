@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import type { CommentSort } from "@/types/api";
+import { useTranslations } from "next-intl";
 import { COMMENT_SORTS } from "../lib/sort";
 
 export function CommentSortTabs({
@@ -11,27 +12,28 @@ export function CommentSortTabs({
   value: CommentSort;
   onChange: (sort: CommentSort) => void;
 }) {
+  const t = useTranslations("comments.sort");
   return (
     <div
       role="tablist"
-      aria-label="Sort comments"
+      aria-label={t("label")}
       className="inline-flex rounded-xl bg-muted/60 p-0.5 text-xs font-medium"
     >
       {COMMENT_SORTS.map((option) => (
         <button
-          key={option.value}
+          key={option}
           type="button"
           role="tab"
-          aria-selected={value === option.value}
-          onClick={() => onChange(option.value)}
+          aria-selected={value === option}
+          onClick={() => onChange(option)}
           className={cn(
             "h-8 select-none rounded-[10px] px-3 transition-colors duration-150 touch-manipulation",
-            value === option.value
+            value === option
               ? "bg-background text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          {option.label}
+          {t(option)}
         </button>
       ))}
     </div>

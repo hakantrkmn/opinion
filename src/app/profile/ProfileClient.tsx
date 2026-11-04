@@ -25,12 +25,15 @@ import type { PinSummary } from "@/types/api";
 import type { OwnProfileResponse } from "@/types/userTypes";
 import { Map as MapIcon, MessageCircle, Search, Settings } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 
 type Dialog = "settings" | "followers" | "following" | "search" | "blocked" | null;
 
 export function ProfileClient({ initial }: { initial: OwnProfileResponse }) {
+  const t = useTranslations("profile.own");
+  const tHero = useTranslations("profile.hero");
   const [dialog, setDialog] = useState<Dialog>(null);
   const openChange = (which: Exclude<Dialog, null>) => (open: boolean) =>
     setDialog(open ? which : null);
@@ -39,7 +42,7 @@ export function ProfileClient({ initial }: { initial: OwnProfileResponse }) {
   const meQuery = useOwnProfile(true, initial);
   const profile = meQuery.data?.profile ?? initial.profile;
   const stats = meQuery.data?.stats ?? initial.stats;
-  const name = profile.display_name || "Unnamed user";
+  const name = profile.display_name || tHero("unnamed");
 
   const [tab, setTab] = useState<"pins" | "comments">("pins");
   const pinsQuery = useOwnProfilePins(tab === "pins");
@@ -49,9 +52,9 @@ export function ProfileClient({ initial }: { initial: OwnProfileResponse }) {
     const shareUrl = `${window.location.origin}/pin/${pin.id}`;
     try {
       await navigator.clipboard.writeText(shareUrl);
-      toast.success("Link copied", { id: "copy-pin-link", description: pin.name });
+      toast.success(t("linkCopied"), { id: "copy-pin-link", description: pin.name });
     } catch {
-      toast.info("Copy this link", { id: "copy-pin-link", description: shareUrl });
+      toast.info(t("copyThisLink"), { id: "copy-pin-link", description: shareUrl });
     }
   };
 
@@ -73,7 +76,7 @@ export function ProfileClient({ initial }: { initial: OwnProfileResponse }) {
               onClick={() => setDialog("search")}
             >
               <Search aria-hidden />
-              Find people
+              {t("findPeople")}
             </Button>
             <Button
               variant="outline"
@@ -81,7 +84,7 @@ export function ProfileClient({ initial }: { initial: OwnProfileResponse }) {
               onClick={() => setDialog("settings")}
             >
               <Settings aria-hidden />
-              Settings
+              {t("settings")}
             </Button>
           </>
         }
@@ -104,13 +107,13 @@ export function ProfileClient({ initial }: { initial: OwnProfileResponse }) {
             empty={
               <EmptyState
                 icon={<PinIcon className="size-5" />}
-                title="No pins yet"
-                description="Drop a pin on a place you have an opinion about. It shows up here and on the map."
+                title={t("noPinsTitle")}
+                description={t("noPinsDescription")}
                 action={
                   <Button asChild className="h-10 rounded-xl">
                     <Link href="/">
                       <PinIcon className="size-4" />
-                      Drop your first pin
+                      {t("dropFirstPin")}
                     </Link>
                   </Button>
                 }
@@ -125,13 +128,13 @@ export function ProfileClient({ initial }: { initial: OwnProfileResponse }) {
             empty={
               <EmptyState
                 icon={<MessageCircle aria-hidden className="size-5" />}
-                title="No comments yet"
-                description="Open a pin on the map and share what you think about the place."
+                title={t("noCommentsTitle")}
+                description={t("noCommentsDescription")}
                 action={
                   <Button asChild variant="outline" className="h-10 rounded-xl">
                     <Link href="/">
                       <MapIcon aria-hidden />
-                      Explore the map
+                      {t("exploreMap")}
                     </Link>
                   </Button>
                 }

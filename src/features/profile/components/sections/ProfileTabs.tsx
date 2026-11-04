@@ -4,6 +4,7 @@ import { PinIcon } from "@/components/icons/PinIcon";
 import { formatCount } from "@/features/profile/lib/format";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageCircle } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
 type Tab = "pins" | "comments";
@@ -29,19 +30,21 @@ export function ProfileTabs({
   pins: ReactNode;
   comments: ReactNode;
 }) {
+  const t = useTranslations("profile.tabs");
+  const locale = useLocale();
   return (
     <Tabs value={value} onValueChange={(v) => onValueChange(v as Tab)}>
       <TabsList className="grid h-11 w-full grid-cols-2 rounded-xl bg-muted/70 p-1">
         <TabsTrigger value="pins" className={trigger}>
           <PinIcon className="size-4" />
-          Pins
-          {typeof pinsCount === "number" ? <span className={count}>{formatCount(pinsCount)}</span> : null}
+          {t("pins")}
+          {typeof pinsCount === "number" ? <span className={count}>{formatCount(pinsCount, locale)}</span> : null}
         </TabsTrigger>
         <TabsTrigger value="comments" className={trigger}>
           <MessageCircle aria-hidden />
-          Comments
+          {t("comments")}
           {typeof commentsCount === "number" ? (
-            <span className={count}>{formatCount(commentsCount)}</span>
+            <span className={count}>{formatCount(commentsCount, locale)}</span>
           ) : null}
         </TabsTrigger>
       </TabsList>

@@ -3,6 +3,7 @@
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Eye, EyeOff } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState, type ComponentProps } from "react";
 
 /** Password field with a show/hide toggle (keeps caret + autofill intact). */
@@ -10,6 +11,7 @@ export function PasswordInput({
   className,
   ...props
 }: Omit<ComponentProps<"input">, "type">) {
+  const t = useTranslations("auth.password");
   const [visible, setVisible] = useState(false);
 
   return (
@@ -25,7 +27,7 @@ export function PasswordInput({
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
-        aria-label={visible ? "Hide password" : "Show password"}
+        aria-label={visible ? t("hide") : t("show")}
         aria-pressed={visible}
         aria-controls={props.id}
         disabled={props.disabled}

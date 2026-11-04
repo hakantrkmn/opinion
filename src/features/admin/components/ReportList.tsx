@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import type { AdminReport, useAdminReports } from "@/features/admin/hooks/use-admin";
 import { cn } from "@/lib/utils";
 import { Check, MessageSquare, Trash2, User as UserIcon, X } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { AdminListShell } from "@/features/admin/components/AdminListShell";
 import { adminInlineLink } from "@/features/admin/components/row-styles";
@@ -27,23 +28,14 @@ const TARGET_ICON = {
   user: UserIcon,
 } as const;
 
-const TARGET_LABEL = { pin: "Pin", comment: "Comment", user: "User" } as const;
-
-const REASON_LABEL: Record<AdminReport["reason"], string> = {
-  spam: "Spam",
-  harassment: "Harassment",
-  inappropriate: "Inappropriate",
-  other: "Other",
-};
-
 const STATUS_STYLE: Record<AdminReport["status"], string> = {
   open: "bg-amber-500/10 text-amber-800 dark:text-amber-300",
   resolved: "bg-primary/10 text-primary",
   dismissed: "bg-muted text-muted-foreground",
 };
 
-function personLabel(p: AdminReport["reporter"]) {
-  return p ? p.display_name || p.email || p.id : "Deleted user";
+function personLabel(p: AdminReport["reporter"], deletedLabel: string) {
+  return p ? p.display_name || p.email || p.id : deletedLabel;
 }
 
 export function ReportList({
@@ -52,15 +44,17 @@ export function ReportList({
   onDismiss,
   onDeleteTarget,
   pendingId = null,
-  emptyLabel = "No reports here.",
+  emptyLabel,
 }: ReportListProps) {
+  const t = useTranslations("admin");
+  const locale = useLocale();
   const items = query.items;
   return (
     <AdminListShell
-      label="Reports"
+      label={t("reports.listLabel")}
       count={items.length}
       total={query.firstPage?.total}
-      emptyLabel={emptyLabel}
+      emptyLabel={emptyLabel ?? t("reports.empty.default")}
       isLoading={query.isLoading}
       error={query.error}
       hasMore={query.hasNextPage}
@@ -71,7 +65,7 @@ export function ReportList({
       {items.map((r) => {
         const Icon = TARGET_ICON[r.target_type];
         const busy = pendingId === r.id;
-        const targetText = r.target.missing ? "Already removed" : r.target.label || "(empty)";
+        const targetText = r.target.missing ? t("reports.alreadyRemoved") : r.target.label || t("reports.emptyTarget");
         const targetHref = r.target.missing
           ? null
           : r.target_type === "pin"
@@ -89,15 +83,15 @@ export function ReportList({
               <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                 <div className="flex flex-wrap items-center gap-1.5 text-xs">
                   <span className="rounded-full bg-muted px-2 py-0.5 font-medium text-foreground/80">
-                    {TARGET_LABEL[r.target_type]}
+                    {t(`reports.target.${r.target_type}`)}
                   </span>
                   <span className="rounded-full bg-destructive/10 px-2 py-0.5 font-medium text-destructive">
-                    {REASON_LABEL[r.reason]}
+                    {t(`reports.reason.${r.reason}`)}
                   </span>
                   <span className={cn("rounded-full px-2 py-0.5 font-medium capitalize", STATUS_STYLE[r.status])}>
-                    {r.status}
+                    {t(`reports.status.${r.status}`)}
                   </span>
-                  <span className="text-muted-foreground">{formatDate(r.created_at)}</span>
+                  <span className="text-muted-foreground">{formatDate(r.created_at, locale)}</span>
                 </div>
                 <p className={cn("line-clamp-2 break-words text-sm font-medium", r.target.missing && "italic text-muted-foreground")}>
                   {targetHref ? (
@@ -109,12 +103,13 @@ export function ReportList({
                   )}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {r.target_type !== "user" ? (
-                    <>
-                      By <span className="text-foreground">{personLabel(r.target.author)}</span> ·{" "}
-                    </>
-                  ) : null}
-                  Reported by <span className="text-foreground">{personLabel(r.reporter)}</span>
+                  {t.rich("reports.byline", {
+                    hasAuthor: String(r.target_type !== "user"),
+                    authorName: personLabel(r.target.author, t("list.deletedUser")),
+                    reporterName: personLabel(r.reporter, t("list.deletedUser")),
+                    author: (chunks) => <span className="text-foreground">{chunks}</span>,
+                    reporter: (chunks) => <span className="text-foreground">{chunks}</span>,
+                  })}
                 </p>
                 {r.note ? (
                   <blockquote className="rounded-lg border-l-2 border-border bg-muted/50 px-3 py-1.5 text-xs text-foreground/80">
@@ -132,10 +127,10 @@ export function ReportList({
                   className="h-9 rounded-lg"
                   onClick={() => onResolve(r)}
                   disabled={busy}
-                  title="Mark as handled and keep the content"
+                  title={t("reports.resolveTitle")}
                 >
                   <Check aria-hidden />
-                  Resolve
+                  {t("reports.resolve")}
                 </Button>
                 <Button
                   size="sm"
@@ -143,10 +138,10 @@ export function ReportList({
                   className="h-9 rounded-lg"
                   onClick={() => onDismiss(r)}
                   disabled={busy}
-                  title="Close without action"
+                  title={t("reports.dismissTitle")}
                 >
                   <X aria-hidden />
-                  Dismiss
+                  {t("reports.dismiss")}
                 </Button>
                 {!r.target.missing ? (
                   <Button
@@ -157,13 +152,13 @@ export function ReportList({
                     disabled={busy}
                   >
                     <Trash2 aria-hidden />
-                    Remove {TARGET_LABEL[r.target_type].toLowerCase()}
+                    {t(`reports.remove.${r.target_type}`)}
                   </Button>
                 ) : null}
               </div>
             ) : r.resolved_at ? (
               <p className="text-xs text-muted-foreground sm:pl-[3.25rem]">
-                Closed {formatDate(r.resolved_at)}
+                {t("reports.closed", { date: formatDate(r.resolved_at, locale) })}
               </p>
             ) : null}
           </li>

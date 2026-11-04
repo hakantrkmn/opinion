@@ -1,1 +1,24 @@
-{}
+{
+  "row": {
+    "loading": "Loading…"
+  },
+  "search": {
+    "title": "Find people",
+    "description": "Search by display name.",
+    "inputLabel": "Search people by display name",
+    "placeholder": "Search people…",
+    "clear": "Clear search",
+    "promptTitle": "Search for people",
+    "promptDescription": "Type at least two letters of a display name.",
+    "errorTitle": "Search failed",
+    "tryAgain": "Try again",
+    "emptyTitle": "No one found",
+    "emptyDescription": "No display names match “{query}”.",
+    "results": "{count, plural, one {# result} other {# results}}",
+    "unnamed": "Unnamed user"
+  },
+  "toast": {
+    "followError": "Couldn't follow user",
+    "unfollowError": "Couldn't unfollow user"
+  }
+}

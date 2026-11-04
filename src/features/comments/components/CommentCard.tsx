@@ -17,6 +17,7 @@ import { ReportContentButton } from "@/features/moderation/components/ReportCont
 import { formatTimeAgo } from "@/lib/formatters";
 import type { CommentItem, VoteValue } from "@/types/api";
 import { Loader2, MapPinCheck, Pencil, Trash2 } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { memo, useState } from "react";
 import { CommentEditForm } from "./CommentEditForm";
@@ -59,10 +60,12 @@ export const CommentCard = memo(function CommentCard({
   onDelete,
   onVerifyVisit,
 }: CommentCardProps) {
+  const t = useTranslations("comments.card");
+  const locale = useLocale();
   const [editing, setEditing] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const isOwn = !!currentUserId && comment.user.id === currentUserId;
-  const name = comment.user.display_name ?? "Deleted user";
+  const name = comment.user.display_name ?? t("deletedUser");
   const long = comment.text.length > COLLAPSED_LENGTH;
   const text =
     long && !expanded ? `${comment.text.slice(0, COLLAPSED_LENGTH).trimEnd()}…` : comment.text;
@@ -83,29 +86,29 @@ export const CommentCard = memo(function CommentCard({
               <span className="truncate text-sm font-semibold leading-tight">{name}</span>
               {comment.is_first_comment ? (
                 <span
-                  title="Original poster: dropped this pin"
+                  title={t("opTitle")}
                   className="rounded-md bg-primary/10 px-1.5 py-px text-[10px] font-bold uppercase tracking-wider text-primary"
                 >
-                  OP
+                  {t("op")}
                 </span>
               ) : null}
               {comment.verified_visit ? (
                 <span
-                  title="Written on site"
+                  title={t("wasHereTitle")}
                   className="flex shrink-0 items-center gap-0.5 rounded-md bg-emerald-500/10 px-1.5 py-px text-[10px] font-semibold text-emerald-700 dark:text-emerald-400"
                 >
                   <MapPinCheck className="size-3" aria-hidden />
-                  Was here
+                  {t("wasHere")}
                 </span>
               ) : null}
             </div>
             <time
               dateTime={comment.created_at}
               className="text-[11px] text-muted-foreground"
-              title={new Date(comment.created_at).toLocaleString()}
+              title={new Date(comment.created_at).toLocaleString(locale)}
             >
-              {formatTimeAgo(comment.created_at)}
-              {wasEdited(comment) ? " · edited" : ""}
+              {formatTimeAgo(comment.created_at, locale)}
+              {wasEdited(comment) ? ` · ${t("edited")}` : ""}
             </time>
           </div>
         </Link>
@@ -121,8 +124,8 @@ export const CommentCard = memo(function CommentCard({
                     className="size-8 rounded-lg text-muted-foreground pointer-coarse:size-10"
                     onClick={() => onVerifyVisit(comment)}
                     disabled={isDeleting || isVerifying}
-                    aria-label="I'm here now: add a “Was here” badge"
-                    title="I'm here now"
+                    aria-label={t("verifyLabel")}
+                    title={t("verifyTitle")}
                   >
                     {isVerifying ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -137,7 +140,7 @@ export const CommentCard = memo(function CommentCard({
                   className="size-8 rounded-lg text-muted-foreground pointer-coarse:size-10"
                   onClick={() => setEditing(true)}
                   disabled={isDeleting}
-                  aria-label="Edit comment"
+                  aria-label={t("editLabel")}
                 >
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
@@ -148,27 +151,27 @@ export const CommentCard = memo(function CommentCard({
                       size="icon"
                       className="size-8 rounded-lg text-muted-foreground hover:text-destructive pointer-coarse:size-10"
                       disabled={isDeleting}
-                      aria-label="Delete comment"
+                      aria-label={t("deleteLabel")}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Delete this comment?</AlertDialogTitle>
+                      <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
                       <AlertDialogDescription>
                         {comment.is_first_comment
-                          ? "This is the pin's first comment. If it's the only one left, the pin is removed too."
-                          : "This can't be undone."}
+                          ? t("deleteFirstDescription")
+                          : t("deleteDescription")}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
                       <AlertDialogAction
                         onClick={() => onDelete(comment)}
                         className={buttonVariants({ variant: "destructive" })}
                       >
-                        Delete
+                        {t("delete")}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -207,7 +210,7 @@ export const CommentCard = memo(function CommentCard({
               aria-expanded={expanded}
               className="-mx-1 mt-1 rounded px-1 py-1 text-xs font-semibold text-primary hover:text-primary/80"
             >
-              {expanded ? "Show less" : "Read more"}
+              {expanded ? t("showLess") : t("readMore")}
             </button>
           ) : null}
           {comment.photo_url ? (

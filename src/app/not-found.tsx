@@ -1,9 +1,11 @@
 import Header from "@/components/common/Header";
 import { PinIcon } from "@/components/icons/PinIcon";
 import { Map as MapIcon } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 
-export default function NotFound() {
+export default async function NotFound() {
+  const t = await getTranslations("pages.notFound");
   return (
     <div className="flex min-h-dvh flex-col bg-background">
       <Header />
@@ -17,16 +19,16 @@ export default function NotFound() {
               404
             </span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Nothing pinned here</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            This page doesn&apos;t exist, or the pin was removed by its author.
+            {t("body")}
           </p>
           <Link
             href="/"
             className="mt-6 inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-medium text-primary-foreground shadow-sm transition-[transform,background-color] duration-150 ease-out hover:bg-primary/90 active:scale-[0.97]"
           >
             <MapIcon className="size-4" aria-hidden />
-            Back to the map
+            {t("backToMap")}
           </Link>
         </div>
       </main>

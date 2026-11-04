@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 
 /** One block of the account settings dialog: heading, optional aside, body. */
 export function SettingsSection({
@@ -17,7 +17,8 @@ export function SettingsSection({
   children?: ReactNode;
   className?: string;
 }) {
-  const headingId = `settings-${title.toLowerCase().replace(/\W+/g, "-")}`;
+  // Titles are translated, so the id can't be derived from them.
+  const headingId = useId();
   return (
     <section aria-labelledby={headingId} className={cn("flex flex-col gap-4 py-6", className)}>
       <div className="flex items-start justify-between gap-3">

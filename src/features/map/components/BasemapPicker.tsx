@@ -2,19 +2,14 @@
 
 import { cn } from "@/lib/utils";
 import { Check, Layers } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
-import { BASEMAPS, BASEMAP_CHOICES, type BasemapChoice } from "../lib/basemaps";
+import { BASEMAP_CHOICES } from "../lib/basemaps";
 import { useMapUiStore } from "../store/ui-store";
 import { mapControl } from "./control-styles";
 
-const LABELS: Record<BasemapChoice, string> = {
-  auto: "Match theme",
-  light: BASEMAPS.light.label,
-  dark: BASEMAPS.dark.label,
-  colorful: BASEMAPS.colorful.label,
-};
-
 export function BasemapPicker() {
+  const t = useTranslations("map.basemap");
   const basemap = useMapUiStore((s) => s.basemap);
   const setBasemap = useMapUiStore((s) => s.setBasemap);
   const [open, setOpen] = useState(false);
@@ -40,10 +35,10 @@ export function BasemapPicker() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(mapControl, open && "border-primary/40 text-primary")}
-        aria-label="Map style"
+        aria-label={t("button")}
         aria-expanded={open}
         aria-haspopup="menu"
-        title="Map style"
+        title={t("button")}
       >
         <Layers className="h-4 w-4" />
       </button>
@@ -67,7 +62,7 @@ export function BasemapPicker() {
             }}
             className="flex h-9 w-full items-center justify-between rounded-lg px-2.5 text-left text-xs font-medium hover:bg-muted/70"
           >
-            {LABELS[choice]}
+            {t(choice)}
             {basemap === choice ? <Check className="h-3.5 w-3.5 text-primary" /> : null}
           </button>
         ))}

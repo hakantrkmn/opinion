@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { CommentItem } from "@/types/api";
 import { AlertCircle, Loader2, MessageCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { useHereCheck } from "../hooks/use-here-check";
 import {
@@ -34,6 +35,7 @@ export function CommentList({
   onRequireSignIn,
   onPinDeleted,
 }: CommentListProps) {
+  const t = useTranslations("comments.list");
   const vote = useVoteComment(pinId);
   const edit = useEditComment(pinId);
   const remove = useDeleteComment(pinId, { onPinDeleted });
@@ -94,9 +96,9 @@ export function CommentList({
           <AlertCircle className="size-5 text-destructive" />
         </span>
         <div>
-          <p className="text-sm font-semibold">Couldn&apos;t load comments</p>
+          <p className="text-sm font-semibold">{t("loadError")}</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Check your connection and try again.
+            {t("loadErrorHint")}
           </p>
         </div>
         <Button
@@ -107,7 +109,7 @@ export function CommentList({
           disabled={query.isFetching}
         >
           {query.isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-          Retry
+          {t("retry")}
         </Button>
       </div>
     );
@@ -119,9 +121,9 @@ export function CommentList({
         <span className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-muted">
           <MessageCircle className="size-5 text-muted-foreground" />
         </span>
-        <p className="text-sm font-semibold">No comments yet</p>
+        <p className="text-sm font-semibold">{t("emptyTitle")}</p>
         <p className="mt-1 max-w-[16rem] text-xs leading-relaxed text-muted-foreground">
-          Be the first to share your opinion about this place.
+          {t("emptyDescription")}
         </p>
       </div>
     );
@@ -157,7 +159,7 @@ export function CommentList({
           {query.isFetchingNextPage ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : null}
-          Show more comments
+          {t("showMore")}
         </Button>
       ) : null}
     </div>
@@ -165,8 +167,9 @@ export function CommentList({
 }
 
 function CommentSkeletons() {
+  const t = useTranslations("comments.list");
   return (
-    <div className="flex flex-col gap-3 py-4" aria-busy="true" aria-label="Loading comments">
+    <div className="flex flex-col gap-3 py-4" aria-busy="true" aria-label={t("loading")}>
       {[0, 1, 2].map((i) => (
         <div key={i} className="rounded-2xl border border-border/50 p-4">
           <div className="mb-3 flex items-center gap-2.5">

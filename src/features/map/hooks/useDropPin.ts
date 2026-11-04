@@ -3,12 +3,14 @@
 import { PIN_CREATE_MAX_DISTANCE_M } from "@/constants/map";
 import { useSession } from "@/features/auth/hooks/useSession";
 import type { Map as MapLibreMap } from "maplibre-gl";
+import { useTranslations } from "next-intl";
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { distanceMeters, type LngLat } from "../lib/geo";
 import { getFreshFix } from "../lib/fresh-fix";
 import type { GeoFix } from "../store/location-store";
 import { useMapUiStore } from "../store/ui-store";
+import { useGeoErrorMessage } from "./useGeoErrorMessage";
 
 const DROP_ZOOM = 17;
 
@@ -18,6 +20,8 @@ const DROP_ZOOM = 17;
  * to sign in before any location prompt.
  */
 export function useDropPin(map: MapLibreMap | null) {
+  const t = useTranslations("map.dropPin");
+  const geoErrorMessage = useGeoErrorMessage();
   const { user, isLoading } = useSession();
   const setDraft = useMapUiStore((s) => s.setDraft);
   const setSignInPromptOpen = useMapUiStore((s) => s.setSignInPromptOpen);
@@ -36,15 +40,13 @@ export function useDropPin(map: MapLibreMap | null) {
     try {
       return await getFreshFix();
     } catch (error) {
-      toast.error("Couldn't get your location", {
-        description: error instanceof Error ? error.message : undefined,
-      });
+      toast.error(t("locationError"), { description: geoErrorMessage(error) });
       return null;
     } finally {
       busyRef.current = false;
       setLocating(false);
     }
-  }, []);
+  }, [t, geoErrorMessage]);
 
   /** "Drop a pin" button: pin goes exactly where the fresh fix says. */
   const dropAtMyLocation = useCallback(async () => {
@@ -68,15 +70,15 @@ export function useDropPin(map: MapLibreMap | null) {
       if (!fix) return;
 
       if (distanceMeters(point, [fix.lng, fix.lat]) > PIN_CREATE_MAX_DISTANCE_M) {
-        toast.error("Too far from you", {
-          description: `You can only drop a pin within ${PIN_CREATE_MAX_DISTANCE_M} m of where you are.`,
+        toast.error(t("tooFar"), {
+          description: t("tooFarDescription", { meters: PIN_CREATE_MAX_DISTANCE_M }),
         });
         return;
       }
       navigator.vibrate?.(12);
       setDraft({ lng: point[0], lat: point[1], fix });
     },
-    [freshFix, requireUser, setDraft]
+    [freshFix, requireUser, setDraft, t]
   );
 
   return { locating, dropAtMyLocation, dropAt };

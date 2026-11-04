@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ThumbsDown, ThumbsUp } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { ActivityChart } from "@/features/admin/components/ActivityChart";
 import type { AdminAnalytics } from "@/features/admin/components/types";
@@ -21,6 +22,8 @@ interface OverviewPanelProps {
 }
 
 export function OverviewPanel({ analytics, loading = false }: OverviewPanelProps) {
+  const t = useTranslations("admin.overview");
+  const locale = useLocale();
   const likes = analytics?.total_likes ?? 0;
   const dislikes = analytics?.total_dislikes ?? 0;
   const totalReactions = likes + dislikes;
@@ -32,19 +35,16 @@ export function OverviewPanel({ analytics, loading = false }: OverviewPanelProps
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
       <Card className="gap-4 rounded-2xl lg:col-span-3">
         <CardHeader>
-          <CardTitle>Activity, last 14 days</CardTitle>
+          <CardTitle>{t("activityTitle")}</CardTitle>
           <CardDescription>
-            New pins and comments per day
-            {analytics ? (
-              <>
-                {" "}
-                · <span className="tabular-nums text-foreground">{formatNumber(last14)}</span> total ·{" "}
-                {formatNumber(analytics.active_push_tokens)} active{" "}
-                {analytics.active_push_tokens === 1 ? "device" : "devices"} ·{" "}
-                {formatNumber(analytics.deleted_users)} deleted{" "}
-                {analytics.deleted_users === 1 ? "account" : "accounts"}
-              </>
-            ) : null}
+            {analytics
+              ? t.rich("activityDescriptionStats", {
+                  total: formatNumber(last14, locale),
+                  devices: analytics.active_push_tokens,
+                  deleted: analytics.deleted_users,
+                  num: (chunks) => <span className="tabular-nums text-foreground">{chunks}</span>,
+                })
+              : t("activityDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -52,7 +52,7 @@ export function OverviewPanel({ analytics, loading = false }: OverviewPanelProps
             <Skeleton className="h-44 w-full rounded-xl" />
           ) : daily.length === 0 ? (
             <p className="flex h-44 items-center justify-center text-sm text-muted-foreground">
-              No activity yet.
+              {t("noActivity")}
             </p>
           ) : (
             <ActivityChart daily={daily} />
@@ -62,8 +62,8 @@ export function OverviewPanel({ analytics, loading = false }: OverviewPanelProps
 
       <Card className="gap-4 rounded-2xl lg:col-span-2">
         <CardHeader>
-          <CardTitle>Sentiment</CardTitle>
-          <CardDescription>Share of likes across all comment votes</CardDescription>
+          <CardTitle>{t("sentimentTitle")}</CardTitle>
+          <CardDescription>{t("sentimentDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -74,22 +74,22 @@ export function OverviewPanel({ analytics, loading = false }: OverviewPanelProps
                 <p className="text-4xl font-semibold tabular-nums">
                   {likeShare}
                   <span className="ml-0.5 text-xl text-muted-foreground">%</span>
-                  <span className="sr-only"> likes</span>
+                  <span className="sr-only"> {t("likesSr")}</span>
                 </p>
                 <div className="flex flex-col items-end gap-1 text-xs tabular-nums text-muted-foreground">
                   <span className="flex items-center gap-1.5">
                     <ThumbsUp aria-hidden className="size-3.5" />
-                    {formatNumber(likes)} likes
+                    {t("likes", { count: formatNumber(likes, locale) })}
                   </span>
                   <span className="flex items-center gap-1.5">
                     <ThumbsDown aria-hidden className="size-3.5" />
-                    {formatNumber(dislikes)} dislikes
+                    {t("dislikes", { count: formatNumber(dislikes, locale) })}
                   </span>
                 </div>
               </div>
               <div
                 role="meter"
-                aria-label="Like share"
+                aria-label={t("likeShare")}
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={likeShare}
@@ -105,8 +105,8 @@ export function OverviewPanel({ analytics, loading = false }: OverviewPanelProps
 
       <Card className="gap-4 rounded-2xl">
         <CardHeader>
-          <CardTitle>Top contributors</CardTitle>
-          <CardDescription>By pins created</CardDescription>
+          <CardTitle>{t("topTitle")}</CardTitle>
+          <CardDescription>{t("topDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -127,14 +127,14 @@ export function OverviewPanel({ analytics, loading = false }: OverviewPanelProps
                     <Avatar src={u.avatar_url} alt="" size="sm" fallbackText={u.display_name ?? "?"} />
                     <span className="min-w-0 flex-1 truncate text-sm">{u.display_name || "—"}</span>
                     <span className="text-xs tabular-nums text-muted-foreground">
-                      {formatNumber(u.total_pins)} pins
+                      {t("topPins", { count: formatNumber(u.total_pins, locale) })}
                     </span>
                   </Link>
                 </li>
               ))}
             </ol>
           ) : (
-            <p className="text-sm text-muted-foreground">No data yet.</p>
+            <p className="text-sm text-muted-foreground">{t("noData")}</p>
           )}
         </CardContent>
       </Card>

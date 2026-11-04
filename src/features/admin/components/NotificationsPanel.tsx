@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { Bell, BellOff, Loader2, Send, Smartphone, Users as UsersIcon, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,9 @@ interface NotificationsPanelProps {
 type Mode = "single" | "all";
 
 export function NotificationsPanel({ setConfirm }: NotificationsPanelProps) {
+  const t = useTranslations("admin.notifications");
+  const tc = useTranslations("admin.confirm.broadcast");
+  const locale = useLocale();
   const [mode, setMode] = useState<Mode>("single");
   const [userQuery, setUserQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
@@ -59,12 +63,12 @@ export function NotificationsPanel({ setConfirm }: NotificationsPanelProps) {
       try {
         const parsed = JSON.parse(dataJson);
         if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-          setDataError("The payload must be a JSON object, like {\"key\": \"value\"}.");
+          setDataError(t("dataNotObject"));
           return;
         }
         parsedData = parsed as Record<string, unknown>;
       } catch {
-        setDataError("That isn't valid JSON.");
+        setDataError(t("dataInvalid"));
         return;
       }
     }
@@ -87,9 +91,9 @@ export function NotificationsPanel({ setConfirm }: NotificationsPanelProps) {
 
     if (mode === "all") {
       setConfirm({
-        title: "Send to everyone?",
-        description: `"${title.trim()}" goes to every active device right away. Check the text first: a sent push can't be recalled.`,
-        confirmLabel: "Send broadcast",
+        title: tc("title"),
+        description: tc("description", { title: title.trim() }),
+        confirmLabel: tc("confirm"),
         onConfirm: () => {
           setConfirm(null);
           doSend();
@@ -117,26 +121,26 @@ export function NotificationsPanel({ setConfirm }: NotificationsPanelProps) {
       >
         <h2 className="flex items-center gap-2 text-base font-semibold">
           <Bell aria-hidden className="size-4 text-muted-foreground" />
-          Compose push notification
+          {t("composeTitle")}
         </h2>
 
         <div className="flex flex-col gap-2">
           <span id="notif-target" className="text-sm font-medium">
-            Send to
+            {t("sendTo")}
           </span>
           <div role="radiogroup" aria-labelledby="notif-target" className="grid grid-cols-2 gap-1 rounded-xl bg-muted/70 p-1">
             <button type="button" role="radio" aria-checked={mode === "single"} onClick={() => setMode("single")} className={segment(mode === "single")}>
-              <UserIcon aria-hidden /> One member
+              <UserIcon aria-hidden /> {t("oneMember")}
             </button>
             <button type="button" role="radio" aria-checked={mode === "all"} onClick={() => setMode("all")} className={segment(mode === "all")}>
-              <UsersIcon aria-hidden /> Everyone
+              <UsersIcon aria-hidden /> {t("everyone")}
             </button>
           </div>
         </div>
 
         {mode === "single" && (
           <div className="flex flex-col gap-2">
-            <Label htmlFor="notif-user-search">Member</Label>
+            <Label htmlFor="notif-user-search">{t("member")}</Label>
             {selectedUser ? (
               <div className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-muted/30 px-3 py-2.5 text-sm">
                 <div className="min-w-0">
@@ -144,17 +148,17 @@ export function NotificationsPanel({ setConfirm }: NotificationsPanelProps) {
                   <p className="truncate text-xs text-muted-foreground">{selectedUser.email}</p>
                   {selectedUser.active_push_tokens === 0 ? (
                     <p className="mt-1 flex items-center gap-1 text-xs font-medium text-destructive">
-                      <BellOff aria-hidden className="size-3" /> No active devices, so nothing will be delivered
+                      <BellOff aria-hidden className="size-3" /> {t("noDevices")}
                     </p>
                   ) : (
                     <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                      <Smartphone aria-hidden className="size-3" /> {selectedUser.active_push_tokens}{" "}
-                      {selectedUser.active_push_tokens === 1 ? "device" : "devices"}
+                      <Smartphone aria-hidden className="size-3" />{" "}
+                      {t("devices", { count: selectedUser.active_push_tokens })}
                     </p>
                   )}
                 </div>
                 <Button type="button" variant="ghost" size="sm" className="rounded-lg" onClick={() => setSelectedUser(null)}>
-                  Change
+                  {t("change")}
                 </Button>
               </div>
             ) : (
@@ -162,7 +166,7 @@ export function NotificationsPanel({ setConfirm }: NotificationsPanelProps) {
                 <Input
                   id="notif-user-search"
                   type="search"
-                  placeholder="Search by name or email…"
+                  placeholder={t("userSearchPlaceholder")}
                   value={userQuery}
                   onChange={(e) => setUserQuery(e.target.value)}
                   autoComplete="off"
@@ -171,10 +175,10 @@ export function NotificationsPanel({ setConfirm }: NotificationsPanelProps) {
                 <div className="max-h-52 overflow-y-auto overscroll-contain rounded-xl border border-border/60">
                   {usersQuery.isLoading ? (
                     <p className="flex items-center gap-2 px-3 py-3 text-xs text-muted-foreground">
-                      <Loader2 aria-hidden className="size-3 animate-spin" /> Searching…
+                      <Loader2 aria-hidden className="size-3 animate-spin" /> {t("searching")}
                     </p>
                   ) : filteredUsers.length === 0 ? (
-                    <p className="px-3 py-3 text-xs text-muted-foreground">No members match.</p>
+                    <p className="px-3 py-3 text-xs text-muted-foreground">{t("noMatch")}</p>
                   ) : (
                     <ul className="divide-y divide-border/60">
                       {filteredUsers.map((u) => {
@@ -193,11 +197,11 @@ export function NotificationsPanel({ setConfirm }: NotificationsPanelProps) {
                               {hasToken ? (
                                 <span className="flex flex-none items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
                                   <Smartphone aria-hidden className="size-3" /> {u.active_push_tokens}
-                                  <span className="sr-only"> devices</span>
+                                  <span className="sr-only"> {t("devicesSr")}</span>
                                 </span>
                               ) : (
                                 <span className="flex flex-none items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                                  <BellOff aria-hidden className="size-3" /> None
+                                  <BellOff aria-hidden className="size-3" /> {t("none")}
                                 </span>
                               )}
                             </button>
@@ -214,7 +218,7 @@ export function NotificationsPanel({ setConfirm }: NotificationsPanelProps) {
 
         <div className="flex flex-col gap-2">
           <div className="flex items-baseline justify-between">
-            <Label htmlFor="notif-title">Title</Label>
+            <Label htmlFor="notif-title">{t("title")}</Label>
             <span className="text-xs tabular-nums text-muted-foreground">{title.length}/100</span>
           </div>
           <Input
@@ -222,14 +226,14 @@ export function NotificationsPanel({ setConfirm }: NotificationsPanelProps) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={100}
-            placeholder="New pins near you"
+            placeholder={t("titlePlaceholder")}
             className="h-10 rounded-xl"
           />
         </div>
 
         <div className="flex flex-col gap-2">
           <div className="flex items-baseline justify-between">
-            <Label htmlFor="notif-body">Message</Label>
+            <Label htmlFor="notif-body">{t("message")}</Label>
             <span className="text-xs tabular-nums text-muted-foreground">{body.length}/500</span>
           </div>
           <Textarea
@@ -238,17 +242,17 @@ export function NotificationsPanel({ setConfirm }: NotificationsPanelProps) {
             onChange={(e) => setBody(e.target.value)}
             maxLength={500}
             rows={4}
-            placeholder="What should people know?"
+            placeholder={t("messagePlaceholder")}
             className="rounded-xl"
           />
         </div>
 
         <details className="group rounded-xl border border-border/60 px-3 py-2.5">
           <summary className="cursor-pointer select-none text-sm text-muted-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50">
-            Advanced: data payload (JSON)
+            {t("advanced")}
           </summary>
           <Label htmlFor="notif-data" className="sr-only">
-            Data payload JSON
+            {t("dataLabel")}
           </Label>
           <Textarea
             id="notif-data"
@@ -273,19 +277,19 @@ export function NotificationsPanel({ setConfirm }: NotificationsPanelProps) {
 
         <Button type="submit" disabled={!canSend} className="h-11 w-full rounded-xl">
           {sendMutation.isPending ? <Loader2 aria-hidden className="animate-spin" /> : <Send aria-hidden />}
-          {sendMutation.isPending ? "Sending…" : mode === "all" ? "Send to everyone" : "Send notification"}
+          {sendMutation.isPending ? t("sending") : mode === "all" ? t("sendEveryone") : t("send")}
         </Button>
       </form>
 
       <section aria-labelledby="recent-sends" className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card p-5">
         <div className="flex items-center justify-between">
           <h2 id="recent-sends" className="text-base font-semibold">
-            Recent sends
+            {t("recentTitle")}
           </h2>
           {recentLoading ? <Loader2 aria-hidden className="size-4 animate-spin text-muted-foreground" /> : null}
         </div>
         {!recentLoading && recent.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">No notifications sent yet.</p>
+          <p className="py-6 text-center text-sm text-muted-foreground">{t("recentEmpty")}</p>
         ) : null}
         <ul className="flex flex-col gap-2">
           {recent.map((row) => {
@@ -294,27 +298,27 @@ export function NotificationsPanel({ setConfirm }: NotificationsPanelProps) {
               <li key={row.id} className="rounded-xl border border-border/60 p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{row.title || "(untitled)"}</p>
+                    <p className="truncate text-sm font-medium">{row.title || t("untitled")}</p>
                     <p className="line-clamp-2 text-xs text-muted-foreground">{row.body}</p>
                   </div>
                   <Badge variant="secondary" className="flex-none text-[11px] font-medium">
-                    {row.target_type === "broadcast" ? "Everyone" : "One member"}
+                    {row.target_type === "broadcast" ? t("everyone") : t("oneMember")}
                   </Badge>
                 </div>
                 <p className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-xs tabular-nums text-muted-foreground">
-                  <span>{result?.sent ?? 0} sent</span>
+                  <span>{t("sent", { count: String(result?.sent ?? 0) })}</span>
                   <span aria-hidden>·</span>
                   <span className={(result?.failed ?? 0) > 0 ? "text-destructive" : undefined}>
-                    {result?.failed ?? 0} failed
+                    {t("failed", { count: String(result?.failed ?? 0) })}
                   </span>
                   {(result?.deactivated ?? 0) > 0 ? (
                     <>
                       <span aria-hidden>·</span>
-                      <span>{result?.deactivated} stale removed</span>
+                      <span>{t("staleRemoved", { count: String(result?.deactivated ?? 0) })}</span>
                     </>
                   ) : null}
                   <span aria-hidden>·</span>
-                  <span>{formatDate(row.created_at)}</span>
+                  <span>{formatDate(row.created_at, locale)}</span>
                   {row.actor_email ? (
                     <>
                       <span aria-hidden>·</span>
@@ -334,7 +338,7 @@ export function NotificationsPanel({ setConfirm }: NotificationsPanelProps) {
             disabled={recentQuery.isFetchingNextPage}
           >
             {recentQuery.isFetchingNextPage ? <Loader2 aria-hidden className="animate-spin" /> : null}
-            Load more
+            {t("loadMore")}
           </Button>
         ) : null}
       </section>

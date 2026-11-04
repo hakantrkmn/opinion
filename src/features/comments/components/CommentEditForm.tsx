@@ -7,6 +7,7 @@ import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { useObjectUrl } from "@/features/media/hooks/useObjectUrl";
 import type { CommentItem } from "@/types/api";
 import { Loader2, Undo2, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 interface CommentEditFormProps {
@@ -23,6 +24,7 @@ export function CommentEditForm({
   onSave,
   onCancel,
 }: CommentEditFormProps) {
+  const t = useTranslations("comments.edit");
   const [text, setText] = useState(comment.text);
   const [photo, setPhoto] = useState<File | null | undefined>(undefined);
   const previewUrl = useObjectUrl(photo);
@@ -44,7 +46,7 @@ export function CommentEditForm({
         rows={3}
         maxLength={COMMENT_MAX_LENGTH}
         autoFocus
-        aria-label="Edit your comment"
+        aria-label={t("label")}
         className="rounded-xl text-base sm:text-sm"
       />
 
@@ -60,7 +62,7 @@ export function CommentEditForm({
               type="button"
               onClick={() => setPhoto(null)}
               className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-foreground text-background shadow"
-              aria-label="Remove photo"
+              aria-label={t("removePhoto")}
             >
               <X className="h-3 w-3" />
             </button>
@@ -77,7 +79,7 @@ export function CommentEditForm({
             onClick={() => setPhoto(undefined)}
           >
             <Undo2 className="h-3.5 w-3.5" />
-            Undo photo change
+            {t("undoPhoto")}
           </Button>
         ) : null}
       </div>
@@ -91,11 +93,11 @@ export function CommentEditForm({
           onClick={onCancel}
           disabled={pending}
         >
-          Cancel
+          {t("cancel")}
         </Button>
         <Button type="submit" size="sm" className="rounded-lg" disabled={pending || !trimmed}>
           {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-          Save
+          {t("save")}
         </Button>
       </div>
     </form>

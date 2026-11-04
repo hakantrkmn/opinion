@@ -1,1 +1,68 @@
-{}
+{
+  "blocked": {
+    "title": "Engellenen kişiler",
+    "description": "Birbirinizin pinlerini ve yorumlarını görmezsiniz, profilini de açamazlar.",
+    "loadError": "Engellenen kişiler yüklenemedi",
+    "tryAgain": "Tekrar dene",
+    "emptyTitle": "Henüz kimseyi engellemedin",
+    "emptyDescription": "Birini engellemek için profilindeki menüyü kullan.",
+    "deletedUser": "Silinmiş kullanıcı",
+    "unblockLabel": "{name} için engeli kaldır",
+    "unblock": "Engeli kaldır",
+    "unblocking": "Kaldırılıyor…"
+  },
+  "reportButton": {
+    "pin": "Pini şikayet et",
+    "comment": "Yorumu şikayet et",
+    "report": "Şikayet et"
+  },
+  "reportDialog": {
+    "title": "{targetType, select, pin {Bu pini} comment {Bu yorumu} other {Bu kişiyi}} şikayet et",
+    "description": "Şikayetler gizli kalır. Moderatörler inceler ve kurallara aykırı olanı kaldırır.",
+    "legend": "Neden şikayet ediyorsun?",
+    "reasons": {
+      "spam": {
+        "label": "Spam",
+        "hint": "Reklam, dolandırıcılık ya da tekrarlanan gereksiz içerik"
+      },
+      "harassment": {
+        "label": "Taciz ya da nefret söylemi",
+        "hint": "Bir kişiyi ya da grubu hedef alıyor"
+      },
+      "inappropriate": {
+        "label": "Uygunsuz içerik",
+        "hint": "Müstehcen, şiddet içeren ya da yasa dışı"
+      },
+      "other": {
+        "label": "Başka bir şey",
+        "hint": "Notta biraz daha anlat"
+      }
+    },
+    "note": "Not",
+    "optional": "(isteğe bağlı)",
+    "notePlaceholder": "Moderatörlerin sorunu anlamasına yardımcı olacak her şey",
+    "noteHint": "Moderatörler sorunu anlasın diye kısa bir not ekle.",
+    "cancel": "Vazgeç",
+    "sending": "Gönderiliyor…",
+    "send": "Şikayeti gönder"
+  },
+  "userActions": {
+    "more": "Diğer işlemler",
+    "report": "Kişiyi şikayet et",
+    "unblock": "Engeli kaldır",
+    "block": "Engelle",
+    "thisUser": "Bu kişi",
+    "confirmTitle": "{name} engellensin mi?",
+    "confirmDescription": "Birbirinizin pinlerini ve yorumlarını görmezsiniz, aranızdaki takipler de kaldırılır. Engeli istediğin zaman Ayarlar’dan kaldırabilirsin.",
+    "cancel": "Vazgeç"
+  },
+  "toast": {
+    "blocked": "Kişi engellendi",
+    "unblocked": "Engel kaldırıldı",
+    "blockError": "Kişi engellenemedi",
+    "unblockError": "Engel kaldırılamadı",
+    "reportSent": "Şikayetin gönderildi",
+    "reportSentDescription": "Teşekkürler, ekibimiz inceleyecek.",
+    "reportError": "Şikayet gönderilemedi"
+  }
+}

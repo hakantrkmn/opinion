@@ -6,6 +6,7 @@ import { formatTimeAgo } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { PublicUserProfile, UserStats } from "@/types/userTypes";
 import { CalendarDays, Clock, TrendingDown, TrendingUp } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import type React from "react";
 import { ProfileStatsGrid } from "@/features/profile/components/sections/ProfileStatsGrid";
 
@@ -37,14 +38,17 @@ export function ProfileHero({
   onOpenFollowers,
   onOpenFollowing,
 }: ProfileHeroProps) {
+  const t = useTranslations("profile.hero");
+  const locale = useLocale();
   if (isLoading && !profile) return <ProfileHeroSkeleton />;
 
-  const name = profile?.display_name || "Unnamed user";
+  const name = profile?.display_name || t("unnamed");
+  const joined = formatJoined(profile?.created_at, locale);
   const score = (stats?.total_likes_received ?? 0) - (stats?.total_dislikes_received ?? 0);
   const ScoreIcon = score < 0 ? TrendingDown : TrendingUp;
 
   return (
-    <section aria-label="Profile" className={card}>
+    <section aria-label={t("profile")} className={card}>
       <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
         <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-5">
           {avatarSlot ?? (
@@ -68,18 +72,21 @@ export function ProfileHero({
             <ul className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
               <li className="inline-flex items-center gap-1">
                 <CalendarDays aria-hidden className="size-3.5" />
-                Joined {formatJoined(profile?.created_at)}
+                {joined ? t("joined", { date: joined }) : t("joinedRecently")}
               </li>
               {stats?.last_activity_at ? (
                 <li className="inline-flex items-center gap-1">
                   <Clock aria-hidden className="size-3.5" />
-                  Active {formatTimeAgo(stats.last_activity_at)}
+                  {t("active", { time: formatTimeAgo(stats.last_activity_at, locale) })}
                 </li>
               ) : null}
               {stats ? (
                 <li
                   className="inline-flex items-center gap-1"
-                  title={`${stats.total_likes_received} likes, ${stats.total_dislikes_received} dislikes received`}
+                  title={t("scoreTitle", {
+                    likes: stats.total_likes_received,
+                    dislikes: stats.total_dislikes_received,
+                  })}
                 >
                   <ScoreIcon
                     aria-hidden
@@ -88,7 +95,9 @@ export function ProfileHero({
                       score < 0 ? "text-destructive" : score > 0 ? "text-primary" : undefined
                     )}
                   />
-                  <span className="tabular-nums">Score {formatSignedCount(score)}</span>
+                  <span className="tabular-nums">
+                    {t("score", { score: formatSignedCount(score, locale) })}
+                  </span>
                 </li>
               ) : null}
             </ul>
@@ -108,9 +117,10 @@ export function ProfileHero({
 }
 
 export function ProfileHeroSkeleton() {
+  const t = useTranslations("profile.hero");
   return (
     <section aria-busy className={card}>
-      <span className="sr-only">Loading profile…</span>
+      <span className="sr-only">{t("loading")}</span>
       <div className="flex items-center gap-4 sm:gap-5">
         <div className="size-20 shrink-0 animate-pulse rounded-full bg-muted sm:size-24" />
         <div className="flex flex-1 flex-col gap-2.5">

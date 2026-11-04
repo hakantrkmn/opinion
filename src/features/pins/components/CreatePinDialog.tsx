@@ -15,6 +15,7 @@ import {
   PIN_CREATE_MAX_DISTANCE_M,
   PIN_NAME_MAX_LENGTH,
 } from "@/constants";
+import { useGeoErrorMessage } from "@/features/map/hooks/useGeoErrorMessage";
 import { getQuickFix } from "@/features/map/lib/geolocation";
 import { useLocationStore } from "@/features/map/store/location-store";
 import { useMapUiStore, type DraftPin } from "@/features/map/store/ui-store";
@@ -23,11 +24,13 @@ import { useObjectUrl } from "@/features/media/hooks/useObjectUrl";
 import { ApiError, errorMessage } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 import { AlertCircle, Crosshair, Loader2, MapPin, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useCreatePin } from "../hooks/useCreatePin";
 
 export function CreatePinDialog() {
+  const t = useTranslations("pins.create");
   const draft = useMapUiStore((s) => s.draft);
   const setDraft = useMapUiStore((s) => s.setDraft);
 
@@ -54,10 +57,10 @@ export function CreatePinDialog() {
               <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary shadow-sm">
                 <PinIcon className="size-[18px] text-white" />
               </span>
-              What&apos;s your droPINion?
+              {t("title")}
             </span>
           }
-          description="Name this spot and share the first opinion."
+          description={t("description")}
         >
           {shown ? (
             <CreatePinForm
@@ -73,6 +76,8 @@ export function CreatePinDialog() {
 }
 
 function CreatePinForm({ draft, onDone }: { draft: DraftPin; onDone: () => void }) {
+  const t = useTranslations("pins.create");
+  const geoErrorMessage = useGeoErrorMessage();
   const setDraft = useMapUiStore((s) => s.setDraft);
   const [name, setName] = useState("");
   const [comment, setComment] = useState("");
@@ -127,7 +132,7 @@ function CreatePinForm({ draft, onDone }: { draft: DraftPin; onDone: () => void 
     } catch (error) {
       useLocationStore.getState().setLocating(false);
       create.reset();
-      toast.error("Couldn't get your location", { description: errorMessage(error) });
+      toast.error(t("locationFailed"), { description: geoErrorMessage(error) });
     } finally {
       setRefreshing(false);
     }
@@ -153,9 +158,9 @@ function CreatePinForm({ draft, onDone }: { draft: DraftPin; onDone: () => void 
           />
         </span>
         <span className="min-w-0 flex-1 text-muted-foreground">
-          <span className="font-medium text-foreground">At your location</span>
+          <span className="font-medium text-foreground">{t("atYourLocation")}</span>
           <span className="tabular-nums"> · ±{accuracy} m</span>
-          {quality === "poor" ? <span> · weak GPS signal</span> : null}
+          {quality === "poor" ? <span> · {t("weakSignal")}</span> : null}
         </span>
         <Button
           type="button"
@@ -164,21 +169,21 @@ function CreatePinForm({ draft, onDone }: { draft: DraftPin; onDone: () => void 
           className="h-8 gap-1.5 rounded-lg px-2.5 text-xs text-muted-foreground hover:text-foreground"
           onClick={refreshLocation}
           disabled={refreshing || pending}
-          aria-label="Refresh my location"
+          aria-label={t("refreshLocation")}
         >
           {refreshing ? (
             <Loader2 className="size-3.5 animate-spin" />
           ) : (
             <Crosshair className="size-3.5" />
           )}
-          {refreshing ? "Locating…" : "Refresh"}
+          {refreshing ? t("locating") : t("refresh")}
         </Button>
       </div>
 
       <Field
         id="pin-name"
-        label="Place name"
-        error={showErrors && !name.trim() ? "Give this spot a name." : null}
+        label={t("nameLabel")}
+        error={showErrors && !name.trim() ? t("nameRequired") : null}
         count={name.length}
         max={PIN_NAME_MAX_LENGTH}
       >
@@ -187,7 +192,7 @@ function CreatePinForm({ draft, onDone }: { draft: DraftPin; onDone: () => void 
           name="name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Corner bakery on Moda street"
+          placeholder={t("namePlaceholder")}
           required
           maxLength={PIN_NAME_MAX_LENGTH}
           autoComplete="off"
@@ -201,8 +206,8 @@ function CreatePinForm({ draft, onDone }: { draft: DraftPin; onDone: () => void 
 
       <Field
         id="pin-comment"
-        label="Your opinion"
-        error={showErrors && !comment.trim() ? "Share a few words about this place." : null}
+        label={t("commentLabel")}
+        error={showErrors && !comment.trim() ? t("commentRequired") : null}
         count={comment.length}
         max={COMMENT_MAX_LENGTH}
       >
@@ -211,7 +216,7 @@ function CreatePinForm({ draft, onDone }: { draft: DraftPin; onDone: () => void 
           name="comment"
           value={comment}
           onChange={(e) => setComment(e.target.value)}
-          placeholder="What do you think about this place?"
+          placeholder={t("commentPlaceholder")}
           rows={3}
           required
           maxLength={COMMENT_MAX_LENGTH}
@@ -224,13 +229,15 @@ function CreatePinForm({ draft, onDone }: { draft: DraftPin; onDone: () => void 
 
       <div className="flex flex-col gap-1.5">
         <span className="text-sm font-medium">
-          Photo <span className="font-normal text-muted-foreground">(optional)</span>
+          {t.rich("photoLabel", {
+            muted: (chunks) => <span className="font-normal text-muted-foreground">{chunks}</span>,
+          })}
         </span>
         {previewUrl ? (
           <div className="relative w-fit">
             <img
               src={previewUrl}
-              alt="Selected photo"
+              alt={t("selectedPhoto")}
               width={128}
               height={96}
               className="aspect-[4/3] w-32 rounded-xl border border-border/50 object-cover"
@@ -239,7 +246,7 @@ function CreatePinForm({ draft, onDone }: { draft: DraftPin; onDone: () => void 
               type="button"
               onClick={() => setPhoto(null)}
               className="absolute -right-2 -top-2 flex size-7 items-center justify-center rounded-full bg-foreground text-background shadow-md transition-transform duration-150 ease-out active:scale-[0.94] pointer-coarse:size-8"
-              aria-label="Remove photo"
+              aria-label={t("removePhoto")}
               disabled={pending}
             >
               <X className="size-3.5" />
@@ -258,18 +265,17 @@ function CreatePinForm({ draft, onDone }: { draft: DraftPin; onDone: () => void 
           <AlertCircle className="mt-0.5 size-4 shrink-0 text-destructive" />
           <div className="flex flex-col gap-2">
             <p className="font-medium text-destructive">
-              {tooFar ? "You're too far from this spot" : "Couldn't drop the pin"}
+              {tooFar ? t("tooFarTitle") : t("failedTitle")}
             </p>
             <p className="text-xs leading-relaxed text-muted-foreground">
               {tooFar
-                ? `${
-                    typeof tooFarIssues?.distance_m === "number"
-                      ? `This spot is ${Math.round(tooFarIssues.distance_m)} m from your location. `
-                      : ""
-                  }Pins can only be dropped within ${
-                    tooFarIssues?.max_distance_m ?? PIN_CREATE_MAX_DISTANCE_M
-                  } m of where you are. Refresh your location and try again.`
-                : errorMessage(create.error, "Please try again.")}
+                ? t("tooFarBody", {
+                    hasDistance: typeof tooFarIssues?.distance_m === "number" ? "yes" : "no",
+                    // Strings, so numbers render exactly as before (no grouping).
+                    distance: String(Math.round(tooFarIssues?.distance_m ?? 0)),
+                    max: String(tooFarIssues?.max_distance_m ?? PIN_CREATE_MAX_DISTANCE_M),
+                  })
+                : errorMessage(create.error, t("tryAgain"))}
             </p>
           </div>
         </div>
@@ -283,11 +289,11 @@ function CreatePinForm({ draft, onDone }: { draft: DraftPin; onDone: () => void 
           onClick={onDone}
           disabled={pending}
         >
-          Cancel
+          {t("cancel")}
         </Button>
         <Button type="submit" className="h-11 flex-1 rounded-xl" disabled={pending} aria-busy={pending}>
           {pending ? <Loader2 className="size-4 animate-spin" /> : <MapPin className="size-4" />}
-          {pending ? "Dropping…" : "Drop pin"}
+          {pending ? t("dropping") : t("drop")}
         </Button>
       </div>
     </form>

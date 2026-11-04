@@ -20,6 +20,7 @@ import { useBlockedUsers } from "@/features/moderation/hooks/use-blocks";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { cn } from "@/lib/utils";
 import { Ban, Flag, MoreHorizontal, ShieldOff } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { ReportDialog } from "@/features/moderation/components/ReportDialog";
 
@@ -42,6 +43,7 @@ export function UserModerationActions({
   isBlocked: isBlockedProp,
   className,
 }: UserModerationActionsProps) {
+  const t = useTranslations("moderation.userActions");
   const { user } = useSession();
   const blockedQuery = useBlockedUsers(!!user && isBlockedProp === undefined);
   const blockMutation = useBlockUser();
@@ -53,12 +55,12 @@ export function UserModerationActions({
 
   const isBlocked = isBlockedProp ?? blockedQuery.items.some((row) => row.id === userId);
   const blockBusy = blockMutation.isPending || unblockMutation.isPending;
-  const who = userName || "this user";
+  const who = userName || t("thisUser");
 
   return (
     <>
       <ActionMenu
-        label="More actions"
+        label={t("more")}
         triggerClassName={cn(
           buttonVariants({ variant: "outline", size: "icon" }),
           "size-10 rounded-xl aria-expanded:bg-accent",
@@ -66,16 +68,16 @@ export function UserModerationActions({
         )}
         trigger={<MoreHorizontal aria-hidden />}
         items={[
-          { label: "Report user", icon: Flag, onSelect: () => setReportOpen(true) },
+          { label: t("report"), icon: Flag, onSelect: () => setReportOpen(true) },
           isBlocked
             ? {
-                label: "Unblock",
+                label: t("unblock"),
                 icon: ShieldOff,
                 disabled: blockBusy,
                 onSelect: () => unblockMutation.mutate(userId),
               }
             : {
-                label: "Block",
+                label: t("block"),
                 icon: Ban,
                 destructive: true,
                 disabled: blockBusy || (isBlockedProp === undefined && blockedQuery.isLoading),
@@ -89,19 +91,18 @@ export function UserModerationActions({
       <AlertDialog onOpenChange={setConfirmBlock} open={confirmBlock}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Block {who}?</AlertDialogTitle>
+            <AlertDialogTitle>{t("confirmTitle", { name: who })}</AlertDialogTitle>
             <AlertDialogDescription>
-              You won&apos;t see each other&apos;s pins or comments, and any follows between you
-              are removed. You can unblock them any time from Settings.
+              {t("confirmDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className={buttonVariants({ variant: "destructive" })}
               onClick={() => blockMutation.mutate(userId)}
             >
-              Block
+              {t("block")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

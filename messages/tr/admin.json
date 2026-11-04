@@ -1,1 +1,246 @@
-{}
+{
+  "meta": {
+    "title": "Yönetim paneli"
+  },
+  "header": {
+    "title": "Yönetim paneli",
+    "description": "Şikayetleri, üyeleri, pinleri ve yorumları yönet, bildirim gönder.",
+    "recomputeTitle": "Kullanıcı bazlı istatistik tablolarını baştan oluştur",
+    "recomputing": "Hesaplanıyor…",
+    "recompute": "İstatistikleri yeniden hesapla",
+    "refresh": "Yenile"
+  },
+  "loadingDashboard": "Yönetim paneli yükleniyor…",
+  "tabs": {
+    "overview": "Genel bakış",
+    "newcomers": "Yeni üyeler",
+    "reports": "Şikayetler",
+    "users": "Üyeler",
+    "pins": "Pinler",
+    "comments": "Yorumlar",
+    "notifications": "Bildirimler",
+    "openSr": "açık",
+    "waitingSr": "bekliyor"
+  },
+  "stats": {
+    "members": "Üyeler",
+    "pins": "Pinler",
+    "comments": "Yorumlar",
+    "votes": "Oylar",
+    "openReports": "Açık şikayetler"
+  },
+  "search": {
+    "placeholder": "Ara…",
+    "clear": "Aramayı temizle",
+    "usersPlaceholder": "İsim ya da e-postayla ara",
+    "usersLabel": "Üyelerde ara",
+    "pinsPlaceholder": "Pin adıyla ara",
+    "pinsLabel": "Pinlerde ara",
+    "commentsPlaceholder": "Yorum metninde ara",
+    "commentsLabel": "Yorumlarda ara"
+  },
+  "list": {
+    "loading": "{label} yükleniyor…",
+    "tryAgain": "Tekrar dene",
+    "showing": "{hasTotal, select, true {<totalNum>{total}</totalNum> kayıttan <shownNum>{shown}</shownNum> tanesi gösteriliyor} other {<shownNum>{shown}</shownNum> kayıt gösteriliyor}}",
+    "deletedUser": "Silinmiş kullanıcı"
+  },
+  "confirm": {
+    "cancel": "Vazgeç",
+    "deleteUser": {
+      "title": "Bu hesap silinsin mi?",
+      "description": "{name} her yerde oturumdan çıkarılacak; yorumları, oyları ve fotoğrafları silinecek. Başkalarının yorum yaptığı pinleri kalır ama silinmiş bir kullanıcının pini olarak görünür. Bu işlem geri alınamaz.",
+      "confirm": "Hesabı sil"
+    },
+    "deletePin": {
+      "title": "Bu pin silinsin mi?",
+      "description": "“{name}” ve altındaki tüm yorumlar haritadan kaldırılacak.",
+      "confirm": "Pini sil"
+    },
+    "deleteComment": {
+      "title": "Bu yorum silinsin mi?",
+      "titleOrigin": "Pinin ilk yorumu silinsin mi?",
+      "description": "“{pinName}” pinindeki bu yorum kaldırılacak. Pinin son yorumuysa pin de kaldırılır.",
+      "confirm": "Yorumu sil"
+    },
+    "reportTarget": {
+      "pin": {
+        "title": "Bu pin kaldırılsın mı?",
+        "description": "“{label}” pini kalıcı olarak silinecek. Bu pinle ilgili tüm açık şikayetler çözüldü olarak işaretlenecek.",
+        "confirm": "Pini kaldır"
+      },
+      "comment": {
+        "title": "Bu yorum kaldırılsın mı?",
+        "description": "Şikayet edilen yorum kalıcı olarak silinecek. Bu yorumla ilgili tüm açık şikayetler çözüldü olarak işaretlenecek.",
+        "confirm": "Yorumu kaldır"
+      },
+      "user": {
+        "title": "Bu hesap silinsin mi?",
+        "description": "{label} hesabı kalıcı olarak silinecek. Bu hesapla ilgili tüm açık şikayetler çözüldü olarak işaretlenecek.",
+        "confirm": "Hesabı sil"
+      }
+    },
+    "broadcast": {
+      "title": "Herkese gönderilsin mi?",
+      "description": "“{title}” tüm aktif cihazlara hemen gidecek. Önce metne bir göz at: gönderilen bildirim geri alınamaz.",
+      "confirm": "Herkese gönder"
+    }
+  },
+  "reports": {
+    "statusLabel": "Şikayet durumu",
+    "status": {
+      "open": "açık",
+      "resolved": "çözüldü",
+      "dismissed": "yok sayıldı",
+      "all": "tümü"
+    },
+    "empty": {
+      "open": "Açık şikayet yok. Her şey yolunda.",
+      "resolved": "Çözülmüş şikayet yok.",
+      "dismissed": "Yok sayılmış şikayet yok.",
+      "all": "Hiç şikayet yok.",
+      "default": "Burada şikayet yok."
+    },
+    "listLabel": "Şikayetler",
+    "target": {
+      "pin": "Pin",
+      "comment": "Yorum",
+      "user": "Kullanıcı"
+    },
+    "reason": {
+      "spam": "Spam",
+      "harassment": "Taciz",
+      "inappropriate": "Uygunsuz",
+      "other": "Diğer"
+    },
+    "alreadyRemoved": "Zaten kaldırılmış",
+    "emptyTarget": "(boş)",
+    "byline": "{hasAuthor, select, true {Yazan: <author>{authorName}</author> · } other {}}Şikayet eden: <reporter>{reporterName}</reporter>",
+    "resolve": "Çöz",
+    "resolveTitle": "Ele alındı olarak işaretle, içerik kalsın",
+    "dismiss": "Yok say",
+    "dismissTitle": "İşlem yapmadan kapat",
+    "remove": {
+      "pin": "Pini kaldır",
+      "comment": "Yorumu kaldır",
+      "user": "Kullanıcıyı kaldır"
+    },
+    "closed": "{date} tarihinde kapatıldı"
+  },
+  "users": {
+    "listLabel": "Üyeler",
+    "empty": "Aramana uyan üye yok.",
+    "admin": "Yönetici",
+    "deleted": "Silindi",
+    "unverified": "Doğrulanmamış",
+    "meta": "{who} · {joined} tarihinde katıldı{isDeleted, select, true { · {deletedAt} tarihinde silindi} other {}}",
+    "deleteLabel": "{name} hesabını sil",
+    "deleteTitle": "Hesabı sil"
+  },
+  "pins": {
+    "listLabel": "Pinler",
+    "empty": "Aramana uyan pin yok.",
+    "commentsSr": "yorum",
+    "deleteLabel": "{name} pinini sil",
+    "deleteTitle": "Pini sil"
+  },
+  "comments": {
+    "listLabel": "Yorumlar",
+    "empty": "Aramana uyan yorum yok.",
+    "originTitle": "Pinin oluşturulduğu ilk yorum",
+    "origin": "İlk yorum",
+    "photo": "Fotoğraf",
+    "delete": "Yorumu sil"
+  },
+  "newcomers": {
+    "intro": "Son 14 günde katılan üyelerin paylaşımları.",
+    "waiting": "{count, plural, other {# paylaşım hâlâ ilk yanıtını ya da beğenisini bekliyor.}}",
+    "allAnswered": "Herkes bir karşılık aldı.",
+    "listLabel": "Yeni üye paylaşımları",
+    "empty": "Yeni üyelerden henüz paylaşım yok.",
+    "newMember": "Yeni üye",
+    "joined": "{timeAgo} katıldı",
+    "opinions": "{count, plural, other {# fikir}}",
+    "droppedPin": "Bu pini bıraktı",
+    "wasHere": "Buradaydı",
+    "answered": "Yanıtlandı",
+    "waitingBadge": "Yanıt bekliyor",
+    "reply": "Yanıtla"
+  },
+  "overview": {
+    "activityTitle": "Etkinlik, son 14 gün",
+    "activityDescription": "Günlük yeni pinler ve yorumlar",
+    "activityDescriptionStats": "Günlük yeni pinler ve yorumlar · toplam <num>{total}</num> · {devices, plural, other {# aktif cihaz}} · {deleted, plural, other {# silinmiş hesap}}",
+    "noActivity": "Henüz etkinlik yok.",
+    "sentimentTitle": "Genel hava",
+    "sentimentDescription": "Tüm yorum oyları içinde beğenilerin payı",
+    "likesSr": "beğeni",
+    "likes": "{count} beğeni",
+    "dislikes": "{count} beğenmeme",
+    "likeShare": "Beğeni payı",
+    "topTitle": "En çok katkı verenler",
+    "topDescription": "Bıraktıkları pin sayısına göre",
+    "topPins": "{count} pin",
+    "noData": "Henüz veri yok."
+  },
+  "chart": {
+    "caption": "Günlük yeni pinler ve yorumlar",
+    "date": "Tarih",
+    "pins": "Pinler",
+    "comments": "Yorumlar",
+    "newMembers": "Yeni üyeler",
+    "tooltipDate": "{date} {weekday}"
+  },
+  "notifications": {
+    "composeTitle": "Anlık bildirim yaz",
+    "sendTo": "Kime gönderilsin",
+    "oneMember": "Tek üye",
+    "everyone": "Herkes",
+    "member": "Üye",
+    "noDevices": "Aktif cihaz yok, bildirim kimseye ulaşmayacak",
+    "devices": "{count, plural, other {# cihaz}}",
+    "devicesSr": "cihaz",
+    "change": "Değiştir",
+    "userSearchPlaceholder": "İsim ya da e-postayla ara…",
+    "searching": "Aranıyor…",
+    "noMatch": "Eşleşen üye yok.",
+    "none": "Yok",
+    "title": "Başlık",
+    "titlePlaceholder": "Yakınında yeni pinler var",
+    "message": "Mesaj",
+    "messagePlaceholder": "Herkes neyi bilmeli?",
+    "advanced": "Gelişmiş: veri yükü (JSON)",
+    "dataLabel": "Veri yükü JSON",
+    "dataNotObject": "Veri yükü bir JSON nesnesi olmalı, örneğin '{\"key\": \"value\"}'.",
+    "dataInvalid": "Bu geçerli bir JSON değil.",
+    "sending": "Gönderiliyor…",
+    "sendEveryone": "Herkese gönder",
+    "send": "Bildirimi gönder",
+    "recentTitle": "Son gönderilenler",
+    "recentEmpty": "Henüz bildirim gönderilmedi.",
+    "untitled": "(başlıksız)",
+    "sent": "{count} gönderildi",
+    "failed": "{count} başarısız",
+    "staleRemoved": "{count} eski cihaz kaldırıldı",
+    "loadMore": "Daha fazla yükle"
+  },
+  "toast": {
+    "accountDeleted": "Hesap silindi",
+    "accountDeleteFailed": "Hesap silinemedi",
+    "pinDeleted": "Pin silindi",
+    "pinDeleteFailed": "Pin silinemedi",
+    "commentDeleted": "Yorum silindi",
+    "commentDeletedPinToo": "Pin de kaldırıldı, hiç yorumu kalmamıştı.",
+    "commentDeleteFailed": "Yorum silinemedi",
+    "notificationSent": "Bildirim gönderildi",
+    "notificationSentDescription": "{sent} gönderildi, {failed} başarısız{deactivated, plural, =0 {} other {, # eski cihaz kaldırıldı}}",
+    "notificationFailed": "Bildirim gönderilemedi",
+    "reportResolved": "Şikayet çözüldü",
+    "reportDismissed": "Şikayet yok sayıldı",
+    "contentRemoved": "İçerik kaldırıldı",
+    "actionFailed": "İşlem başarısız oldu",
+    "statsRecomputed": "İstatistikler yeniden hesaplandı",
+    "statsTook": "{ms} ms sürdü",
+    "statsFailed": "İstatistikler yeniden hesaplanamadı"
+  }
+}

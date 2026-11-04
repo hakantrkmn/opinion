@@ -1,14 +1,23 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import type { AdminAnalytics } from "@/features/admin/components/types";
 import { formatNumber } from "@/features/admin/components/utils";
+import { formatCompactNumber } from "@/lib/formatters";
 
 type Day = AdminAnalytics["daily"][number];
 
-const dayLabel = new Intl.DateTimeFormat("en", { day: "numeric", month: "short", timeZone: "UTC" });
-const weekday = new Intl.DateTimeFormat("en", { weekday: "short", timeZone: "UTC" });
+function useDayFormats(locale: string) {
+  return useMemo(
+    () => ({
+      dayLabel: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", timeZone: "UTC" }),
+      weekday: new Intl.DateTimeFormat(locale, { weekday: "short", timeZone: "UTC" }),
+    }),
+    [locale]
+  );
+}
 
 function niceMax(n: number) {
   if (n <= 4) return 4;
@@ -17,16 +26,15 @@ function niceMax(n: number) {
   return step * pow;
 }
 
-function compact(n: number) {
-  return n >= 1000 ? `${Math.round(n / 100) / 10}K` : String(n);
-}
-
 /**
  * Daily activity (new pins + comments) as a single-series column chart:
  * one hue, no legend (the title names it), hover/focus tooltip with the
  * breakdown, and a screen-reader table with every value.
  */
 export function ActivityChart({ daily }: { daily: Day[] }) {
+  const t = useTranslations("admin.chart");
+  const locale = useLocale();
+  const { dayLabel } = useDayFormats(locale);
   const [active, setActive] = useState<number | null>(null);
   const totals = daily.map((d) => d.pins + d.comments);
   const max = niceMax(Math.max(1, ...totals));
@@ -39,9 +47,9 @@ export function ActivityChart({ daily }: { daily: Day[] }) {
       <div className="relative flex h-44 gap-2">
         {/* Y axis */}
         <div aria-hidden className="flex w-8 shrink-0 flex-col justify-between pb-6 text-right text-[11px] tabular-nums text-muted-foreground">
-          {ticks.map((t) => (
-            <span key={t} className="-translate-y-1/2 leading-none first:translate-y-0 last:translate-y-0">
-              {compact(t)}
+          {ticks.map((tick) => (
+            <span key={tick} className="-translate-y-1/2 leading-none first:translate-y-0 last:translate-y-0">
+              {formatCompactNumber(tick, locale)}
             </span>
           ))}
         </div>
@@ -49,8 +57,8 @@ export function ActivityChart({ daily }: { daily: Day[] }) {
         <div className="relative flex min-w-0 flex-1 flex-col">
           {/* Gridlines */}
           <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 bottom-6 flex flex-col justify-between">
-            {ticks.map((t) => (
-              <div key={t} className="h-px bg-border" />
+            {ticks.map((tick) => (
+              <div key={tick} className="h-px bg-border" />
             ))}
           </div>
 
@@ -84,7 +92,7 @@ export function ActivityChart({ daily }: { daily: Day[] }) {
                       className="absolute left-1/2 -translate-x-1/2 -translate-y-1 text-[11px] font-medium tabular-nums text-foreground"
                       style={{ bottom: `${pct}%` }}
                     >
-                      {formatNumber(total)}
+                      {formatNumber(total, locale)}
                     </span>
                   ) : null}
                 </div>
@@ -115,13 +123,13 @@ export function ActivityChart({ daily }: { daily: Day[] }) {
       </div>
 
       <table className="sr-only">
-        <caption>New pins and comments per day</caption>
+        <caption>{t("caption")}</caption>
         <thead>
           <tr>
-            <th scope="col">Date</th>
-            <th scope="col">Pins</th>
-            <th scope="col">Comments</th>
-            <th scope="col">New members</th>
+            <th scope="col">{t("date")}</th>
+            <th scope="col">{t("pins")}</th>
+            <th scope="col">{t("comments")}</th>
+            <th scope="col">{t("newMembers")}</th>
           </tr>
         </thead>
         <tbody>
@@ -140,6 +148,9 @@ export function ActivityChart({ daily }: { daily: Day[] }) {
 }
 
 function Tooltip({ day, index, count }: { day: Day; index: number; count: number }) {
+  const t = useTranslations("admin.chart");
+  const locale = useLocale();
+  const { dayLabel, weekday } = useDayFormats(locale);
   const center = ((index + 0.5) / count) * 100;
   const date = new Date(day.date);
   return (
@@ -151,15 +162,15 @@ function Tooltip({ day, index, count }: { day: Day; index: number; count: number
       }}
     >
       <p className="mb-1.5 font-medium">
-        {weekday.format(date)}, {dayLabel.format(date)}
+        {t("tooltipDate", { weekday: weekday.format(date), date: dayLabel.format(date) })}
       </p>
       <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 tabular-nums">
-        <dt className="text-muted-foreground">Pins</dt>
-        <dd className="text-right">{formatNumber(day.pins)}</dd>
-        <dt className="text-muted-foreground">Comments</dt>
-        <dd className="text-right">{formatNumber(day.comments)}</dd>
-        <dt className="text-muted-foreground">New members</dt>
-        <dd className="text-right">{formatNumber(day.users)}</dd>
+        <dt className="text-muted-foreground">{t("pins")}</dt>
+        <dd className="text-right">{formatNumber(day.pins, locale)}</dd>
+        <dt className="text-muted-foreground">{t("comments")}</dt>
+        <dd className="text-right">{formatNumber(day.comments, locale)}</dd>
+        <dt className="text-muted-foreground">{t("newMembers")}</dt>
+        <dd className="text-right">{formatNumber(day.users, locale)}</dd>
       </dl>
     </div>
   );

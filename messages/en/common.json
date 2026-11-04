@@ -1,4 +1,8 @@
 {
   "switchLanguage": "Switch to {language}",
-  "language": "Language"
+  "language": "Language",
+  "avatar": "Avatar",
+  "close": "Close",
+  "toastRegion": "Notifications",
+  "closeToast": "Close toast"
 }

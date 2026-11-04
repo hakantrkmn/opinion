@@ -3,6 +3,7 @@
 import { formatCount } from "@/features/profile/lib/format";
 import { cn } from "@/lib/utils";
 import type { UserStats } from "@/types/userTypes";
+import { useLocale, useTranslations } from "next-intl";
 
 /** Pins / comments / followers / following strip at the bottom of the hero. */
 export function ProfileStatsGrid({
@@ -14,11 +15,13 @@ export function ProfileStatsGrid({
   onOpenFollowers?: () => void;
   onOpenFollowing?: () => void;
 }) {
+  const t = useTranslations("profile.stats");
+  const locale = useLocale();
   const items = [
-    { label: "Pins", value: stats?.total_pins },
-    { label: "Comments", value: stats?.total_comments },
-    { label: "Followers", value: stats?.followers_count, onClick: onOpenFollowers },
-    { label: "Following", value: stats?.following_count, onClick: onOpenFollowing },
+    { label: t("pins"), value: stats?.total_pins },
+    { label: t("comments"), value: stats?.total_comments },
+    { label: t("followers"), value: stats?.followers_count, onClick: onOpenFollowers },
+    { label: t("following"), value: stats?.following_count, onClick: onOpenFollowing },
   ];
 
   return (
@@ -27,7 +30,7 @@ export function ProfileStatsGrid({
         const content = (
           <>
             <span className="text-lg font-semibold leading-none tabular-nums text-foreground sm:text-xl">
-              {stats ? formatCount(item.value) : "–"}
+              {stats ? formatCount(item.value, locale) : "–"}
             </span>
             <span className="text-xs text-muted-foreground">{item.label}</span>
           </>

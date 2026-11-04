@@ -2,6 +2,7 @@
 
 import type { ReportReason, ReportTargetType } from "@/types/userTypes";
 import { useMutation } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { apiSend } from "@/lib/api/send";
 
@@ -13,6 +14,7 @@ export interface ReportContentInput {
 }
 
 export function useReportContent() {
+  const t = useTranslations("moderation.toast");
   return useMutation({
     mutationFn: (input: ReportContentInput) =>
       apiSend<{ ok: boolean }>("/api/reports", {
@@ -25,12 +27,12 @@ export function useReportContent() {
         },
       }),
     onSuccess: () => {
-      toast.success("Report submitted", {
-        description: "Thanks — our team will review it.",
+      toast.success(t("reportSent"), {
+        description: t("reportSentDescription"),
       });
     },
     onError: (error) => {
-      toast.error("Failed to submit report", { description: error.message });
+      toast.error(t("reportError"), { description: error.message });
     },
   });
 }

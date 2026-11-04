@@ -1,1 +1,68 @@
-{}
+{
+  "loadingMap": "Harita yükleniyor",
+  "mapLabel": "Pin haritası",
+  "refresh": "Pinleri yenile",
+  "basemap": {
+    "button": "Harita stili",
+    "auto": "Temaya uy",
+    "light": "Açık",
+    "dark": "Koyu",
+    "colorful": "Renkli"
+  },
+  "dropPin": {
+    "label": "Pin bırak",
+    "locating": "Konumun alınıyor…",
+    "locationError": "Konumun alınamadı",
+    "tooFar": "Çok uzaktasın",
+    "tooFarDescription": "Yalnızca bulunduğun yerin {meters} m yakınına pin bırakabilirsin."
+  },
+  "intro": {
+    "label": "Hoş geldin",
+    "dismiss": "Karşılama mesajını kapat",
+    "title": "droPINion’a hoş geldin",
+    "body": "İnsanların bir yer hakkında ne düşündüğünü okumak için bir pine dokun. Konuşmaya değer bir yerde misin? <b>Pin bırak</b> ile fikrini paylaş."
+  },
+  "locate": {
+    "show": "Konumumu göster",
+    "blocked": "Konum engellendi",
+    "find": "Konumumu bul",
+    "blockedToast": "Konum erişimi engelli",
+    "blockedToastDescription": "Tarayıcı ayarlarından bu siteye konum izni ver.",
+    "unsupportedToast": "Tarayıcın konumu desteklemiyor"
+  },
+  "status": {
+    "loadError": "Pinler yüklenemedi",
+    "retry": "Tekrar dene",
+    "followingSignIn": "Takip ettiklerinin pinlerini görmek için <signin>giriş yap</signin>",
+    "loading": "Pinler yükleniyor…",
+    "truncated": "Tüm pinleri görmek için yakınlaştır",
+    "followingEmpty": "Burada takip ettiklerinden pin yok",
+    "emptyHere": "Burada henüz fikir yok",
+    "nearestLabel": "En yakın fikri göster: {name}, {distance} uzakta",
+    "nearestName": "{name} ·",
+    "noneAnywhere": "Henüz hiç fikir yok. İlk pini sen bırak!"
+  },
+  "scope": {
+    "label": "Kimin pinleri gösterilsin",
+    "all": "Tümü",
+    "following": "Takip edilenler"
+  },
+  "signInPrompt": {
+    "title": "Katılmak için giriş yap",
+    "description": "Ücretsiz bir hesapla pin bırak, yorum yap, oy ver ve insanları takip et.",
+    "notNow": "Şimdi değil",
+    "signIn": "Giriş yap"
+  },
+  "theme": {
+    "toLight": "Açık temaya geç",
+    "toDark": "Koyu temaya geç",
+    "lightTitle": "Açık tema",
+    "darkTitle": "Koyu tema"
+  },
+  "geoError": {
+    "denied": "Konum erişimi engelli. Pin bırakmak için tarayıcı ayarlarından izin ver.",
+    "timeout": "Konumunu almak çok uzun sürdü. Açık bir alana geçip tekrar dene.",
+    "unavailable": "Konumuna şu an ulaşılamıyor. Konum servislerinin açık olduğundan emin ol.",
+    "unsupported": "Tarayıcın konumu desteklemiyor."
+  }
+}

@@ -5,6 +5,16 @@ export const MAX_ORIGINAL_BYTES = 25 * 1024 * 1024;
 /** Fallback limit when the browser cannot decode the image (e.g. HEIC). */
 const MAX_UNCOMPRESSED_BYTES = 5 * 1024 * 1024;
 
+/** Why a photo was rejected; the UI maps the code to a message (media.errors). */
+export type CompressErrorCode = "notImage" | "tooLarge" | "unsupported";
+
+export class CompressError extends Error {
+  constructor(readonly code: CompressErrorCode) {
+    super(code);
+    this.name = "CompressError";
+  }
+}
+
 function toBlob(canvas: HTMLCanvasElement, type: string, quality: number) {
   return new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality));
 }
@@ -15,10 +25,10 @@ function toBlob(canvas: HTMLCanvasElement, type: string, quality: number) {
  */
 export async function compressImage(file: File): Promise<File> {
   if (!file.type.startsWith("image/")) {
-    throw new Error("Please choose an image file.");
+    throw new CompressError("notImage");
   }
   if (file.size > MAX_ORIGINAL_BYTES) {
-    throw new Error("That photo is too large (max 25 MB).");
+    throw new CompressError("tooLarge");
   }
 
   let bitmap: ImageBitmap;
@@ -26,7 +36,7 @@ export async function compressImage(file: File): Promise<File> {
     bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
   } catch {
     if (file.size <= MAX_UNCOMPRESSED_BYTES) return file;
-    throw new Error("This photo format isn't supported. Try a JPEG or PNG.");
+    throw new CompressError("unsupported");
   }
 
   const scale = Math.min(1, MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));

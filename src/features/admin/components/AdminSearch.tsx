@@ -2,6 +2,7 @@
 
 import { Input } from "@/components/ui/input";
 import { Search, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface AdminSearchProps {
   value: string;
@@ -11,6 +12,7 @@ interface AdminSearchProps {
 }
 
 export function AdminSearch({ value, onChange, placeholder, label }: AdminSearchProps) {
+  const t = useTranslations("admin.search");
   return (
     <div role="search" className="relative sm:max-w-sm">
       <Search
@@ -28,7 +30,7 @@ export function AdminSearch({ value, onChange, placeholder, label }: AdminSearch
             onChange("");
           }
         }}
-        placeholder={placeholder ? `${placeholder}…` : "Search…"}
+        placeholder={placeholder ? `${placeholder}…` : t("placeholder")}
         autoComplete="off"
         spellCheck={false}
         enterKeyHint="search"
@@ -39,7 +41,7 @@ export function AdminSearch({ value, onChange, placeholder, label }: AdminSearch
           type="button"
           onClick={() => onChange("")}
           className="absolute right-1 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
-          aria-label="Clear search"
+          aria-label={t("clear")}
         >
           <X aria-hidden className="size-4" />
         </button>

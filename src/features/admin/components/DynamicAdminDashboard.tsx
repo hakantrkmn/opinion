@@ -1,13 +1,15 @@
 "use client";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 
 /** Mirrors the dashboard's header, stat tiles and tabs so nothing jumps. */
 function AdminSkeleton() {
+  const t = useTranslations("admin");
   return (
     <div aria-busy className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 pb-16 pt-6 sm:px-6 sm:pt-10">
-      <span className="sr-only">Loading admin dashboard…</span>
+      <span className="sr-only">{t("loadingDashboard")}</span>
       <div className="flex flex-col gap-2">
         <Skeleton className="h-9 w-32 rounded-lg" />
         <Skeleton className="h-4 w-72 max-w-full" />

@@ -3,6 +3,7 @@
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { ImageOff, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 /**
@@ -10,6 +11,7 @@ import { useState } from "react";
  * pulsing placeholder) that opens the full photo in a lightbox.
  */
 export function CommentPhoto({ url }: { url: string }) {
+  const t = useTranslations("comments.photo");
   const [open, setOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -18,7 +20,7 @@ export function CommentPhoto({ url }: { url: string }) {
     return (
       <div className="flex aspect-[4/3] w-full max-w-60 flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-border bg-muted/50 text-xs text-muted-foreground">
         <ImageOff className="size-5" aria-hidden />
-        Photo unavailable
+        {t("unavailable")}
       </div>
     );
   }
@@ -32,7 +34,7 @@ export function CommentPhoto({ url }: { url: string }) {
           "relative block aspect-[4/3] w-full max-w-60 overflow-hidden rounded-xl border border-border/40 bg-muted transition-transform duration-150 ease-out active:scale-[0.98]",
           !loaded && "animate-pulse"
         )}
-        aria-label="Open photo"
+        aria-label={t("open")}
       >
         <img
           src={url}
@@ -59,16 +61,16 @@ export function CommentPhoto({ url }: { url: string }) {
           className="z-(--z-dialog-nested) w-auto max-w-[calc(100vw-2rem)] gap-0 border-none bg-transparent p-0 shadow-none sm:max-w-[min(56rem,calc(100vw-4rem))]"
           overlayClassName="z-(--z-dialog-nested) bg-black/85"
         >
-          <DialogTitle className="sr-only">Comment photo</DialogTitle>
+          <DialogTitle className="sr-only">{t("title")}</DialogTitle>
           <img
             src={url}
-            alt="Comment photo"
+            alt={t("alt")}
             className="max-h-[85dvh] w-auto rounded-xl object-contain"
             decoding="async"
           />
           <DialogClose
             className="absolute -top-2 right-0 flex size-10 -translate-y-full items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md transition-[background-color,transform] duration-150 ease-out hover:bg-white/25 active:scale-[0.94]"
-            aria-label="Close photo"
+            aria-label={t("close")}
           >
             <X className="size-5" />
           </DialogClose>

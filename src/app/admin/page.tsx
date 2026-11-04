@@ -3,14 +3,18 @@ import Header from "@/components/common/Header";
 import { getAdminSession } from "@/server/auth/admin";
 import { getServerSession } from "@/server/auth/session";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Admin",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("admin");
+  return {
+    title: t("meta.title"),
+    robots: { index: false, follow: false },
+  };
+}
 
 export default async function AdminPage() {
   if (!(await getServerSession())) redirect("/auth?redirect=%2Fadmin");

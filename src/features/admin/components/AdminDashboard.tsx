@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import { Bell, Flag, HandHeart, MapPin, MessageSquare, PieChart, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -44,19 +45,21 @@ import type {
   ConfirmState,
 } from "@/features/admin/components/types";
 
+/** Labels live in admin.tabs.<value>. */
 const TABS = [
-  { value: "overview", label: "Overview", icon: PieChart },
-  { value: "newcomers", label: "Newcomers", icon: HandHeart },
-  { value: "reports", label: "Reports", icon: Flag },
-  { value: "users", label: "Members", icon: Users },
-  { value: "pins", label: "Pins", icon: MapPin },
-  { value: "comments", label: "Comments", icon: MessageSquare },
-  { value: "notifications", label: "Notifications", icon: Bell },
-] as const satisfies readonly { value: AdminTab; label: string; icon: unknown }[];
+  { value: "overview", icon: PieChart },
+  { value: "newcomers", icon: HandHeart },
+  { value: "reports", icon: Flag },
+  { value: "users", icon: Users },
+  { value: "pins", icon: MapPin },
+  { value: "comments", icon: MessageSquare },
+  { value: "notifications", icon: Bell },
+] as const satisfies readonly { value: AdminTab; icon: unknown }[];
 
 const REPORT_FILTERS = ["open", "resolved", "dismissed", "all"] as const;
 
 export default function AdminDashboard() {
+  const t = useTranslations("admin");
   const { user } = useSession();
   const [tab, setTab] = useState<AdminTab>("overview");
   const [query, setQuery] = useState("");
@@ -91,9 +94,9 @@ export default function AdminDashboard() {
 
   const askDeleteUser = (u: AdminUser) =>
     setConfirm({
-      title: "Delete this account?",
-      description: `${u.display_name || u.email} will be signed out everywhere and their comments, votes and photos removed. Pins that other people commented on stay, shown as by a deleted user. This cannot be undone.`,
-      confirmLabel: "Delete account",
+      title: t("confirm.deleteUser.title"),
+      description: t("confirm.deleteUser.description", { name: u.display_name || u.email }),
+      confirmLabel: t("confirm.deleteUser.confirm"),
       onConfirm: () => {
         delUser.mutate(u.id);
         setConfirm(null);
@@ -102,9 +105,9 @@ export default function AdminDashboard() {
 
   const askDeletePin = (p: AdminPin) =>
     setConfirm({
-      title: "Delete this pin?",
-      description: `"${p.name}" and every comment under it will be removed from the map.`,
-      confirmLabel: "Delete pin",
+      title: t("confirm.deletePin.title"),
+      description: t("confirm.deletePin.description", { name: p.name }),
+      confirmLabel: t("confirm.deletePin.confirm"),
       onConfirm: () => {
         delPin.mutate(p.id);
         setConfirm(null);
@@ -113,9 +116,9 @@ export default function AdminDashboard() {
 
   const askDeleteComment = (c: AdminComment) =>
     setConfirm({
-      title: c.is_first_comment ? "Delete the origin comment?" : "Delete this comment?",
-      description: `The comment on "${c.pin.name}" will be removed. If it was the pin's last comment, the pin is removed too.`,
-      confirmLabel: "Delete comment",
+      title: c.is_first_comment ? t("confirm.deleteComment.titleOrigin") : t("confirm.deleteComment.title"),
+      description: t("confirm.deleteComment.description", { pinName: c.pin.name }),
+      confirmLabel: t("confirm.deleteComment.confirm"),
       onConfirm: () => {
         delComment.mutate(c.id);
         setConfirm(null);
@@ -123,16 +126,11 @@ export default function AdminDashboard() {
     });
 
   const askDeleteReportTarget = (r: AdminReport) => {
-    const targetLabel =
-      r.target_type === "pin"
-        ? `pin "${r.target.label || r.target_id}"`
-        : r.target_type === "comment"
-          ? "the reported comment"
-          : `the account of ${r.target.label || r.target_id}`;
+    const type = r.target_type;
     setConfirm({
-      title: r.target_type === "user" ? "Delete this account?" : `Remove this ${r.target_type}?`,
-      description: `This permanently deletes ${targetLabel}. All open reports on it will be marked resolved.`,
-      confirmLabel: r.target_type === "user" ? "Delete account" : `Remove ${r.target_type}`,
+      title: t(`confirm.reportTarget.${type}.title`),
+      description: t(`confirm.reportTarget.${type}.description`, { label: r.target.label || r.target_id }),
+      confirmLabel: t(`confirm.reportTarget.${type}.confirm`),
       onConfirm: () => {
         reportAction.mutate({ reportId: r.id, action: "delete_target" });
         setConfirm(null);
@@ -164,20 +162,20 @@ export default function AdminDashboard() {
       <Tabs value={tab} onValueChange={(v) => changeTab(v as AdminTab)}>
         <div className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0">
           <TabsList className="inline-flex h-11 w-max gap-0.5 rounded-xl bg-muted/70 p-1">
-            {TABS.map(({ value, label, icon: Icon }) => (
+            {TABS.map(({ value, icon: Icon }) => (
               <TabsTrigger key={value} value={value} className="h-full gap-2 rounded-lg px-3 [&>svg]:size-4">
                 <Icon aria-hidden />
-                {label}
+                {t(`tabs.${value}`)}
                 {value === "reports" && analytics?.open_reports ? (
                   <span className="rounded-full bg-destructive px-1.5 text-[11px] font-semibold leading-[18px] tabular-nums text-white">
                     {analytics.open_reports}
-                    <span className="sr-only"> open</span>
+                    <span className="sr-only"> {t("tabs.openSr")}</span>
                   </span>
                 ) : null}
                 {value === "newcomers" && waitingNewcomers > 0 ? (
                   <span className="rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold leading-[18px] tabular-nums text-white">
                     {waitingNewcomers}
-                    <span className="sr-only"> waiting</span>
+                    <span className="sr-only"> {t("tabs.waitingSr")}</span>
                   </span>
                 ) : null}
               </TabsTrigger>
@@ -194,7 +192,7 @@ export default function AdminDashboard() {
         </TabsContent>
 
         <TabsContent value="reports" className="mt-6 flex flex-col gap-4">
-          <div role="radiogroup" aria-label="Report status" className="flex flex-wrap gap-2">
+          <div role="radiogroup" aria-label={t("reports.statusLabel")} className="flex flex-wrap gap-2">
             {REPORT_FILTERS.map((s) => (
               <button
                 key={s}
@@ -209,7 +207,7 @@ export default function AdminDashboard() {
                     : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground"
                 )}
               >
-                {s}
+                {t(`reports.status.${s}`)}
               </button>
             ))}
           </div>
@@ -219,22 +217,22 @@ export default function AdminDashboard() {
             onDismiss={(r) => reportAction.mutate({ reportId: r.id, action: "dismiss" })}
             onDeleteTarget={askDeleteReportTarget}
             pendingId={reportPendingId}
-            emptyLabel={reportStatus === "open" ? "No open reports. All caught up." : `No ${reportStatus === "all" ? "" : `${reportStatus} `}reports.`}
+            emptyLabel={t(`reports.empty.${reportStatus}`)}
           />
         </TabsContent>
 
         <TabsContent value="users" className="mt-6 flex flex-col gap-4">
-          <AdminSearch value={query} onChange={setQuery} placeholder="Search by name or email" label="Search members" />
+          <AdminSearch value={query} onChange={setQuery} placeholder={t("search.usersPlaceholder")} label={t("search.usersLabel")} />
           <UserList query={usersQuery} currentUserId={user?.id} onDelete={askDeleteUser} pending={delUser.isPending} />
         </TabsContent>
 
         <TabsContent value="pins" className="mt-6 flex flex-col gap-4">
-          <AdminSearch value={query} onChange={setQuery} placeholder="Search by pin name" label="Search pins" />
+          <AdminSearch value={query} onChange={setQuery} placeholder={t("search.pinsPlaceholder")} label={t("search.pinsLabel")} />
           <PinList query={pinsQuery} onDelete={askDeletePin} pending={delPin.isPending} />
         </TabsContent>
 
         <TabsContent value="comments" className="mt-6 flex flex-col gap-4">
-          <AdminSearch value={query} onChange={setQuery} placeholder="Search comment text" label="Search comments" />
+          <AdminSearch value={query} onChange={setQuery} placeholder={t("search.commentsPlaceholder")} label={t("search.commentsLabel")} />
           <CommentList query={commentsQuery} onDelete={askDeleteComment} pending={delComment.isPending} />
         </TabsContent>
 

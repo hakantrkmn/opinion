@@ -3,6 +3,7 @@
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
 import { ChevronRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -58,9 +59,10 @@ export function UserRowSkeleton() {
 }
 
 export function UserListSkeleton({ rows = 4 }: { rows?: number }) {
+  const t = useTranslations("users.row");
   return (
     <div aria-busy className="flex flex-col gap-1">
-      <span className="sr-only">Loading…</span>
+      <span className="sr-only">{t("loading")}</span>
       {Array.from({ length: rows }, (_, i) => (
         <UserRowSkeleton key={i} />
       ))}

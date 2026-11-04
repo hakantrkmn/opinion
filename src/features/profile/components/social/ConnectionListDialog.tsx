@@ -10,6 +10,7 @@ import {
 import { ListMessage, UserListSkeleton, UserRow } from "@/features/users/components/UserRow";
 import { useFollowers, useFollowing } from "@/features/users/hooks/use-user-social";
 import { AlertCircle, RotateCcw, Users } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface ConnectionListDialogProps {
   userId: string;
@@ -27,11 +28,12 @@ export function ConnectionListDialog({
   onOpenChange,
   type,
 }: ConnectionListDialogProps) {
+  const t = useTranslations("profile.connections");
   const followersQuery = useFollowers(userId, open && type === "followers");
   const followingQuery = useFollowing(userId, open && type === "following");
   const query = type === "followers" ? followersQuery : followingQuery;
   const items = query.items;
-  const who = userName || "This person";
+  const who = userName || t("thisPerson");
 
   return (
     <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
@@ -40,9 +42,11 @@ export function ConnectionListDialog({
         desktopClassName="sm:max-w-md"
       >
         <ResponsiveDialogPanel
-          title={type === "followers" ? "Followers" : "Following"}
+          title={type === "followers" ? t("followers") : t("following")}
           description={
-            type === "followers" ? `People following ${who}.` : `People ${who} follows.`
+            type === "followers"
+              ? t("followersDescription", { name: who })
+              : t("followingDescription", { name: who })
           }
         >
           <div className="max-h-[60dvh] overflow-y-auto overscroll-contain px-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-4">
@@ -52,23 +56,23 @@ export function ConnectionListDialog({
               <ListMessage
                 tone="error"
                 icon={<AlertCircle aria-hidden />}
-                title="Couldn't load this list"
+                title={t("loadError")}
                 description={query.error.message}
                 action={
                   <Button variant="outline" className="h-10 rounded-xl" onClick={() => void query.refetch()}>
                     <RotateCcw aria-hidden />
-                    Try again
+                    {t("tryAgain")}
                   </Button>
                 }
               />
             ) : items.length === 0 ? (
               <ListMessage
                 icon={<Users aria-hidden />}
-                title={type === "followers" ? "No followers yet" : "Not following anyone yet"}
+                title={type === "followers" ? t("noFollowersTitle") : t("noFollowingTitle")}
                 description={
                   type === "followers"
-                    ? "When people follow this profile, they'll show up here."
-                    : "Followed people's pins show up in the Following view on the map."
+                    ? t("noFollowersDescription")
+                    : t("noFollowingDescription")
                 }
               />
             ) : (
@@ -78,7 +82,7 @@ export function ConnectionListDialog({
                     <UserRow
                       key={connection.id}
                       id={connection.id}
-                      name={connection.display_name || "Unnamed user"}
+                      name={connection.display_name || t("unnamed")}
                       avatarUrl={connection.avatar_url}
                       onNavigate={() => onOpenChange(false)}
                     />

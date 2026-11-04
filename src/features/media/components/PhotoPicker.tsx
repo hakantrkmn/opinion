@@ -10,9 +10,10 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Camera, ImagePlus, Loader2, RotateCcw, Upload } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { compressImage } from "../lib/compress";
+import { CompressError, MAX_ORIGINAL_BYTES, compressImage } from "../lib/compress";
 
 interface PhotoPickerProps {
   /** Receives the compressed photo. */
@@ -37,6 +38,7 @@ export function PhotoPicker({
   className,
   compact = false,
 }: PhotoPickerProps) {
+  const t = useTranslations("media");
   const [processing, setProcessing] = useState(false);
   const [webcamOpen, setWebcamOpen] = useState(false);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -50,14 +52,19 @@ export function PhotoPicker({
         onPick(await compressImage(file));
         setWebcamOpen(false);
       } catch (error) {
-        toast.error("Couldn't use this photo", {
-          description: error instanceof Error ? error.message : undefined,
+        toast.error(t("picker.photoFailed"), {
+          description:
+            error instanceof CompressError
+              ? t(`errors.${error.code}`, { maxMb: String(MAX_ORIGINAL_BYTES / 1024 / 1024) })
+              : error instanceof Error
+                ? error.message
+                : undefined,
         });
       } finally {
         setProcessing(false);
       }
     },
-    [onPick]
+    [onPick, t]
   );
 
   const open = () => {
@@ -98,15 +105,15 @@ export function PhotoPicker({
         onClick={open}
         disabled={busy}
         className={cn(compact ? "size-10 shrink-0 rounded-xl" : "h-11 w-full gap-2 rounded-xl border-dashed text-muted-foreground hover:text-foreground", className)}
-        aria-label="Add a photo"
-        title={compact ? "Add a photo" : undefined}
+        aria-label={t("picker.addPhoto")}
+        title={compact ? t("picker.addPhoto") : undefined}
       >
         {processing ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
           <ImagePlus className="h-4 w-4" />
         )}
-        {compact ? null : <span>{processing ? "Processing…" : "Add a photo"}</span>}
+        {compact ? null : <span>{processing ? t("picker.processing") : t("picker.addPhoto")}</span>}
       </Button>
 
       <Dialog open={webcamOpen} onOpenChange={setWebcamOpen}>
@@ -114,10 +121,10 @@ export function PhotoPicker({
           <DialogHeader className="p-4 pb-3">
             <DialogTitle className="flex items-center gap-2">
               <Camera className="h-5 w-5" />
-              Take a photo
+              {t("webcam.title")}
             </DialogTitle>
             <DialogDescription>
-              Use your camera, or choose an existing photo.
+              {t("webcam.description")}
             </DialogDescription>
           </DialogHeader>
           {webcamOpen ? (
@@ -142,6 +149,7 @@ function Webcam({
   onCapture: (file: File) => void;
   onChooseFile: () => void;
 }) {
+  const t = useTranslations("media.webcam");
   const videoRef = useRef<HTMLVideoElement>(null);
   const [facing, setFacing] = useState<"user" | "environment">("environment");
   const [status, setStatus] = useState<"starting" | "live" | "error">("starting");
@@ -208,7 +216,7 @@ function Webcam({
             {status === "starting" ? (
               <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
-              "Camera unavailable. Allow camera access or choose a file instead."
+              t("unavailable")
             )}
           </div>
         ) : null}
@@ -221,7 +229,7 @@ function Webcam({
           className="h-10 w-10 rounded-xl"
           onClick={() => setFacing((f) => (f === "user" ? "environment" : "user"))}
           disabled={status !== "live" || busy}
-          aria-label="Switch camera"
+          aria-label={t("switchCamera")}
         >
           <RotateCcw className="h-4 w-4" />
         </Button>
@@ -233,7 +241,7 @@ function Webcam({
           disabled={busy}
         >
           <Upload className="h-4 w-4" />
-          Choose file
+          {t("chooseFile")}
         </Button>
         <Button
           type="button"
@@ -242,7 +250,7 @@ function Webcam({
           disabled={status !== "live" || busy}
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-          Capture
+          {t("capture")}
         </Button>
       </div>
     </div>

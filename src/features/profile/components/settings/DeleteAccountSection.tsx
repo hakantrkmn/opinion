@@ -6,12 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDeleteAccount } from "@/features/profile/hooks/use-profile-mutations";
 import { Loader2, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { SettingsSection, settingsButton, settingsInput } from "@/features/profile/components/settings/SettingsSection";
 
 const CONFIRM_WORD = "DELETE";
 
 export function DeleteAccountSection() {
+  const t = useTranslations("profile.deleteAccount");
+  const tSettings = useTranslations("profile.settings");
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmText, setConfirmText] = useState("");
@@ -24,15 +27,12 @@ export function DeleteAccountSection() {
     deleteAccount.reset();
   };
 
-  const description =
-    "Permanently removes your account, comments, votes, photos and follows, and signs you out everywhere.";
-
   if (!open) {
     return (
       <SettingsSection
-        title="Delete account"
+        title={t("title")}
         tone="destructive"
-        description={description}
+        description={t("description")}
         aside={
           <Button
             variant="outline"
@@ -40,7 +40,7 @@ export function DeleteAccountSection() {
             onClick={() => setOpen(true)}
           >
             <Trash2 aria-hidden />
-            Delete
+            {t("delete")}
           </Button>
         }
       />
@@ -54,7 +54,7 @@ export function DeleteAccountSection() {
   const wrongPassword = !!serverError && /password/i.test(serverError);
 
   return (
-    <SettingsSection title="Delete account" tone="destructive">
+    <SettingsSection title={t("title")} tone="destructive">
       <form
         className="flex flex-col gap-4 rounded-2xl border border-destructive/40 bg-destructive/[0.04] p-4"
         noValidate
@@ -64,15 +64,14 @@ export function DeleteAccountSection() {
         }}
       >
         <div className="flex flex-col gap-1.5 text-sm">
-          <p className="font-semibold text-foreground">This can&apos;t be undone.</p>
+          <p className="font-semibold text-foreground">{t("warning")}</p>
           <p className="text-pretty text-muted-foreground">
-            {description} Pins other people commented on stay on the map, shown as by a deleted
-            user.
+            {t("details")}
           </p>
         </div>
         <FormField
           id="delete-password"
-          label="Current password"
+          label={t("currentPassword")}
           error={wrongPassword ? serverError : null}
         >
           <PasswordInput
@@ -89,11 +88,10 @@ export function DeleteAccountSection() {
         </FormField>
         <FormField
           id="delete-confirm"
-          label={
-            <>
-              Type <span className="font-mono font-semibold">{CONFIRM_WORD}</span> to confirm
-            </>
-          }
+          label={t.rich("typeToConfirm", {
+            word: CONFIRM_WORD,
+            mono: (chunks) => <span className="font-mono font-semibold">{chunks}</span>,
+          })}
         >
           <Input
             value={confirmText}
@@ -113,11 +111,11 @@ export function DeleteAccountSection() {
         ) : null}
         <div className="flex flex-col-reverse gap-2 sm:flex-row">
           <Button type="button" variant="ghost" className={settingsButton} onClick={close} disabled={pending}>
-            Cancel
+            {tSettings("cancel")}
           </Button>
           <Button type="submit" variant="destructive" className={settingsButton} disabled={!canSubmit}>
             {pending ? <Loader2 aria-hidden className="animate-spin" /> : <Trash2 aria-hidden />}
-            {pending ? "Deleting account…" : "Delete my account"}
+            {pending ? t("deleting") : t("submit")}
           </Button>
         </div>
       </form>

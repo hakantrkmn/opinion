@@ -1,1 +1,24 @@
-{}
+{
+  "row": {
+    "loading": "Yükleniyor…"
+  },
+  "search": {
+    "title": "Kişi bul",
+    "description": "Görünen ada göre ara.",
+    "inputLabel": "Görünen ada göre kişi ara",
+    "placeholder": "Kişi ara…",
+    "clear": "Aramayı temizle",
+    "promptTitle": "Kişi ara",
+    "promptDescription": "Görünen adın en az iki harfini yaz.",
+    "errorTitle": "Arama yapılamadı",
+    "tryAgain": "Tekrar dene",
+    "emptyTitle": "Kimse bulunamadı",
+    "emptyDescription": "“{query}” ile eşleşen bir görünen ad yok.",
+    "results": "{count, plural, other {# sonuç}}",
+    "unnamed": "İsimsiz kullanıcı"
+  },
+  "toast": {
+    "followError": "Takip edilemedi",
+    "unfollowError": "Takipten çıkılamadı"
+  }
+}

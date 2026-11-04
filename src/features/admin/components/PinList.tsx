@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import type { useAdminPins } from "@/features/admin/hooks/use-admin";
 import { cn } from "@/lib/utils";
 import { MessageSquare, Trash2 } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { AdminListShell } from "@/features/admin/components/AdminListShell";
 import { adminIconAction, adminInlineLink, adminRow } from "@/features/admin/components/row-styles";
@@ -19,13 +20,15 @@ interface PinListProps {
 }
 
 export function PinList({ query, onDelete, pending }: PinListProps) {
+  const t = useTranslations("admin");
+  const locale = useLocale();
   const items = query.items;
   return (
     <AdminListShell
-      label="Pins"
+      label={t("pins.listLabel")}
       count={items.length}
       total={query.firstPage?.total}
-      emptyLabel="No pins match your search."
+      emptyLabel={t("pins.empty")}
       isLoading={query.isLoading}
       error={query.error}
       hasMore={query.hasNextPage}
@@ -43,14 +46,14 @@ export function PinList({ query, onDelete, pending }: PinListProps) {
               {p.name}
             </Link>
             <p className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-              <span className="truncate">{p.user.email || p.user.display_name || "Deleted user"}</span>
+              <span className="truncate">{p.user.email || p.user.display_name || t("list.deletedUser")}</span>
               <span aria-hidden>·</span>
-              <span className="shrink-0">{formatDate(p.created_at)}</span>
+              <span className="shrink-0">{formatDate(p.created_at, locale)}</span>
               <span aria-hidden>·</span>
               <span className="inline-flex shrink-0 items-center gap-1 tabular-nums">
                 <MessageSquare aria-hidden className="size-3" />
                 {p.comments_count}
-                <span className="sr-only">comments</span>
+                <span className="sr-only">{t("pins.commentsSr")}</span>
               </span>
             </p>
           </div>
@@ -60,8 +63,8 @@ export function PinList({ query, onDelete, pending }: PinListProps) {
             onClick={() => onDelete(p)}
             disabled={pending}
             className={adminIconAction}
-            aria-label={`Delete pin ${p.name}`}
-            title="Delete pin"
+            aria-label={t("pins.deleteLabel", { name: p.name })}
+            title={t("pins.deleteTitle")}
           >
             <Trash2 aria-hidden />
           </Button>

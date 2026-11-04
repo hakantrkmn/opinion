@@ -1,1 +1,246 @@
-{}
+{
+  "meta": {
+    "title": "Admin"
+  },
+  "header": {
+    "title": "Admin",
+    "description": "Moderate reports, members, pins and comments, and send notifications.",
+    "recomputeTitle": "Rebuild the per-user statistics tables",
+    "recomputing": "Recomputing…",
+    "recompute": "Recompute stats",
+    "refresh": "Refresh"
+  },
+  "loadingDashboard": "Loading admin dashboard…",
+  "tabs": {
+    "overview": "Overview",
+    "newcomers": "Newcomers",
+    "reports": "Reports",
+    "users": "Members",
+    "pins": "Pins",
+    "comments": "Comments",
+    "notifications": "Notifications",
+    "openSr": "open",
+    "waitingSr": "waiting"
+  },
+  "stats": {
+    "members": "Members",
+    "pins": "Pins",
+    "comments": "Comments",
+    "votes": "Votes",
+    "openReports": "Open reports"
+  },
+  "search": {
+    "placeholder": "Search…",
+    "clear": "Clear search",
+    "usersPlaceholder": "Search by name or email",
+    "usersLabel": "Search members",
+    "pinsPlaceholder": "Search by pin name",
+    "pinsLabel": "Search pins",
+    "commentsPlaceholder": "Search comment text",
+    "commentsLabel": "Search comments"
+  },
+  "list": {
+    "loading": "Loading {label}…",
+    "tryAgain": "Try again",
+    "showing": "Showing <shownNum>{shown}</shownNum>{hasTotal, select, true { of <totalNum>{total}</totalNum>} other {}}",
+    "deletedUser": "Deleted user"
+  },
+  "confirm": {
+    "cancel": "Cancel",
+    "deleteUser": {
+      "title": "Delete this account?",
+      "description": "{name} will be signed out everywhere and their comments, votes and photos removed. Pins that other people commented on stay, shown as by a deleted user. This cannot be undone.",
+      "confirm": "Delete account"
+    },
+    "deletePin": {
+      "title": "Delete this pin?",
+      "description": "\"{name}\" and every comment under it will be removed from the map.",
+      "confirm": "Delete pin"
+    },
+    "deleteComment": {
+      "title": "Delete this comment?",
+      "titleOrigin": "Delete the origin comment?",
+      "description": "The comment on \"{pinName}\" will be removed. If it was the pin's last comment, the pin is removed too.",
+      "confirm": "Delete comment"
+    },
+    "reportTarget": {
+      "pin": {
+        "title": "Remove this pin?",
+        "description": "This permanently deletes pin \"{label}\". All open reports on it will be marked resolved.",
+        "confirm": "Remove pin"
+      },
+      "comment": {
+        "title": "Remove this comment?",
+        "description": "This permanently deletes the reported comment. All open reports on it will be marked resolved.",
+        "confirm": "Remove comment"
+      },
+      "user": {
+        "title": "Delete this account?",
+        "description": "This permanently deletes the account of {label}. All open reports on it will be marked resolved.",
+        "confirm": "Delete account"
+      }
+    },
+    "broadcast": {
+      "title": "Send to everyone?",
+      "description": "\"{title}\" goes to every active device right away. Check the text first: a sent push can't be recalled.",
+      "confirm": "Send broadcast"
+    }
+  },
+  "reports": {
+    "statusLabel": "Report status",
+    "status": {
+      "open": "open",
+      "resolved": "resolved",
+      "dismissed": "dismissed",
+      "all": "all"
+    },
+    "empty": {
+      "open": "No open reports. All caught up.",
+      "resolved": "No resolved reports.",
+      "dismissed": "No dismissed reports.",
+      "all": "No reports.",
+      "default": "No reports here."
+    },
+    "listLabel": "Reports",
+    "target": {
+      "pin": "Pin",
+      "comment": "Comment",
+      "user": "User"
+    },
+    "reason": {
+      "spam": "Spam",
+      "harassment": "Harassment",
+      "inappropriate": "Inappropriate",
+      "other": "Other"
+    },
+    "alreadyRemoved": "Already removed",
+    "emptyTarget": "(empty)",
+    "byline": "{hasAuthor, select, true {By <author>{authorName}</author> · } other {}}Reported by <reporter>{reporterName}</reporter>",
+    "resolve": "Resolve",
+    "resolveTitle": "Mark as handled and keep the content",
+    "dismiss": "Dismiss",
+    "dismissTitle": "Close without action",
+    "remove": {
+      "pin": "Remove pin",
+      "comment": "Remove comment",
+      "user": "Remove user"
+    },
+    "closed": "Closed {date}"
+  },
+  "users": {
+    "listLabel": "Members",
+    "empty": "No members match your search.",
+    "admin": "Admin",
+    "deleted": "Deleted",
+    "unverified": "Unverified",
+    "meta": "{who} · joined {joined}{isDeleted, select, true { · deleted {deletedAt}} other {}}",
+    "deleteLabel": "Delete account of {name}",
+    "deleteTitle": "Delete account"
+  },
+  "pins": {
+    "listLabel": "Pins",
+    "empty": "No pins match your search.",
+    "commentsSr": "comments",
+    "deleteLabel": "Delete pin {name}",
+    "deleteTitle": "Delete pin"
+  },
+  "comments": {
+    "listLabel": "Comments",
+    "empty": "No comments match your search.",
+    "originTitle": "The comment the pin was created with",
+    "origin": "Origin",
+    "photo": "Photo",
+    "delete": "Delete comment"
+  },
+  "newcomers": {
+    "intro": "Posts by members who joined in the last 14 days.",
+    "waiting": "{count, plural, one {# still waits for a first reply or like.} other {# still wait for a first reply or like.}}",
+    "allAnswered": "Everyone has heard back.",
+    "listLabel": "Newcomer posts",
+    "empty": "No posts from new members yet.",
+    "newMember": "New member",
+    "joined": "joined {timeAgo}",
+    "opinions": "{count, plural, one {# opinion} other {# opinions}}",
+    "droppedPin": "Dropped this pin",
+    "wasHere": "Was here",
+    "answered": "Answered",
+    "waitingBadge": "Waiting for a reply",
+    "reply": "Reply"
+  },
+  "overview": {
+    "activityTitle": "Activity, last 14 days",
+    "activityDescription": "New pins and comments per day",
+    "activityDescriptionStats": "New pins and comments per day · <num>{total}</num> total · {devices, plural, one {# active device} other {# active devices}} · {deleted, plural, one {# deleted account} other {# deleted accounts}}",
+    "noActivity": "No activity yet.",
+    "sentimentTitle": "Sentiment",
+    "sentimentDescription": "Share of likes across all comment votes",
+    "likesSr": "likes",
+    "likes": "{count} likes",
+    "dislikes": "{count} dislikes",
+    "likeShare": "Like share",
+    "topTitle": "Top contributors",
+    "topDescription": "By pins created",
+    "topPins": "{count} pins",
+    "noData": "No data yet."
+  },
+  "chart": {
+    "caption": "New pins and comments per day",
+    "date": "Date",
+    "pins": "Pins",
+    "comments": "Comments",
+    "newMembers": "New members",
+    "tooltipDate": "{weekday}, {date}"
+  },
+  "notifications": {
+    "composeTitle": "Compose push notification",
+    "sendTo": "Send to",
+    "oneMember": "One member",
+    "everyone": "Everyone",
+    "member": "Member",
+    "noDevices": "No active devices, so nothing will be delivered",
+    "devices": "{count, plural, one {# device} other {# devices}}",
+    "devicesSr": "devices",
+    "change": "Change",
+    "userSearchPlaceholder": "Search by name or email…",
+    "searching": "Searching…",
+    "noMatch": "No members match.",
+    "none": "None",
+    "title": "Title",
+    "titlePlaceholder": "New pins near you",
+    "message": "Message",
+    "messagePlaceholder": "What should people know?",
+    "advanced": "Advanced: data payload (JSON)",
+    "dataLabel": "Data payload JSON",
+    "dataNotObject": "The payload must be a JSON object, like '{\"key\": \"value\"}'.",
+    "dataInvalid": "That isn't valid JSON.",
+    "sending": "Sending…",
+    "sendEveryone": "Send to everyone",
+    "send": "Send notification",
+    "recentTitle": "Recent sends",
+    "recentEmpty": "No notifications sent yet.",
+    "untitled": "(untitled)",
+    "sent": "{count} sent",
+    "failed": "{count} failed",
+    "staleRemoved": "{count} stale removed",
+    "loadMore": "Load more"
+  },
+  "toast": {
+    "accountDeleted": "Account deleted",
+    "accountDeleteFailed": "Couldn't delete account",
+    "pinDeleted": "Pin deleted",
+    "pinDeleteFailed": "Couldn't delete pin",
+    "commentDeleted": "Comment deleted",
+    "commentDeletedPinToo": "The pin was removed too — it had no comments left.",
+    "commentDeleteFailed": "Couldn't delete comment",
+    "notificationSent": "Notification sent",
+    "notificationSentDescription": "Sent {sent}, failed {failed}{deactivated, plural, =0 {} other {, # stale device(s) removed}}",
+    "notificationFailed": "Couldn't send notification",
+    "reportResolved": "Report resolved",
+    "reportDismissed": "Report dismissed",
+    "contentRemoved": "Content removed",
+    "actionFailed": "Action failed",
+    "statsRecomputed": "Statistics recomputed",
+    "statsTook": "Took {ms} ms",
+    "statsFailed": "Couldn't recompute statistics"
+  }
+}

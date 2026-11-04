@@ -1,1 +1,91 @@
-{}
+{
+  "sort": {
+    "label": "Yorumları sırala",
+    "newest": "En yeni",
+    "popular": "En beğenilen",
+    "oldest": "En eski"
+  },
+  "card": {
+    "deletedUser": "Silinmiş kullanıcı",
+    "opTitle": "Bu pini bırakan kişi",
+    "op": "Pin sahibi",
+    "wasHereTitle": "Yerinde yazıldı",
+    "wasHere": "Buradaydı",
+    "edited": "düzenlendi",
+    "verifyLabel": "Şu an buradayım: “Buradaydı” rozeti ekle",
+    "verifyTitle": "Şu an buradayım",
+    "editLabel": "Yorumu düzenle",
+    "deleteLabel": "Yorumu sil",
+    "deleteTitle": "Bu yorum silinsin mi?",
+    "deleteFirstDescription": "Bu, pinin ilk yorumu. Başka yorum kalmadıysa pin de kaldırılır.",
+    "deleteDescription": "Bunu geri alamazsın.",
+    "cancel": "Vazgeç",
+    "delete": "Sil",
+    "showLess": "Daha az göster",
+    "readMore": "Devamını oku"
+  },
+  "voting": {
+    "like": "Beğen ({count})",
+    "removeLike": "Beğeniyi geri al ({count})",
+    "dislike": "Beğenme ({count})",
+    "removeDislike": "Beğenmemeyi geri al ({count})",
+    "scoreTitle": "Puan (beğeniler eksi beğenmemeler)"
+  },
+  "photo": {
+    "unavailable": "Fotoğraf görüntülenemiyor",
+    "open": "Fotoğrafı aç",
+    "title": "Yorum fotoğrafı",
+    "alt": "Yorum fotoğrafı",
+    "close": "Fotoğrafı kapat"
+  },
+  "edit": {
+    "label": "Yorumunu düzenle",
+    "removePhoto": "Fotoğrafı kaldır",
+    "undoPhoto": "Fotoğraf değişikliğini geri al",
+    "cancel": "Vazgeç",
+    "save": "Kaydet"
+  },
+  "composer": {
+    "signInPrompt": "droPINion’unu paylaşmak için giriş yap",
+    "signIn": "Giriş yap",
+    "alreadyCommented": "Burada fikrini zaten paylaştın, yukarıdan düzenleyebilir ya da silebilirsin.",
+    "photoAttached": "Fotoğraf eklendi",
+    "removePhoto": "Fotoğrafı kaldır",
+    "hereActive": "Buradasın: fikrine “Buradaydı” rozeti eklenecek.",
+    "placeholder": "Düşüncelerini paylaş…",
+    "label": "Yorumun",
+    "hereUndoLabel": "Buradasın (geri almak için dokun)",
+    "hereAddLabel": "Buradayım: “Buradaydı” rozeti ekle",
+    "hereActiveTitle": "Buradasın",
+    "hereTitle": "Buradayım",
+    "post": "Yorumu gönder",
+    "postTitle": "Gönder (⌘/Ctrl + Enter)"
+  },
+  "list": {
+    "loadError": "Yorumlar yüklenemedi",
+    "loadErrorHint": "Bağlantını kontrol edip tekrar dene.",
+    "retry": "Tekrar dene",
+    "emptyTitle": "Henüz yorum yok",
+    "emptyDescription": "Bu yer hakkındaki fikrini ilk paylaşan sen ol.",
+    "showMore": "Daha fazla yorum göster",
+    "loading": "Yorumlar yükleniyor"
+  },
+  "toast": {
+    "posted": "Yorumun paylaşıldı",
+    "postFailed": "Yorumun paylaşılamadı",
+    "updated": "Yorumun güncellendi",
+    "updateFailed": "Yorumun güncellenemedi",
+    "verified": "“Buradaydı” olarak işaretlendi",
+    "verifyFailed": "Burada olduğun doğrulanamadı",
+    "deleted": "Yorum silindi",
+    "deletedPinRemoved": "Son yorum buydu, o yüzden pin de kaldırıldı.",
+    "deleteFailed": "Yorum silinemedi",
+    "voteFailed": "Tercihin kaydedilemedi",
+    "somethingWentWrong": "Bir şeyler ters gitti"
+  },
+  "here": {
+    "notHere": "Bu yerde değilsin",
+    "notHereDescription": "{distance} uzaktasın. “Buradaydı” rozeti için en fazla {max} m uzakta olmalısın.",
+    "locationFailed": "Konumun alınamadı"
+  }
+}

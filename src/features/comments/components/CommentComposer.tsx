@@ -8,6 +8,7 @@ import { useObjectUrl } from "@/features/media/hooks/useObjectUrl";
 import type { GeoFix } from "@/features/map/store/location-store";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, Loader2, LogIn, MapPin, MapPinCheck, Send, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useState } from "react";
 import { useHereCheck } from "../hooks/use-here-check";
@@ -27,15 +28,16 @@ export function CommentComposer({
   currentUserId,
   alreadyCommented,
 }: CommentComposerProps) {
+  const t = useTranslations("comments.composer");
   if (!currentUserId) {
     return (
       <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-border bg-muted/30 py-2 pl-3 pr-2">
         <span className="flex items-center gap-2 text-sm text-muted-foreground">
           <LogIn className="size-4 shrink-0" aria-hidden />
-          Sign in to share your droPINion
+          {t("signInPrompt")}
         </span>
         <Button asChild size="sm" className="h-9 shrink-0 rounded-lg px-3.5 text-xs">
-          <Link href="/auth">Sign in</Link>
+          <Link href="/auth">{t("signIn")}</Link>
         </Button>
       </div>
     );
@@ -45,7 +47,7 @@ export function CommentComposer({
     return (
       <p className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border/50 bg-muted/20 p-3 text-xs text-muted-foreground">
         <CheckCircle2 className="h-4 w-4 text-primary" />
-        You&apos;ve shared your opinion here — edit or delete it above.
+        {t("alreadyCommented")}
       </p>
     );
   }
@@ -60,6 +62,7 @@ function ComposerForm({
   pinId: string;
   pin: { lat: number; lng: number } | undefined;
 }) {
+  const t = useTranslations("comments.composer");
   const [text, setText] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   /** Set once "I'm here" passed; sent with the comment, never stored. */
@@ -101,12 +104,12 @@ function ComposerForm({
       {previewUrl ? (
         <div className="flex items-center gap-2.5 rounded-xl border border-border/40 bg-muted/20 p-2">
           <img src={previewUrl} alt="" className="h-10 w-10 rounded-lg object-cover" />
-          <span className="flex-1 text-xs text-muted-foreground">Photo attached</span>
+          <span className="flex-1 text-xs text-muted-foreground">{t("photoAttached")}</span>
           <button
             type="button"
             onClick={() => setPhoto(null)}
             className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted pointer-coarse:size-10"
-            aria-label="Remove photo"
+            aria-label={t("removePhoto")}
             disabled={pending}
           >
             <X className="h-3.5 w-3.5" />
@@ -116,7 +119,7 @@ function ComposerForm({
       {hereFix ? (
         <p className="flex items-center gap-1.5 px-1 text-xs font-medium text-primary">
           <MapPinCheck className="size-3.5" aria-hidden />
-          You&apos;re here: your opinion gets a “Was here” badge.
+          {t("hereActive")}
         </p>
       ) : null}
       <div className="flex items-end gap-2">
@@ -129,8 +132,8 @@ function ComposerForm({
               submit();
             }
           }}
-          placeholder="Share your thoughts…"
-          aria-label="Your comment"
+          placeholder={t("placeholder")}
+          aria-label={t("label")}
           rows={1}
           maxLength={COMMENT_MAX_LENGTH}
           disabled={pending}
@@ -144,8 +147,8 @@ function ComposerForm({
           onClick={() => void toggleHere()}
           disabled={pending || here.checking || !pin}
           aria-pressed={!!hereFix}
-          aria-label={hereFix ? "You're here (tap to undo)" : "I'm here: add a “Was here” badge"}
-          title={hereFix ? "You're here" : "I'm here"}
+          aria-label={hereFix ? t("hereUndoLabel") : t("hereAddLabel")}
+          title={hereFix ? t("hereActiveTitle") : t("hereTitle")}
           className={cn("size-10 shrink-0 rounded-xl", hereFix && "shadow-sm")}
         >
           {here.checking ? (
@@ -162,8 +165,8 @@ function ComposerForm({
           size="icon"
           className="size-10 shrink-0 rounded-xl transition-[transform,opacity,background-color] duration-150 ease-out active:scale-[0.94]"
           disabled={!trimmed || pending || here.checking}
-          aria-label="Post comment"
-          title="Post (⌘/Ctrl + Enter)"
+          aria-label={t("post")}
+          title={t("postTitle")}
         >
           {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </Button>

@@ -2,9 +2,11 @@
 
 import { PIN_CREATE_MAX_ACCURACY_SLACK_M, PIN_CREATE_MAX_DISTANCE_M } from "@/constants/map";
 import { distanceMeters } from "@/features/map/lib/geo";
+import { useGeoErrorMessage } from "@/features/map/hooks/useGeoErrorMessage";
 import { getFreshFix } from "@/features/map/lib/fresh-fix";
 import type { GeoFix } from "@/features/map/store/location-store";
 import { formatDistance } from "@/lib/formatters";
+import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
@@ -32,6 +34,9 @@ function isNear(pin: { lat: number; lng: number }, fix: GeoFix) {
  * The fix is only sent along with the comment; it is never stored.
  */
 export function useHereCheck(pin: { lat: number; lng: number } | undefined) {
+  const t = useTranslations("comments.here");
+  const locale = useLocale();
+  const geoErrorMessage = useGeoErrorMessage();
   const [checking, setChecking] = useState(false);
 
   const check = useCallback(async (): Promise<GeoFix | null> => {
@@ -41,19 +46,22 @@ export function useHereCheck(pin: { lat: number; lng: number } | undefined) {
       const fix = await getFreshFix();
       const near = isNear(pin, fix);
       if (near.ok) return fix;
-      toast.error("You're not at this place", {
-        description: `You're ${formatDistance(near.distance)} away. "Was here" needs you within ${PIN_CREATE_MAX_DISTANCE_M} m.`,
+      toast.error(t("notHere"), {
+        description: t("notHereDescription", {
+          distance: formatDistance(near.distance, locale),
+          max: String(PIN_CREATE_MAX_DISTANCE_M),
+        }),
       });
       return null;
     } catch (error) {
-      toast.error("Couldn't get your location", {
-        description: error instanceof Error ? error.message : undefined,
+      toast.error(t("locationFailed"), {
+        description: geoErrorMessage(error),
       });
       return null;
     } finally {
       setChecking(false);
     }
-  }, [pin]);
+  }, [pin, t, locale, geoErrorMessage]);
 
   return { check, checking };
 }

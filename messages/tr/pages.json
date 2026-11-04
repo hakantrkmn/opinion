@@ -1,1 +1,79 @@
-{}
+{
+  "shared": {
+    "home": "Ana sayfa",
+    "breadcrumb": "Sayfa yolu"
+  },
+  "layout": {
+    "title": "droPINion — Haritada mekan yorumlarını keşfet ve paylaş",
+    "description": "Pin bırak, istediğin yer hakkında dürüst fikrini paylaş, o yeri bilenlerin ne düşündüğünü keşfet. Dünyanın dört bir yanından bir topluluğun yorumları, puanları ve hikâyeleri.",
+    "twitterDescription": "Pin bırak, istediğin yer hakkında dürüst fikrini paylaş, o yeri bilenlerin ne düşündüğünü keşfet.",
+    "ogImageAlt": "droPINion - Etkileşimli fikir haritası"
+  },
+  "notFound": {
+    "title": "Burada pin yok",
+    "body": "Bu sayfa yok ya da pin, sahibi tarafından kaldırılmış.",
+    "backToMap": "Haritaya dön"
+  },
+  "pin": {
+    "notFoundTitle": "Pin bulunamadı",
+    "notFoundDescription": "Aradığın pin bulunamadı.",
+    "thisPlace": "bu yer",
+    "unknownLocation": "Bilinmeyen konum",
+    "reviewsOf": "{name} hakkında yorumlar",
+    "quoteDescription": "“{quote}” — {name} · droPINion’da {count, plural, other {# fikir}}",
+    "description": "{name} hakkındaki fikirleri ve düşünceleri keşfet. Topluluğun bu yer hakkında ne düşündüğünü droPINion’da oku.",
+    "pinDetailsSchema": "Pin detayları",
+    "pinDetails": "Pin detayları",
+    "untitledPin": "İsimsiz pin",
+    "commentsCount": "{count, plural, other {# yorum}}",
+    "user": "Kullanıcı",
+    "anonymous": "Anonim",
+    "droppedThisPin": "Bu pini bıraktı",
+    "seeOnMap": "Haritada gör",
+    "commentsHeading": "Yorumlar <muted>({count})</muted>",
+    "noComments": "Henüz yorum yok",
+    "beFirst": "Fikrini yukarıda ilk sen paylaş.",
+    "writtenOnSite": "Yerinde yazıldı",
+    "wasHere": "Buradaydı",
+    "op": "Pin sahibi",
+    "commentPhoto": "Yorum fotoğrafı",
+    "likes": "{count} beğeni",
+    "dislikes": "{count} beğenmeme"
+  },
+  "composer": {
+    "firstOpinion": "Buradaki ilk fikir senin!",
+    "yourPosition": "Buradaki {position}. fikir senin.",
+    "alreadyShared": "Bu yer hakkındaki fikrini zaten paylaştın.",
+    "postedNote": "Biri yanıt verince sana haber veririz. <link>Haritada gör</link>",
+    "label": "{pinName} hakkında ne düşünüyorsun?",
+    "placeholder": "Dürüst fikrini paylaş…",
+    "postedPublicly": "Adınla herkese açık paylaşılır.",
+    "accountNeeded": "Ücretsiz bir hesap gerekiyor. Kayıt olurken yazdıkların kaybolmaz.",
+    "posting": "Paylaşılıyor…",
+    "post": "Fikrini paylaş",
+    "continue": "Devam et",
+    "somethingWentWrong": "Bir şeyler ters gitti"
+  },
+  "share": {
+    "text": "{pinName} hakkında ne düşünüyorsun?",
+    "copyPrompt": "Bu bağlantıyı kopyala:",
+    "copied": "Bağlantı kopyalandı",
+    "share": "Paylaş"
+  },
+  "location": {
+    "title": "{location} hakkında fikirler",
+    "description": "İnsanların {location} hakkında ne düşündüğünü keşfet. Mekanlar, restoranlar, gezilecek yerler ve daha fazlası için {location} hakkındaki fikirleri, yorumları ve topluluğun düşüncelerini oku.",
+    "placesCount": "{location} civarında insanların pinlediği {count, plural, other {# yer}}.",
+    "placesMany": "{location} civarında insanların pinlediği 50+ yer.",
+    "by": "Paylaşan: {name}",
+    "cta": "{location} civarında bir yere gittin mi? Ne düşündüğünü paylaş.",
+    "openMap": "Haritayı aç"
+  },
+  "privacy": {
+    "metaTitle": "Gizlilik Politikası",
+    "metaDescription": "droPINion verilerini nasıl topluyor, kullanıyor ve koruyor? Gizlilik politikamızın tamamını oku.",
+    "backToMap": "Haritaya dön",
+    "title": "Gizlilik Politikası",
+    "lastUpdated": "Son güncelleme: <time>{date}</time>"
+  }
+}

@@ -1,1 +1,79 @@
-{}
+{
+  "shared": {
+    "home": "Home",
+    "breadcrumb": "Breadcrumb"
+  },
+  "layout": {
+    "title": "droPINion — Discover & Share Place Reviews on the Map",
+    "description": "Drop a pin, share your honest opinion on any location, and discover what locals think. Reviews, ratings, and stories from a global community.",
+    "twitterDescription": "Drop a pin, share your honest opinion on any location, and discover what locals think.",
+    "ogImageAlt": "droPINion - Interactive Opinion Map"
+  },
+  "notFound": {
+    "title": "Nothing pinned here",
+    "body": "This page doesn't exist, or the pin was removed by its author.",
+    "backToMap": "Back to the map"
+  },
+  "pin": {
+    "notFoundTitle": "Pin Not Found",
+    "notFoundDescription": "The requested pin could not be found.",
+    "thisPlace": "this place",
+    "unknownLocation": "Unknown Location",
+    "reviewsOf": "Reviews of {name}",
+    "quoteDescription": "“{quote}” — {name} · {count, plural, one {# opinion} other {# opinions}} on droPINion",
+    "description": "Discover opinions and thoughts about {name}. Read what the community thinks about this location on droPINion.",
+    "pinDetailsSchema": "Pin Details",
+    "pinDetails": "Pin details",
+    "untitledPin": "Untitled Pin",
+    "commentsCount": "{count, plural, one {# comment} other {# comments}}",
+    "user": "User",
+    "anonymous": "Anonymous",
+    "droppedThisPin": "Dropped this pin",
+    "seeOnMap": "See on map",
+    "commentsHeading": "Comments <muted>({count})</muted>",
+    "noComments": "No comments yet",
+    "beFirst": "Be the first to share your opinion above.",
+    "writtenOnSite": "Written on site",
+    "wasHere": "Was here",
+    "op": "OP",
+    "commentPhoto": "Comment photo",
+    "likes": "{count} likes",
+    "dislikes": "{count} dislikes"
+  },
+  "composer": {
+    "firstOpinion": "You're the first opinion here!",
+    "yourPosition": "Yours is opinion #{position} here.",
+    "alreadyShared": "You've shared your opinion on this place.",
+    "postedNote": "We'll let you know when someone answers. <link>See it on the map</link>",
+    "label": "What do you think about {pinName}?",
+    "placeholder": "Share your honest take…",
+    "postedPublicly": "Posted publicly with your name.",
+    "accountNeeded": "Free account needed. Your text is kept while you sign up.",
+    "posting": "Posting…",
+    "post": "Post opinion",
+    "continue": "Continue",
+    "somethingWentWrong": "Something went wrong"
+  },
+  "share": {
+    "text": "What do you think about {pinName}?",
+    "copyPrompt": "Copy this link:",
+    "copied": "Link copied",
+    "share": "Share"
+  },
+  "location": {
+    "title": "Opinions in {location}",
+    "description": "Discover what people think about {location}. Read {location} opinions, reviews, and community thoughts about locations, restaurants, attractions and more.",
+    "placesCount": "{count, plural, one {# place} other {# places}} people have pinned in {location}.",
+    "placesMany": "50+ places people have pinned in {location}.",
+    "by": "by {name}",
+    "cta": "Been somewhere in {location}? Share what you think.",
+    "openMap": "Open the map"
+  },
+  "privacy": {
+    "metaTitle": "Privacy Policy",
+    "metaDescription": "How droPINion collects, uses, and protects your data. Read our full privacy policy.",
+    "backToMap": "Back to map",
+    "title": "Privacy Policy",
+    "lastUpdated": "Last updated <time>{date}</time>"
+  }
+}

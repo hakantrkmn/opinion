@@ -5,6 +5,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { CreatePinDialog } from "@/features/pins/components/CreatePinDialog";
 import { PinDetailSheet } from "@/features/pins/components/PinDetailSheet";
 import { useSession } from "@/features/auth/hooks/useSession";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useBasemapSync, useResolvedBasemap } from "../hooks/useBasemap";
 import { clearDeepLinkParams, useDeepLinkPin } from "../hooks/useDeepLinkPin";
@@ -44,6 +45,7 @@ export interface MapScreenProps {
 }
 
 export default function MapScreen({ initialCenter, initialPinId }: MapScreenProps) {
+  const t = useTranslations("map");
   const containerRef = useRef<HTMLDivElement>(null);
   const basemap = useResolvedBasemap();
   const [initial] = useState(() => ({
@@ -120,7 +122,7 @@ export default function MapScreen({ initialCenter, initialPinId }: MapScreenProp
       <div
         ref={containerRef}
         className="h-full w-full select-none [-webkit-touch-callout:none]"
-        aria-label="Map of pins"
+        aria-label={t("mapLabel")}
       />
 
       {/* Floating UI; the wrapper ignores pointer events so the map stays draggable. */}

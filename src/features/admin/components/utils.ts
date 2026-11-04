@@ -1,14 +1,13 @@
-export function formatNumber(n?: number): string {
-  return typeof n === "number" ? n.toLocaleString("en-US") : "—";
+import { formatShortDate } from "@/lib/formatters";
+
+/** Pass the UI locale (`useLocale()`). */
+export function formatNumber(n: number | undefined, locale: string): string {
+  return typeof n === "number" ? n.toLocaleString(locale) : "—";
 }
 
-export function formatDate(iso?: string): string {
+export function formatDate(iso: string | undefined, locale: string): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  return formatShortDate(iso, locale);
 }
 
 export function initials(value?: string): string {

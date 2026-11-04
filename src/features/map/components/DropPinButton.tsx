@@ -3,6 +3,7 @@
 import { PinIcon } from "@/components/icons/PinIcon";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface DropPinButtonProps {
   locating: boolean;
@@ -10,6 +11,7 @@ interface DropPinButtonProps {
 }
 
 export function DropPinButton({ locating, onClick }: DropPinButtonProps) {
+  const t = useTranslations("map.dropPin");
   return (
     <button
       type="button"
@@ -26,7 +28,7 @@ export function DropPinButton({ locating, onClick }: DropPinButtonProps) {
       ) : (
         <PinIcon className="size-5 text-white" />
       )}
-      <span aria-live="polite">{locating ? "Getting your location…" : "Drop a pin"}</span>
+      <span aria-live="polite">{locating ? t("locating") : t("label")}</span>
     </button>
   );
 }

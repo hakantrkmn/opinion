@@ -14,6 +14,10 @@ export async function queryGeoPermission(): Promise<GeoPermission> {
   }
 }
 
+/**
+ * `message` is an English fallback (logs, non-React callers). UI shows the
+ * translated text for `kind` (map.geoError.<kind>, see useGeoErrorMessage).
+ */
 export class GeoError extends Error {
   constructor(
     message: string,

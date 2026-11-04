@@ -1,6 +1,6 @@
 "use client";
 
-import { authErrorMessage } from "@/features/auth/lib/auth-errors";
+import { useAuthErrorMessage } from "@/features/auth/lib/auth-errors";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { authClient } from "@/lib/auth-client";
@@ -8,12 +8,14 @@ import { queryKeys } from "@/lib/api/query-keys";
 import { formatTimeAgo } from "@/lib/formatters";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Monitor, RotateCcw, Smartphone } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { SettingsSection, settingsButton } from "@/features/profile/components/settings/SettingsSection";
 
-function describeAgent(ua: string | null | undefined): { label: string; mobile: boolean } {
-  if (!ua) return { label: "Unknown device", mobile: false };
+/** Browser / OS names from a user agent; `browser: "app"` is our own app. */
+function describeAgent(ua: string | null | undefined): { browser: string; os: string; mobile: boolean } {
+  if (!ua) return { browser: "", os: "", mobile: false };
   const mobile = /iphone|android|mobile|expo|okhttp|cfnetwork/i.test(ua);
   const os = /iphone|ipad|ios/i.test(ua)
     ? "iOS"
@@ -35,14 +37,17 @@ function describeAgent(ua: string | null | undefined): { label: string; mobile: 
         : /safari\//i.test(ua)
           ? "Safari"
           : /expo|okhttp|cfnetwork/i.test(ua)
-            ? "droPINion app"
+            ? "app"
             : "";
-  return { label: [browser, os].filter(Boolean).join(" on ") || "Unknown device", mobile };
+  return { browser, os, mobile };
 }
 
 const COLLAPSED_COUNT = 4;
 
 export function SessionsSection() {
+  const t = useTranslations("profile.sessions");
+  const locale = useLocale();
+  const authErrorMessage = useAuthErrorMessage();
   const queryClient = useQueryClient();
   const [showAll, setShowAll] = useState(false);
   const { session: current } = useSession();
@@ -68,9 +73,9 @@ export function SessionsSection() {
     },
     onSuccess: (_d, token) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.auth.sessions });
-      toast.success(token ? "Device signed out" : "Signed out of other devices");
+      toast.success(token ? t("deviceSignedOut") : t("othersSignedOut"));
     },
-    onError: (error) => toast.error("Couldn't sign out that device", { description: error.message }),
+    onError: (error) => toast.error(t("signOutError"), { description: error.message }),
   });
 
   // Current device first, then most recently active.
@@ -82,8 +87,8 @@ export function SessionsSection() {
 
   return (
     <SettingsSection
-      title="Signed-in devices"
-      description="Sign out anywhere you don't recognise."
+      title={t("title")}
+      description={t("description")}
       aside={
         others.length > 1 ? (
           <Button
@@ -95,7 +100,7 @@ export function SessionsSection() {
             {revoke.isPending && revoke.variables === null ? (
               <Loader2 aria-hidden className="animate-spin" />
             ) : null}
-            Sign out all others
+            {t("signOutOthers")}
           </Button>
         ) : null
       }
@@ -111,13 +116,18 @@ export function SessionsSection() {
           <p className="text-sm text-destructive">{sessions.error.message}</p>
           <Button variant="ghost" size="sm" className="rounded-lg" onClick={() => void sessions.refetch()}>
             <RotateCcw aria-hidden />
-            Retry
+            {t("retry")}
           </Button>
         </div>
       ) : (
         <ul className="flex flex-col gap-2">
           {list.map((s) => {
             const agent = describeAgent(s.userAgent);
+            const browser = agent.browser === "app" ? t("app") : agent.browser;
+            const label =
+              browser && agent.os
+                ? t("browserOnOs", { browser, os: agent.os })
+                : browser || agent.os || t("unknownDevice");
             const isCurrent = s.id === current?.id;
             const Icon = agent.mobile ? Smartphone : Monitor;
             const pending = revoke.isPending && revoke.variables === s.token;
@@ -131,16 +141,18 @@ export function SessionsSection() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-2 text-sm font-medium text-foreground">
-                    <span className="truncate">{agent.label}</span>
+                    <span className="truncate">{label}</span>
                     {isCurrent ? (
                       <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
-                        This device
+                        {t("thisDevice")}
                       </span>
                     ) : null}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
                     {s.ipAddress && !/^[0:.]+$/.test(s.ipAddress) ? `${s.ipAddress} · ` : ""}
-                    {isCurrent ? "Active now" : `Active ${formatTimeAgo(new Date(s.updatedAt))}`}
+                    {isCurrent
+                      ? t("activeNow")
+                      : t("active", { time: formatTimeAgo(new Date(s.updatedAt), locale) })}
                   </p>
                 </div>
                 {!isCurrent ? (
@@ -150,10 +162,10 @@ export function SessionsSection() {
                     className="h-9 shrink-0 rounded-lg"
                     onClick={() => revoke.mutate(s.token)}
                     disabled={revoke.isPending}
-                    aria-label={`Sign out ${agent.label}`}
+                    aria-label={t("signOutDevice", { device: label })}
                   >
                     {pending ? <Loader2 aria-hidden className="animate-spin" /> : null}
-                    Sign out
+                    {t("signOut")}
                   </Button>
                 ) : null}
               </li>
@@ -167,7 +179,7 @@ export function SessionsSection() {
                 onClick={() => setShowAll((v) => !v)}
                 aria-expanded={showAll}
               >
-                {showAll ? "Show fewer" : `Show ${hidden} more`}
+                {showAll ? t("showFewer") : t("showMore", { count: hidden })}
               </Button>
             </li>
           ) : null}

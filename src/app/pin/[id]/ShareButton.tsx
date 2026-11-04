@@ -1,6 +1,7 @@
 "use client";
 
 import { Share2, Check } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 interface ShareButtonProps {
@@ -9,6 +10,7 @@ interface ShareButtonProps {
 }
 
 export default function ShareButton({ url, pinName }: ShareButtonProps) {
+  const t = useTranslations("pages.share");
   const [copied, setCopied] = useState(false);
 
   const handleShare = async () => {
@@ -16,7 +18,7 @@ export default function ShareButton({ url, pinName }: ShareButtonProps) {
     // the quote card preview. Desktop: copy the link.
     if (typeof navigator.share === "function" && window.matchMedia("(pointer: coarse)").matches) {
       try {
-        await navigator.share({ title: pinName, text: `What do you think about ${pinName}?`, url });
+        await navigator.share({ title: pinName, text: t("text", { pinName }), url });
         return;
       } catch (error) {
         if ((error as DOMException).name === "AbortError") return;
@@ -28,7 +30,7 @@ export default function ShareButton({ url, pinName }: ShareButtonProps) {
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Fallback: show URL in prompt
-      window.prompt("Copy this link:", url);
+      window.prompt(t("copyPrompt"), url);
     }
   };
 
@@ -42,12 +44,12 @@ export default function ShareButton({ url, pinName }: ShareButtonProps) {
       {copied ? (
         <>
           <Check className="h-4 w-4 text-primary" aria-hidden />
-          Link copied
+          {t("copied")}
         </>
       ) : (
         <>
           <Share2 className="h-4 w-4" aria-hidden />
-          Share
+          {t("share")}
         </>
       )}
     </button>

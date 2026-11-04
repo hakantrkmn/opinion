@@ -1,1 +1,20 @@
-{}
+{
+  "picker": {
+    "addPhoto": "Fotoğraf ekle",
+    "processing": "Hazırlanıyor…",
+    "photoFailed": "Bu fotoğraf kullanılamadı"
+  },
+  "webcam": {
+    "title": "Fotoğraf çek",
+    "description": "Kameranı kullan ya da var olan bir fotoğrafı seç.",
+    "unavailable": "Kamera kullanılamıyor. Kamera iznini ver ya da bunun yerine bir dosya seç.",
+    "switchCamera": "Kamerayı değiştir",
+    "chooseFile": "Dosya seç",
+    "capture": "Çek"
+  },
+  "errors": {
+    "notImage": "Lütfen bir görsel dosyası seç.",
+    "tooLarge": "Bu fotoğraf çok büyük (en fazla {maxMb} MB).",
+    "unsupported": "Bu fotoğraf biçimi desteklenmiyor. JPEG ya da PNG dene."
+  }
+}

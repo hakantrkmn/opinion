@@ -20,10 +20,12 @@ import {
   usePublicUserPins,
 } from "@/features/profile/hooks/use-user-profile";
 import { ArrowLeft, Loader2, MessageCircle, ShieldOff, UserX } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useState } from "react";
 
 export function PublicProfileClient({ userId }: { userId: string }) {
+  const t = useTranslations("profile.public");
   const [tab, setTab] = useState<"pins" | "comments">("pins");
   const [dialog, setDialog] = useState<"followers" | "following" | null>(null);
   const unblock = useUnblockUser();
@@ -32,7 +34,7 @@ export function PublicProfileClient({ userId }: { userId: string }) {
   const data = profileQuery.data;
   const isBlocked = data?.viewer.is_blocked ?? false;
   const canLoadContent = !!data && !isBlocked;
-  const name = data?.user.display_name || "Unnamed user";
+  const name = data?.user.display_name || t("unnamed");
 
   const pinsQuery = usePublicUserPins(userId, canLoadContent && tab === "pins");
   const commentsQuery = usePublicUserComments(userId, canLoadContent && tab === "comments");
@@ -45,15 +47,15 @@ export function PublicProfileClient({ userId }: { userId: string }) {
           <UserX aria-hidden className="size-6" />
         </span>
         <div className="flex flex-col gap-1">
-          <h1 className="text-lg font-semibold text-foreground">Profile not available</h1>
+          <h1 className="text-lg font-semibold text-foreground">{t("notFoundTitle")}</h1>
           <p className="text-sm text-pretty text-muted-foreground">
-            This account doesn&apos;t exist, was deleted, or isn&apos;t visible to you.
+            {t("notFoundDescription")}
           </p>
         </div>
         <Button asChild variant="outline" className="h-10 rounded-xl">
           <Link href="/">
             <ArrowLeft aria-hidden />
-            Back to map
+            {t("backToMap")}
           </Link>
         </Button>
       </div>
@@ -99,10 +101,9 @@ export function PublicProfileClient({ userId }: { userId: string }) {
             <ShieldOff aria-hidden className="size-5" />
           </span>
           <div className="flex flex-col gap-1">
-            <p className="text-sm font-semibold text-foreground">You blocked {name}</p>
+            <p className="text-sm font-semibold text-foreground">{t("blockedTitle", { name })}</p>
             <p className="max-w-[40ch] text-sm text-pretty text-muted-foreground">
-              You can&apos;t see each other&apos;s pins or comments. Unblock to see their activity
-              again.
+              {t("blockedDescription")}
             </p>
           </div>
           <Button
@@ -112,7 +113,7 @@ export function PublicProfileClient({ userId }: { userId: string }) {
             onClick={() => unblock.mutate(userId)}
           >
             {unblock.isPending ? <Loader2 aria-hidden className="animate-spin" /> : null}
-            {unblock.isPending ? "Unblocking…" : "Unblock"}
+            {unblock.isPending ? t("unblocking") : t("unblock")}
           </Button>
         </div>
       ) : data ? (
@@ -128,8 +129,8 @@ export function PublicProfileClient({ userId }: { userId: string }) {
               empty={
                 <EmptyState
                   icon={<PinIcon className="size-5" />}
-                  title="No pins yet"
-                  description={`${name} hasn't dropped any pins.`}
+                  title={t("noPinsTitle")}
+                  description={t("noPinsDescription", { name })}
                 />
               }
             />
@@ -141,8 +142,8 @@ export function PublicProfileClient({ userId }: { userId: string }) {
               empty={
                 <EmptyState
                   icon={<MessageCircle aria-hidden className="size-5" />}
-                  title="No comments yet"
-                  description={`${name} hasn't commented on any pins.`}
+                  title={t("noCommentsTitle")}
+                  description={t("noCommentsDescription", { name })}
                 />
               }
             />

@@ -9,12 +9,14 @@ import {
   normalizeDisplayName,
 } from "@/lib/validation/user-schemas";
 import { Check, Loader2, Pencil, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 
 const nameClass = "text-2xl font-bold leading-tight tracking-tight text-foreground sm:text-[1.75rem]";
 
 /** Own display name: heading with an edit button that turns into an inline form. */
 export function DisplayNameEditor({ name }: { name: string }) {
+  const t = useTranslations("profile.displayName");
   const update = useUpdateDisplayName();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(name);
@@ -38,7 +40,7 @@ export function DisplayNameEditor({ name }: { name: string }) {
     const normalized = normalizeDisplayName(value);
     if (normalized === name) return stop();
     if (normalized.length < DISPLAY_NAME_MIN || normalized.length > DISPLAY_NAME_MAX) {
-      setError(`Use ${DISPLAY_NAME_MIN}–${DISPLAY_NAME_MAX} characters.`);
+      setError(t("length", { min: DISPLAY_NAME_MIN, max: DISPLAY_NAME_MAX }));
       return;
     }
     update.mutate(normalized, {
@@ -57,7 +59,7 @@ export function DisplayNameEditor({ name }: { name: string }) {
           variant="ghost"
           size="icon"
           onClick={start}
-          aria-label="Edit display name"
+          aria-label={t("edit")}
           className="size-9 shrink-0 rounded-lg text-muted-foreground hover:text-foreground"
         >
           <Pencil aria-hidden className="size-4" />
@@ -77,7 +79,7 @@ export function DisplayNameEditor({ name }: { name: string }) {
     >
       <h1 className="sr-only">{name}</h1>
       <label htmlFor="display-name-input" className="sr-only">
-        Display name
+        {t("label")}
       </label>
       <div className="flex items-center gap-1.5">
         <input
@@ -110,7 +112,7 @@ export function DisplayNameEditor({ name }: { name: string }) {
           type="submit"
           size="icon"
           disabled={saving}
-          aria-label="Save display name"
+          aria-label={t("save")}
           className="size-11 shrink-0 rounded-xl"
         >
           {saving ? <Loader2 aria-hidden className="animate-spin" /> : <Check aria-hidden />}
@@ -121,7 +123,7 @@ export function DisplayNameEditor({ name }: { name: string }) {
           size="icon"
           disabled={saving}
           onClick={stop}
-          aria-label="Cancel editing"
+          aria-label={t("cancel")}
           className="size-11 shrink-0 rounded-xl"
         >
           <X aria-hidden />
@@ -131,14 +133,12 @@ export function DisplayNameEditor({ name }: { name: string }) {
         id="display-name-help"
         className={cn("text-xs", error ? "font-medium text-destructive" : "text-muted-foreground")}
       >
-        {error ?? (
-          <>
-            Shown on your pins and comments ·{" "}
-            <span className="tabular-nums">
-              {value.length}/{DISPLAY_NAME_MAX}
-            </span>
-          </>
-        )}
+        {error ??
+          t.rich("help", {
+            length: value.length,
+            max: DISPLAY_NAME_MAX,
+            count: (chunks) => <span className="tabular-nums">{chunks}</span>,
+          })}
       </p>
     </form>
   );

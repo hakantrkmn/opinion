@@ -7,6 +7,7 @@ import type {
   SendNotificationResult,
 } from "@/types/userTypes";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { apiSend } from "@/lib/api/send";
 
@@ -19,36 +20,39 @@ function invalidateAdminAndContent(queryClient: ReturnType<typeof useQueryClient
 
 export function useDeleteAdminUser() {
   const queryClient = useQueryClient();
+  const t = useTranslations("admin");
   return useMutation({
     mutationFn: (userId: string) =>
       apiSend(`/api/admin/users/${encodeURIComponent(userId)}`, { method: "DELETE" }),
     onSuccess: () => {
       invalidateAdminAndContent(queryClient);
-      toast.success("Account deleted");
+      toast.success(t("toast.accountDeleted"));
     },
     onError: (error) => {
-      toast.error("Couldn't delete account", { description: error.message });
+      toast.error(t("toast.accountDeleteFailed"), { description: error.message });
     },
   });
 }
 
 export function useDeleteAdminPin() {
   const queryClient = useQueryClient();
+  const t = useTranslations("admin");
   return useMutation({
     mutationFn: (pinId: string) =>
       apiSend(`/api/admin/pins/${encodeURIComponent(pinId)}`, { method: "DELETE" }),
     onSuccess: () => {
       invalidateAdminAndContent(queryClient);
-      toast.success("Pin deleted");
+      toast.success(t("toast.pinDeleted"));
     },
     onError: (error) => {
-      toast.error("Couldn't delete pin", { description: error.message });
+      toast.error(t("toast.pinDeleteFailed"), { description: error.message });
     },
   });
 }
 
 export function useDeleteAdminComment() {
   const queryClient = useQueryClient();
+  const t = useTranslations("admin");
   return useMutation({
     mutationFn: (commentId: string) =>
       apiSend<{ pin_deleted: boolean; pin_id: string }>(
@@ -57,20 +61,19 @@ export function useDeleteAdminComment() {
       ),
     onSuccess: (data) => {
       invalidateAdminAndContent(queryClient);
-      toast.success("Comment deleted", {
-        description: data.pin_deleted
-          ? "The pin was removed too — it had no comments left."
-          : undefined,
+      toast.success(t("toast.commentDeleted"), {
+        description: data.pin_deleted ? t("toast.commentDeletedPinToo") : undefined,
       });
     },
     onError: (error) => {
-      toast.error("Couldn't delete comment", { description: error.message });
+      toast.error(t("toast.commentDeleteFailed"), { description: error.message });
     },
   });
 }
 
 export function useSendNotification() {
   const queryClient = useQueryClient();
+  const t = useTranslations("admin");
   return useMutation({
     mutationFn: (input: SendNotificationRequest) =>
       apiSend<SendNotificationResult>("/api/admin/notifications/send", {
@@ -81,26 +84,30 @@ export function useSendNotification() {
       void queryClient.invalidateQueries({
         queryKey: queryKeys.admin.notifications.recent,
       });
-      toast.success("Notification sent", {
-        description: `Sent ${data.sent}, failed ${data.failed}${
-          data.deactivated > 0 ? `, ${data.deactivated} stale device(s) removed` : ""
-        }`,
+      toast.success(t("toast.notificationSent"), {
+        // Strings, so counts are not grouped ("1000", as before).
+        description: t("toast.notificationSentDescription", {
+          sent: String(data.sent),
+          failed: String(data.failed),
+          deactivated: data.deactivated,
+        }),
       });
     },
     onError: (error) => {
-      toast.error("Couldn't send notification", { description: error.message });
+      toast.error(t("toast.notificationFailed"), { description: error.message });
     },
   });
 }
 
-const REPORT_MESSAGES: Record<AdminReportAction, string> = {
-  resolve: "Report resolved",
-  dismiss: "Report dismissed",
-  delete_target: "Content removed",
-};
+const REPORT_MESSAGES = {
+  resolve: "toast.reportResolved",
+  dismiss: "toast.reportDismissed",
+  delete_target: "toast.contentRemoved",
+} as const satisfies Record<AdminReportAction, string>;
 
 export function useReportAction() {
   const queryClient = useQueryClient();
+  const t = useTranslations("admin");
   return useMutation({
     mutationFn: (input: { reportId: string; action: AdminReportAction }) =>
       apiSend(`/api/admin/reports/${encodeURIComponent(input.reportId)}`, {
@@ -114,16 +121,17 @@ export function useReportAction() {
         void queryClient.invalidateQueries({ queryKey: ["admin", "reports"] });
         void queryClient.invalidateQueries({ queryKey: queryKeys.admin.analytics });
       }
-      toast.success(REPORT_MESSAGES[variables.action]);
+      toast.success(t(REPORT_MESSAGES[variables.action]));
     },
     onError: (error) => {
-      toast.error("Action failed", { description: error.message });
+      toast.error(t("toast.actionFailed"), { description: error.message });
     },
   });
 }
 
 export function useRefreshStats() {
   const queryClient = useQueryClient();
+  const t = useTranslations("admin");
   return useMutation({
     mutationFn: () =>
       apiSend<{ ok: boolean; duration_ms: number }>("/api/admin/refresh-stats", {
@@ -131,12 +139,12 @@ export function useRefreshStats() {
       }),
     onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.admin.analytics });
-      toast.success("Statistics recomputed", {
-        description: `Took ${data.duration_ms} ms`,
+      toast.success(t("toast.statsRecomputed"), {
+        description: t("toast.statsTook", { ms: String(data.duration_ms) }),
       });
     },
     onError: (error) => {
-      toast.error("Couldn't recompute statistics", { description: error.message });
+      toast.error(t("toast.statsFailed"), { description: error.message });
     },
   });
 }

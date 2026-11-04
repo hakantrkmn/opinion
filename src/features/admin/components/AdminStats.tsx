@@ -3,6 +3,7 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { Flag, Heart, MapPin, MessageSquare, Users } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import type { AdminAnalytics } from "@/features/admin/components/types";
 import { formatNumber } from "@/features/admin/components/utils";
 
@@ -13,13 +14,16 @@ interface AdminStatsProps {
 }
 
 export function AdminStats({ analytics, loading, onOpenReports }: AdminStatsProps) {
+  const t = useTranslations("admin.stats");
+  const locale = useLocale();
   const openReports = analytics?.open_reports ?? 0;
   const items = [
-    { label: "Members", value: analytics?.total_users, icon: Users },
-    { label: "Pins", value: analytics?.total_pins, icon: MapPin },
-    { label: "Comments", value: analytics?.total_comments, icon: MessageSquare },
+    { id: "members", label: t("members"), value: analytics?.total_users, icon: Users },
+    { id: "pins", label: t("pins"), value: analytics?.total_pins, icon: MapPin },
+    { id: "comments", label: t("comments"), value: analytics?.total_comments, icon: MessageSquare },
     {
-      label: "Votes",
+      id: "votes",
+      label: t("votes"),
       value: analytics ? analytics.total_likes + analytics.total_dislikes : undefined,
       icon: Heart,
     },
@@ -28,7 +32,7 @@ export function AdminStats({ analytics, loading, onOpenReports }: AdminStatsProp
   return (
     <ul className="grid grid-cols-2 gap-3 md:grid-cols-5">
       {items.map((item) => (
-        <li key={item.label} className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-card p-4">
+        <li key={item.id} className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-card p-4">
           <span className="flex items-center justify-between text-xs font-medium text-muted-foreground">
             {item.label}
             <item.icon aria-hidden className="size-4" />
@@ -36,7 +40,7 @@ export function AdminStats({ analytics, loading, onOpenReports }: AdminStatsProp
           {loading ? (
             <Skeleton className="h-8 w-20" />
           ) : (
-            <span className="text-2xl font-semibold leading-8 tabular-nums">{formatNumber(item.value)}</span>
+            <span className="text-2xl font-semibold leading-8 tabular-nums">{formatNumber(item.value, locale)}</span>
           )}
         </li>
       ))}
@@ -57,13 +61,13 @@ export function AdminStats({ analytics, loading, onOpenReports }: AdminStatsProp
               openReports > 0 ? "text-destructive" : "text-muted-foreground"
             )}
           >
-            Open reports
+            {t("openReports")}
             <Flag aria-hidden className="size-4" />
           </span>
           {loading ? (
             <Skeleton className="h-8 w-12" />
           ) : (
-            <span className="text-2xl font-semibold leading-8 tabular-nums">{formatNumber(openReports)}</span>
+            <span className="text-2xl font-semibold leading-8 tabular-nums">{formatNumber(openReports, locale)}</span>
           )}
         </button>
       </li>

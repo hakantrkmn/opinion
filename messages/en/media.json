@@ -1,1 +1,20 @@
-{}
+{
+  "picker": {
+    "addPhoto": "Add a photo",
+    "processing": "Processing…",
+    "photoFailed": "Couldn't use this photo"
+  },
+  "webcam": {
+    "title": "Take a photo",
+    "description": "Use your camera, or choose an existing photo.",
+    "unavailable": "Camera unavailable. Allow camera access or choose a file instead.",
+    "switchCamera": "Switch camera",
+    "chooseFile": "Choose file",
+    "capture": "Capture"
+  },
+  "errors": {
+    "notImage": "Please choose an image file.",
+    "tooLarge": "That photo is too large (max {maxMb} MB).",
+    "unsupported": "This photo format isn't supported. Try a JPEG or PNG."
+  }
+}

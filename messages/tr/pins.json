@@ -1,1 +1,50 @@
-{}
+{
+  "activity": {
+    "new": "Yeni",
+    "active": "Hareketli",
+    "hot": "Popüler"
+  },
+  "deletedUser": "Silinmiş kullanıcı",
+  "create": {
+    "title": "Senin droPINion’un ne?",
+    "description": "Bu yere bir isim ver, ilk fikri sen yaz.",
+    "atYourLocation": "Bulunduğun yerde",
+    "weakSignal": "GPS sinyali zayıf",
+    "refreshLocation": "Konumumu yenile",
+    "locating": "Konum bulunuyor…",
+    "refresh": "Yenile",
+    "locationFailed": "Konumun alınamadı",
+    "nameLabel": "Yerin adı",
+    "nameRequired": "Bu yere bir isim ver.",
+    "namePlaceholder": "ör. Moda Caddesi’ndeki köşe fırın",
+    "commentLabel": "Fikrin",
+    "commentRequired": "Bu yer hakkında birkaç kelime yaz.",
+    "commentPlaceholder": "Bu yer hakkında ne düşünüyorsun?",
+    "photoLabel": "Fotoğraf <muted>(isteğe bağlı)</muted>",
+    "selectedPhoto": "Seçilen fotoğraf",
+    "removePhoto": "Fotoğrafı kaldır",
+    "tooFarTitle": "Bu yere çok uzaksın",
+    "failedTitle": "Pin bırakılamadı",
+    "tooFarBody": "{hasDistance, select, yes {Bu yer bulunduğun konumdan {distance} m uzakta. } other {}}Pinleri yalnızca bulunduğun yerin {max} m yakınına bırakabilirsin. Konumunu yenileyip tekrar dene.",
+    "tryAgain": "Lütfen tekrar dene.",
+    "cancel": "Vazgeç",
+    "dropping": "Bırakılıyor…",
+    "drop": "Pin bırak",
+    "dropped": "Pin bırakıldı"
+  },
+  "detail": {
+    "notFoundTitle": "Pin bulunamadı",
+    "notFoundHeading": "Bu pin artık yok",
+    "notFoundDescription": "Sahibi kaldırmış olabilir.",
+    "backToMap": "Haritaya dön",
+    "fallbackTitle": "Pin",
+    "commentCount": "{count, plural, other {# yorum}}",
+    "byline": "<b>{name}</b> bıraktı · {time}"
+  },
+  "actions": {
+    "directions": "Yol tarifi",
+    "share": "Paylaş",
+    "linkCopied": "Bağlantı kopyalandı",
+    "shareThisLink": "Bu bağlantıyı paylaş"
+  }
+}

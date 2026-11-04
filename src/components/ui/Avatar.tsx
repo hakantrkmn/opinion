@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { User } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 interface AvatarProps {
@@ -43,11 +44,12 @@ const getImageCache = (): Map<string, boolean> => {
 
 export function Avatar({
   src,
-  alt = "Avatar",
+  alt,
   size = "md",
   className,
   fallbackText,
 }: AvatarProps) {
+  const t = useTranslations("common");
   const [imageLoaded, setImageLoaded] = useState(() => {
     // Check cache first
     const cache = getImageCache();
@@ -86,7 +88,7 @@ export function Avatar({
       {src && !imageError && (
         <img
           src={src}
-          alt={alt}
+          alt={alt ?? t("avatar")}
           width={sizePixels[size]}
           height={sizePixels[size]}
           onLoad={handleImageLoad}

@@ -1,1 +1,68 @@
-{}
+{
+  "loadingMap": "Loading map",
+  "mapLabel": "Map of pins",
+  "refresh": "Refresh pins",
+  "basemap": {
+    "button": "Map style",
+    "auto": "Match theme",
+    "light": "Light",
+    "dark": "Dark",
+    "colorful": "Colorful"
+  },
+  "dropPin": {
+    "label": "Drop a pin",
+    "locating": "Getting your location…",
+    "locationError": "Couldn't get your location",
+    "tooFar": "Too far from you",
+    "tooFarDescription": "You can only drop a pin within {meters} m of where you are."
+  },
+  "intro": {
+    "label": "Welcome",
+    "dismiss": "Dismiss welcome message",
+    "title": "Welcome to droPINion",
+    "body": "Tap a pin to read what people think about a place. Standing somewhere worth talking about? Use <b>Drop a pin</b> to share your opinion."
+  },
+  "locate": {
+    "show": "Show my location",
+    "blocked": "Location blocked",
+    "find": "Find my location",
+    "blockedToast": "Location is blocked",
+    "blockedToastDescription": "Allow location access for this site in your browser settings.",
+    "unsupportedToast": "Your browser doesn't support location"
+  },
+  "status": {
+    "loadError": "Couldn't load pins",
+    "retry": "Retry",
+    "followingSignIn": "<signin>Sign in</signin> to see pins from people you follow",
+    "loading": "Loading pins…",
+    "truncated": "Zoom in to see all pins",
+    "followingEmpty": "No pins from people you follow here",
+    "emptyHere": "No opinions here yet",
+    "nearestLabel": "Show the nearest opinion: {name}, {distance} away",
+    "nearestName": "{name} ·",
+    "noneAnywhere": "No opinions yet. Drop the first one!"
+  },
+  "scope": {
+    "label": "Whose pins to show",
+    "all": "All",
+    "following": "Following"
+  },
+  "signInPrompt": {
+    "title": "Sign in to join in",
+    "description": "Drop pins, comment, vote and follow people with a free account.",
+    "notNow": "Not now",
+    "signIn": "Sign in"
+  },
+  "theme": {
+    "toLight": "Switch to light theme",
+    "toDark": "Switch to dark theme",
+    "lightTitle": "Light theme",
+    "darkTitle": "Dark theme"
+  },
+  "geoError": {
+    "denied": "Location access is blocked. Allow it in your browser settings to drop a pin.",
+    "timeout": "Getting your location took too long. Move to an open area and try again.",
+    "unavailable": "Your location is unavailable right now. Check that location services are on.",
+    "unsupported": "Your browser does not support location."
+  }
+}

@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import type { VoteValue } from "@/types/api";
 import { ThumbsDown, ThumbsUp } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface CommentVotingProps {
   likes: number;
@@ -23,6 +24,7 @@ export function CommentVoting({
   onVote,
   disabled,
 }: CommentVotingProps) {
+  const t = useTranslations("comments.voting");
   const net = likes - dislikes;
   return (
     <div className="flex items-center gap-1">
@@ -31,7 +33,7 @@ export function CommentVoting({
         onClick={() => onVote(1)}
         disabled={disabled}
         aria-pressed={myVote === 1}
-        aria-label={myVote === 1 ? `Remove like (${likes})` : `Like (${likes})`}
+        aria-label={myVote === 1 ? t("removeLike", { count: likes }) : t("like", { count: likes })}
         className={cn(
           base,
           myVote === 1
@@ -47,7 +49,11 @@ export function CommentVoting({
         onClick={() => onVote(-1)}
         disabled={disabled}
         aria-pressed={myVote === -1}
-        aria-label={myVote === -1 ? `Remove dislike (${dislikes})` : `Dislike (${dislikes})`}
+        aria-label={
+          myVote === -1
+            ? t("removeDislike", { count: dislikes })
+            : t("dislike", { count: dislikes })
+        }
         className={cn(
           base,
           myVote === -1
@@ -60,7 +66,7 @@ export function CommentVoting({
       </button>
       {likes > 0 || dislikes > 0 ? (
         <span
-          title="Score (likes minus dislikes)"
+          title={t("scoreTitle")}
           className={cn(
             "ml-1 rounded-md px-2 py-0.5 text-[10px] font-bold tabular-nums",
             net > 0

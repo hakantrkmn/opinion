@@ -1,6 +1,6 @@
 "use client";
 
-import { authErrorMessage } from "@/features/auth/lib/auth-errors";
+import { useAuthErrorMessage } from "@/features/auth/lib/auth-errors";
 import { FormField } from "@/features/auth/components/form-field";
 import { OtpInput } from "@/features/auth/components/otp-input";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { authClient } from "@/lib/auth-client";
 import { queryKeys } from "@/lib/api/query-keys";
 import { useQueryClient } from "@tanstack/react-query";
 import { BadgeCheck, CircleAlert, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { InlineError, SettingsSection, settingsButton, settingsInput } from "@/features/profile/components/settings/SettingsSection";
@@ -23,6 +24,9 @@ export function EmailSection({
   email: string;
   emailVerified: boolean;
 }) {
+  const t = useTranslations("profile.email");
+  const tSettings = useTranslations("profile.settings");
+  const authErrorMessage = useAuthErrorMessage();
   const queryClient = useQueryClient();
   const [mode, setMode] = useState<Mode>("idle");
   const [otp, setOtp] = useState("");
@@ -43,7 +47,7 @@ export function EmailSection({
       }
       onOk();
     } catch {
-      setError("Couldn't reach the server. Check your connection and try again.");
+      setError(tSettings("networkError"));
     } finally {
       setBusy(false);
     }
@@ -61,7 +65,7 @@ export function EmailSection({
       () => {
         setMode("verify");
         setOtp("");
-        toast.success("Code sent", { id: "email-code", description: `Check ${email}` });
+        toast.success(t("codeSent"), { id: "email-code", description: t("check", { email }) });
       }
     );
 
@@ -70,7 +74,7 @@ export function EmailSection({
       () => authClient.emailOtp.verifyEmail({ email, otp: code }),
       () => {
         reset();
-        toast.success("Email verified", { id: "email-code" });
+        toast.success(t("verifiedToast"), { id: "email-code" });
         void refresh();
       }
     );
@@ -78,11 +82,11 @@ export function EmailSection({
   const requestChange = () => {
     const next = newEmail.trim();
     if (!EMAIL_RE.test(next)) {
-      setError("Enter a valid email address, like you@example.com.");
+      setError(t("invalid"));
       return;
     }
     if (next.toLowerCase() === email.toLowerCase()) {
-      setError("That's already your email address.");
+      setError(t("same"));
       return;
     }
     return run(
@@ -90,7 +94,7 @@ export function EmailSection({
       () => {
         setMode("change-confirm");
         setOtp("");
-        toast.success("Code sent", { id: "email-code", description: `Check ${next}` });
+        toast.success(t("codeSent"), { id: "email-code", description: t("check", { email: next }) });
       }
     );
   };
@@ -101,7 +105,7 @@ export function EmailSection({
       () => {
         reset();
         setNewEmail("");
-        toast.success("Email updated", { id: "email-code" });
+        toast.success(t("updatedToast"), { id: "email-code" });
         void refresh();
       }
     );
@@ -110,19 +114,19 @@ export function EmailSection({
 
   return (
     <SettingsSection
-      title="Email"
+      title={t("title")}
       description={
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="truncate text-foreground">{email}</span>
           {emailVerified ? (
             <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
               <BadgeCheck aria-hidden className="size-3.5" />
-              Verified
+              {t("verified")}
             </span>
           ) : (
             <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400">
               <CircleAlert aria-hidden className="size-3.5" />
-              Not verified
+              {t("notVerified")}
             </span>
           )}
         </span>
@@ -133,7 +137,7 @@ export function EmailSection({
           {!emailVerified && (
             <Button className={settingsButton} onClick={() => void sendVerification()} disabled={busy}>
               {busy ? <Loader2 aria-hidden className="animate-spin" /> : null}
-              Verify email
+              {t("verifyEmail")}
             </Button>
           )}
           <Button
@@ -144,7 +148,7 @@ export function EmailSection({
               setError(null);
             }}
           >
-            Change email
+            {t("changeEmail")}
           </Button>
         </div>
       )}
@@ -162,7 +166,10 @@ export function EmailSection({
             id="email-otp"
             label={
               <span className="font-normal text-muted-foreground">
-                Enter the 6-digit code sent to <span className="font-medium text-foreground">{codeTarget}</span>
+                {t.rich("codeSentTo", {
+                  target: codeTarget,
+                  b: (chunks) => <span className="font-medium text-foreground">{chunks}</span>,
+                })}
               </span>
             }
             error={error}
@@ -181,10 +188,10 @@ export function EmailSection({
           <div className="flex gap-2">
             <Button type="submit" className={settingsButton} disabled={busy || otp.length !== 6}>
               {busy ? <Loader2 aria-hidden className="animate-spin" /> : null}
-              {mode === "verify" ? "Verify" : "Update email"}
+              {mode === "verify" ? t("verify") : t("updateEmail")}
             </Button>
             <Button type="button" variant="ghost" className={settingsButton} onClick={reset} disabled={busy}>
-              Cancel
+              {tSettings("cancel")}
             </Button>
           </div>
         </form>
@@ -201,8 +208,8 @@ export function EmailSection({
         >
           <FormField
             id="new-email"
-            label="New email"
-            hint="We'll send a code to confirm it's yours."
+            label={t("newEmail")}
+            hint={t("newEmailHint")}
             error={error}
           >
             <Input
@@ -226,10 +233,10 @@ export function EmailSection({
           <div className="flex gap-2">
             <Button type="submit" className={settingsButton} disabled={busy || !newEmail.trim()}>
               {busy ? <Loader2 aria-hidden className="animate-spin" /> : null}
-              Send code
+              {t("sendCode")}
             </Button>
             <Button type="button" variant="ghost" className={settingsButton} onClick={reset} disabled={busy}>
-              Cancel
+              {tSettings("cancel")}
             </Button>
           </div>
         </form>

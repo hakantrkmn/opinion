@@ -4,6 +4,7 @@ import { formatDistance } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { NearestPinResponse } from "@/types/api";
 import { AlertCircle, ArrowRight, Loader2, MapPin, ZoomIn } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { mapSurface } from "./control-styles";
 
@@ -43,6 +44,8 @@ export function MapStatus({
   onSignIn,
   onShowNearest,
 }: MapStatusProps) {
+  const t = useTranslations("map.status");
+  const locale = useLocale();
   const slow = useDelayed(fetching, 250);
 
   let content: React.ReactNode = null;
@@ -50,62 +53,64 @@ export function MapStatus({
     content = (
       <>
         <AlertCircle className="h-3.5 w-3.5 text-destructive" />
-        Couldn&apos;t load pins
+        {t("loadError")}
         <button
           type="button"
           onClick={onRetry}
           className="pointer-events-auto -my-2 ml-0.5 rounded-full px-2 py-2 font-semibold text-primary"
         >
-          Retry
+          {t("retry")}
         </button>
       </>
     );
   } else if (followingHint === "signin") {
-    content = (
-      <>
+    content = t.rich("followingSignIn", {
+      signin: (chunks) => (
         <button type="button" onClick={onSignIn} className="pointer-events-auto -my-2 -ml-1 rounded-full px-1 py-2 font-semibold text-primary">
-          Sign in
+          {chunks}
         </button>
-        to see pins from people you follow
-      </>
-    );
+      ),
+    });
   } else if (slow) {
     content = (
       <>
         <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-        Loading pins…
+        {t("loading")}
       </>
     );
   } else if (truncated) {
     content = (
       <>
         <ZoomIn className="h-3.5 w-3.5 text-muted-foreground" />
-        Zoom in to see all pins
+        {t("truncated")}
       </>
     );
   } else if (followingHint === "empty") {
-    content = "No pins from people you follow here";
+    content = t("followingEmpty");
   } else if (emptyArea) {
     const nearest = emptyArea.pin;
     content = nearest ? (
       <>
         <MapPin className="h-3.5 w-3.5 text-primary" />
-        No opinions here yet
+        {t("emptyHere")}
         <button
           type="button"
           onClick={() => onShowNearest(nearest)}
-          aria-label={`Show the nearest opinion: ${nearest.name}, ${formatDistance(nearest.distance_m)} away`}
+          aria-label={t("nearestLabel", {
+            name: nearest.name,
+            distance: formatDistance(nearest.distance_m, locale),
+          })}
           className="pointer-events-auto -my-2 -mr-2 ml-0.5 flex items-center gap-1 rounded-full py-2 pl-2 pr-2.5 font-semibold text-primary"
         >
-          <span className="max-w-40 truncate max-sm:hidden">{nearest.name} ·</span>
-          {formatDistance(nearest.distance_m)}
+          <span className="max-w-40 truncate max-sm:hidden">{t("nearestName", { name: nearest.name })}</span>
+          {formatDistance(nearest.distance_m, locale)}
           <ArrowRight className="h-3.5 w-3.5" />
         </button>
       </>
     ) : (
       <>
         <MapPin className="h-3.5 w-3.5 text-primary" />
-        No opinions yet. Drop the first one!
+        {t("noneAnywhere")}
       </>
     );
   }

@@ -15,6 +15,7 @@ import { useReportContent } from "@/features/moderation/hooks/use-report-mutatio
 import { cn } from "@/lib/utils";
 import type { ReportReason, ReportTargetType } from "@/types/userTypes";
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 interface ReportDialogProps {
@@ -24,16 +25,13 @@ interface ReportDialogProps {
   targetId: string;
 }
 
-const REASONS: { value: ReportReason; label: string; hint: string }[] = [
-  { value: "spam", label: "Spam", hint: "Ads, scams or repeated junk" },
-  { value: "harassment", label: "Harassment or hate", hint: "Targets a person or group" },
-  { value: "inappropriate", label: "Inappropriate content", hint: "Explicit, violent or illegal" },
-  { value: "other", label: "Something else", hint: "Tell us more in the note" },
-];
+/** Labels and hints live in moderation.reportDialog.reasons.<value>. */
+const REASONS: ReportReason[] = ["spam", "harassment", "inappropriate", "other"];
 
 const NOTE_MAX = 500;
 
 export function ReportDialog({ open, onOpenChange, targetType, targetId }: ReportDialogProps) {
+  const t = useTranslations("moderation.reportDialog");
   const [reason, setReason] = useState<ReportReason>("spam");
   const [note, setNote] = useState("");
   const reportMutation = useReportContent();
@@ -73,33 +71,33 @@ export function ReportDialog({ open, onOpenChange, targetType, targetId }: Repor
       >
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <DialogHeader>
-            <DialogTitle>Report this {targetType}</DialogTitle>
+            <DialogTitle>{t("title", { targetType })}</DialogTitle>
             <DialogDescription>
-              Reports are private. Moderators review them and remove anything that breaks the rules.
+              {t("description")}
             </DialogDescription>
           </DialogHeader>
 
           <fieldset className="flex flex-col gap-2">
-            <legend className="mb-2 text-sm font-medium">Why are you reporting it?</legend>
+            <legend className="mb-2 text-sm font-medium">{t("legend")}</legend>
             {REASONS.map((r) => (
               <label
-                key={r.value}
+                key={r}
                 className={cn(
                   "flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors duration-150 has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring/50",
-                  reason === r.value ? "border-foreground/40 bg-muted/60" : "border-border hover:bg-muted/40"
+                  reason === r ? "border-foreground/40 bg-muted/60" : "border-border hover:bg-muted/40"
                 )}
               >
                 <input
                   type="radio"
                   name="report-reason"
-                  value={r.value}
-                  checked={reason === r.value}
-                  onChange={() => setReason(r.value)}
+                  value={r}
+                  checked={reason === r}
+                  onChange={() => setReason(r)}
                   className="size-4 shrink-0 accent-primary"
                 />
                 <span className="flex flex-col">
-                  <span className="text-sm font-medium text-foreground">{r.label}</span>
-                  <span className="text-xs text-muted-foreground">{r.hint}</span>
+                  <span className="text-sm font-medium text-foreground">{t(`reasons.${r}.label`)}</span>
+                  <span className="text-xs text-muted-foreground">{t(`reasons.${r}.hint`)}</span>
                 </span>
               </label>
             ))}
@@ -108,7 +106,7 @@ export function ReportDialog({ open, onOpenChange, targetType, targetId }: Repor
           <div className="flex flex-col gap-2">
             <div className="flex items-baseline justify-between gap-3">
               <Label htmlFor="report-note">
-                Note {reason === "other" ? null : <span className="font-normal text-muted-foreground">(optional)</span>}
+                {t("note")} {reason === "other" ? null : <span className="font-normal text-muted-foreground">{t("optional")}</span>}
               </Label>
               <span className="text-xs tabular-nums text-muted-foreground">
                 {note.length}/{NOTE_MAX}
@@ -118,7 +116,7 @@ export function ReportDialog({ open, onOpenChange, targetType, targetId }: Repor
               id="report-note"
               maxLength={NOTE_MAX}
               onChange={(event) => setNote(event.target.value)}
-              placeholder="Anything that helps moderators understand the problem"
+              placeholder={t("notePlaceholder")}
               rows={3}
               value={note}
               aria-invalid={needsNote && note.length > 0 ? true : undefined}
@@ -127,7 +125,7 @@ export function ReportDialog({ open, onOpenChange, targetType, targetId }: Repor
             />
             {reason === "other" ? (
               <p id="report-note-hint" className="text-xs text-muted-foreground">
-                Add a short note so moderators know what&apos;s wrong.
+                {t("noteHint")}
               </p>
             ) : null}
           </div>
@@ -140,11 +138,11 @@ export function ReportDialog({ open, onOpenChange, targetType, targetId }: Repor
               variant="outline"
               className="h-10 rounded-xl"
             >
-              Cancel
+              {t("cancel")}
             </Button>
             <Button disabled={pending || needsNote} type="submit" className="h-10 rounded-xl">
               {pending ? <Loader2 aria-hidden className="animate-spin" /> : null}
-              {pending ? "Sending…" : "Send report"}
+              {pending ? t("sending") : t("send")}
             </Button>
           </DialogFooter>
         </form>

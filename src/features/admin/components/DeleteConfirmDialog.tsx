@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import type { ConfirmState } from "@/features/admin/components/types";
 
 interface DeleteConfirmDialogProps {
@@ -23,6 +24,7 @@ export function DeleteConfirmDialog({
   confirm,
   onClose,
 }: DeleteConfirmDialogProps) {
+  const t = useTranslations("admin.confirm");
   return (
     <AlertDialog
       open={!!confirm}
@@ -36,7 +38,7 @@ export function DeleteConfirmDialog({
           <AlertDialogDescription>{confirm?.description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
           <AlertDialogAction
             className={cn(buttonVariants({ variant: "destructive" }))}
             onClick={() => confirm?.onConfirm()}

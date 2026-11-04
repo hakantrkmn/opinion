@@ -1,7 +1,7 @@
 "use client";
 
 import { PinIcon } from "@/components/icons/PinIcon";
-import { plural } from "@/features/profile/lib/format";
+import { formatCount } from "@/features/profile/lib/format";
 import { Button } from "@/components/ui/button";
 import { formatTimeAgo } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,7 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEffect, useRef, type ReactNode } from "react";
 
@@ -75,6 +76,7 @@ export function EmptyState({
 }
 
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  const t = useTranslations("profile.lists");
   return (
     <div
       role="alert"
@@ -82,13 +84,13 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
     >
       <AlertCircle aria-hidden className="size-5 text-destructive" />
       <div className="flex flex-col gap-1">
-        <p className="text-sm font-semibold text-foreground">Couldn&apos;t load this list</p>
+        <p className="text-sm font-semibold text-foreground">{t("loadError")}</p>
         <p className="max-w-[40ch] text-sm text-muted-foreground">{message}</p>
       </div>
       {onRetry ? (
         <Button variant="outline" className="h-10 rounded-xl" onClick={onRetry}>
           <RotateCcw aria-hidden />
-          Try again
+          {t("tryAgain")}
         </Button>
       ) : null}
     </div>
@@ -109,6 +111,7 @@ export function LoadMore({
   error?: Error | null;
   className?: string;
 }) {
+  const t = useTranslations("profile.lists");
   const ref = useRef<HTMLButtonElement>(null);
   const auto = hasNextPage && !isFetchingNextPage && !error;
 
@@ -137,15 +140,15 @@ export function LoadMore({
       {isFetchingNextPage ? (
         <>
           <Loader2 aria-hidden className="animate-spin" />
-          Loading…
+          {t("loading")}
         </>
       ) : error ? (
         <>
           <RotateCcw aria-hidden />
-          Couldn&apos;t load more – try again
+          {t("loadMoreError")}
         </>
       ) : (
-        "Load more"
+        t("loadMore")
       )}
     </Button>
   );
@@ -157,6 +160,7 @@ function ListFrame({
   empty,
   skeleton,
   label,
+  loadingLabel,
   children,
 }: {
   state: ListState;
@@ -164,12 +168,13 @@ function ListFrame({
   empty: ReactNode;
   skeleton: ReactNode;
   label: string;
+  loadingLabel: string;
   children: ReactNode;
 }) {
   if (state.isLoading) {
     return (
       <div aria-busy className="flex flex-col gap-2">
-        <span className="sr-only">Loading {label}…</span>
+        <span className="sr-only">{loadingLabel}</span>
         {skeleton}
         {skeleton}
         {skeleton}
@@ -222,8 +227,17 @@ export function ProfilePinsList({
   onShare?: (pin: PinSummary) => void;
   empty: ReactNode;
 }) {
+  const t = useTranslations("profile.lists");
+  const locale = useLocale();
   return (
-    <ListFrame state={state} count={pins.length} empty={empty} skeleton={<PinRowSkeleton />} label="Pins">
+    <ListFrame
+      state={state}
+      count={pins.length}
+      empty={empty}
+      skeleton={<PinRowSkeleton />}
+      label={t("pins")}
+      loadingLabel={t("loadingPins")}
+    >
       {pins.map((pin) => (
         <li key={pin.id} className={cn(rowCard, "flex items-center gap-1 pr-2")}>
           <Link
@@ -237,9 +251,12 @@ export function ProfilePinsList({
               <span className="truncate text-sm font-semibold text-foreground">{pin.name}</span>
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <MessageCircle aria-hidden className="size-3" />
-                <span className="tabular-nums">{plural(pin.comments_count, "comment")}</span>
+                <span className="tabular-nums">{t("commentsCount", {
+                    count: pin.comments_count,
+                    formatted: formatCount(pin.comments_count, locale),
+                  })}</span>
                 <span aria-hidden>·</span>
-                <time dateTime={pin.created_at}>{formatTimeAgo(pin.created_at)}</time>
+                <time dateTime={pin.created_at}>{formatTimeAgo(pin.created_at, locale)}</time>
               </span>
             </span>
             {!onShare ? (
@@ -253,7 +270,7 @@ export function ProfilePinsList({
               size="icon"
               className="size-10 shrink-0 rounded-xl text-muted-foreground hover:text-foreground"
               onClick={() => onShare(pin)}
-              aria-label={`Copy link to ${pin.name}`}
+              aria-label={t("copyLink", { name: pin.name })}
             >
               <Link2 aria-hidden />
             </Button>
@@ -273,13 +290,16 @@ export function ProfileCommentsList({
   state: ListState;
   empty: ReactNode;
 }) {
+  const t = useTranslations("profile.lists");
+  const locale = useLocale();
   return (
     <ListFrame
       state={state}
       count={comments.length}
       empty={empty}
       skeleton={<CommentRowSkeleton />}
-      label="Comments"
+      label={t("comments")}
+      loadingLabel={t("loadingComments")}
     >
       {comments.map((comment) => (
         <li key={comment.id}>
@@ -296,13 +316,13 @@ export function ProfileCommentsList({
                   <PinIcon className="size-3 shrink-0 text-primary" />
                   <span className="truncate">{comment.pin.name}</span>
                 </span>
-                <time dateTime={comment.created_at}>{formatTimeAgo(comment.created_at)}</time>
+                <time dateTime={comment.created_at}>{formatTimeAgo(comment.created_at, locale)}</time>
                 <span className="inline-flex items-center gap-2.5 tabular-nums">
-                  <span className="inline-flex items-center gap-1" aria-label={`${comment.likes} likes`}>
+                  <span className="inline-flex items-center gap-1" aria-label={t("likes", { count: comment.likes })}>
                     <ThumbsUp aria-hidden className="size-3" />
                     {comment.likes}
                   </span>
-                  <span className="inline-flex items-center gap-1" aria-label={`${comment.dislikes} dislikes`}>
+                  <span className="inline-flex items-center gap-1" aria-label={t("dislikes", { count: comment.dislikes })}>
                     <ThumbsDown aria-hidden className="size-3" />
                     {comment.dislikes}
                   </span>

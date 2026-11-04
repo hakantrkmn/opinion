@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import type { PinScope } from "@/types/api";
 import { Globe2, Users } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { mapSurface } from "./control-styles";
 
 interface ScopeToggleProps {
@@ -14,18 +15,19 @@ interface ScopeToggleProps {
 }
 
 const OPTIONS = [
-  { value: "all", label: "All", icon: Globe2 },
-  { value: "following", label: "Following", icon: Users },
+  { value: "all", icon: Globe2 },
+  { value: "following", icon: Users },
 ] as const;
 
 export function ScopeToggle({ scope, onChange, onRequireSignIn, signedIn }: ScopeToggleProps) {
+  const t = useTranslations("map.scope");
   return (
     <div
       role="radiogroup"
-      aria-label="Whose pins to show"
+      aria-label={t("label")}
       className={cn("pointer-events-auto flex rounded-xl p-0.5", mapSurface)}
     >
-      {OPTIONS.map(({ value, label, icon: Icon }) => {
+      {OPTIONS.map(({ value, icon: Icon }) => {
         const active = scope === value;
         return (
           <button
@@ -45,7 +47,7 @@ export function ScopeToggle({ scope, onChange, onRequireSignIn, signedIn }: Scop
             )}
           >
             <Icon className="h-3.5 w-3.5" />
-            {label}
+            {t(value)}
           </button>
         );
       })}

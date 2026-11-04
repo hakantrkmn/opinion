@@ -9,6 +9,7 @@ import { errorMessage } from "@/lib/api/client";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { CommentItem, VoteValue } from "@/types/api";
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   deleteComment,
@@ -39,6 +40,7 @@ function invalidateProfileLists(queryClient: QueryClient) {
 
 export function useAddComment(pinId: string) {
   const queryClient = useQueryClient();
+  const t = useTranslations("comments.toast");
   return useMutation({
     mutationFn: async ({
       text,
@@ -72,11 +74,11 @@ export function useAddComment(pinId: string) {
         queryKey: queryKeys.pins.commentsAll(pinId),
       });
       invalidateProfileLists(queryClient);
-      toast.success("Comment posted");
+      toast.success(t("posted"));
     },
     onError: (error) => {
-      toast.error("Couldn't post your comment", {
-        description: errorMessage(error),
+      toast.error(t("postFailed"), {
+        description: errorMessage(error, t("somethingWentWrong")),
       });
     },
   });
@@ -84,6 +86,7 @@ export function useAddComment(pinId: string) {
 
 export function useEditComment(pinId: string) {
   const queryClient = useQueryClient();
+  const t = useTranslations("comments.toast");
   return useMutation({
     mutationFn: async ({
       commentId,
@@ -111,11 +114,11 @@ export function useEditComment(pinId: string) {
         }))
       );
       invalidateProfileLists(queryClient);
-      toast.success("Comment updated");
+      toast.success(t("updated"));
     },
     onError: (error) => {
-      toast.error("Couldn't update your comment", {
-        description: errorMessage(error),
+      toast.error(t("updateFailed"), {
+        description: errorMessage(error, t("somethingWentWrong")),
       });
     },
   });
@@ -124,6 +127,7 @@ export function useEditComment(pinId: string) {
 /** "I'm here now": marks the viewer's own comment as written on site. */
 export function useVerifyVisit(pinId: string) {
   const queryClient = useQueryClient();
+  const t = useTranslations("comments.toast");
   return useMutation({
     mutationFn: ({ commentId, fix }: { commentId: string; fix: GeoFix }) =>
       patchCommentRequest(commentId, toDeviceFixBody(fix)),
@@ -132,10 +136,10 @@ export function useVerifyVisit(pinId: string) {
         patchComment(data, comment.id, (c) => ({ ...c, verified_visit: comment.verified_visit }))
       );
       invalidateProfileLists(queryClient);
-      toast.success("Marked as “Was here”");
+      toast.success(t("verified"));
     },
     onError: (error) => {
-      toast.error("Couldn't confirm you're here", { description: errorMessage(error) });
+      toast.error(t("verifyFailed"), { description: errorMessage(error, t("somethingWentWrong")) });
     },
   });
 }
@@ -145,14 +149,15 @@ export function useDeleteComment(
   { onPinDeleted }: { onPinDeleted?: () => void } = {}
 ) {
   const queryClient = useQueryClient();
+  const t = useTranslations("comments.toast");
   return useMutation({
     mutationFn: (commentId: string) => deleteComment(commentId),
     onSuccess: (result, commentId) => {
       if (result.pin_deleted) {
         removeCachedPin(queryClient, result.pin_id);
         onPinDeleted?.();
-        toast.success("Comment deleted", {
-          description: "It was the last comment, so the pin was removed too.",
+        toast.success(t("deleted"), {
+          description: t("deletedPinRemoved"),
         });
       } else {
         updateCommentLists(queryClient, pinId, (data) =>
@@ -165,13 +170,13 @@ export function useDeleteComment(
           }))
         );
         adjustCommentsCount(queryClient, pinId, -1);
-        toast.success("Comment deleted");
+        toast.success(t("deleted"));
       }
       invalidateProfileLists(queryClient);
     },
     onError: (error) => {
-      toast.error("Couldn't delete the comment", {
-        description: errorMessage(error),
+      toast.error(t("deleteFailed"), {
+        description: errorMessage(error, t("somethingWentWrong")),
       });
     },
   });
@@ -187,6 +192,7 @@ type VoteSnapshot = Pick<CommentItem, "likes" | "dislikes" | "my_vote">;
  */
 export function useVoteComment(pinId: string) {
   const queryClient = useQueryClient();
+  const t = useTranslations("comments.toast");
   const othersInFlight = (commentId: string) =>
     queryClient.isMutating({
       mutationKey: ["vote-comment"],
@@ -223,8 +229,8 @@ export function useVoteComment(pinId: string) {
       if (context?.previous && !othersInFlight(commentId)) {
         setVoteState(commentId, context.previous);
       }
-      toast.error("Couldn't save your vote", {
-        description: errorMessage(error),
+      toast.error(t("voteFailed"), {
+        description: errorMessage(error, t("somethingWentWrong")),
       });
     },
   });

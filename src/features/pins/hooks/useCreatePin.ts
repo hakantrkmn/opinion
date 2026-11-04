@@ -3,6 +3,7 @@
 import { queryKeys } from "@/lib/api/query-keys";
 import type { PinCommentsResponse } from "@/types/api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { createPin, type CreatePinInput } from "../lib/api";
 import { addCachedPin } from "../lib/cache";
@@ -13,6 +14,7 @@ import { addCachedPin } from "../lib/cache";
  */
 export function useCreatePin() {
   const queryClient = useQueryClient();
+  const t = useTranslations("pins.create");
   return useMutation({
     mutationFn: (input: CreatePinInput) => createPin(input),
     onSuccess: ({ pin, comment }) => {
@@ -29,7 +31,7 @@ export function useCreatePin() {
           pageParams: [0],
         });
       }
-      toast.success("Pin dropped", { description: pin.name });
+      toast.success(t("dropped"), { description: pin.name });
     },
   });
 }

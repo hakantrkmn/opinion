@@ -1,1 +1,56 @@
-{}
+{
+  "blocked": {
+    "title": "Blocked users",
+    "description": "You don't see each other's pins and comments, and they can't open your profile.",
+    "loadError": "Couldn't load blocked users",
+    "tryAgain": "Try again",
+    "emptyTitle": "You haven't blocked anyone",
+    "emptyDescription": "Block someone from the menu on their profile.",
+    "deletedUser": "Deleted user",
+    "unblockLabel": "Unblock {name}",
+    "unblock": "Unblock",
+    "unblocking": "Unblocking…"
+  },
+  "reportButton": {
+    "pin": "Report pin",
+    "comment": "Report comment",
+    "report": "Report"
+  },
+  "reportDialog": {
+    "title": "Report this {targetType, select, pin {pin} comment {comment} other {user}}",
+    "description": "Reports are private. Moderators review them and remove anything that breaks the rules.",
+    "legend": "Why are you reporting it?",
+    "reasons": {
+      "spam": { "label": "Spam", "hint": "Ads, scams or repeated junk" },
+      "harassment": { "label": "Harassment or hate", "hint": "Targets a person or group" },
+      "inappropriate": { "label": "Inappropriate content", "hint": "Explicit, violent or illegal" },
+      "other": { "label": "Something else", "hint": "Tell us more in the note" }
+    },
+    "note": "Note",
+    "optional": "(optional)",
+    "notePlaceholder": "Anything that helps moderators understand the problem",
+    "noteHint": "Add a short note so moderators know what's wrong.",
+    "cancel": "Cancel",
+    "sending": "Sending…",
+    "send": "Send report"
+  },
+  "userActions": {
+    "more": "More actions",
+    "report": "Report user",
+    "unblock": "Unblock",
+    "block": "Block",
+    "thisUser": "this user",
+    "confirmTitle": "Block {name}?",
+    "confirmDescription": "You won't see each other's pins or comments, and any follows between you are removed. You can unblock them any time from Settings.",
+    "cancel": "Cancel"
+  },
+  "toast": {
+    "blocked": "User blocked",
+    "unblocked": "User unblocked",
+    "blockError": "Couldn't block user",
+    "unblockError": "Couldn't unblock user",
+    "reportSent": "Report submitted",
+    "reportSentDescription": "Thanks — our team will review it.",
+    "reportError": "Failed to submit report"
+  }
+}

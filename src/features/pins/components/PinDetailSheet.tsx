@@ -20,6 +20,7 @@ import { formatTimeAgo } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { CommentSort, PinSummary } from "@/types/api";
 import { MapPinOff, MessageCircle } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { usePin } from "../hooks/usePin";
 import { PIN_ACTIVITY, pinActivity } from "../lib/activity";
@@ -66,6 +67,7 @@ function PinDetail({
   onClose: () => void;
   onRequireSignIn: () => void;
 }) {
+  const t = useTranslations("pins.detail");
   const { user } = useSession();
   const [sort, setSort] = useState<CommentSort>(DEFAULT_COMMENT_SORT);
   const pinQuery = usePin(pinId);
@@ -78,17 +80,17 @@ function PinDetail({
 
   if (notFound) {
     return (
-      <ResponsiveDialogPanel title="Pin not found" headerClassName="sr-only">
+      <ResponsiveDialogPanel title={t("notFoundTitle")} headerClassName="sr-only">
         <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-6 text-center">
           <span className="flex size-14 items-center justify-center rounded-2xl bg-muted">
             <MapPinOff className="size-6 text-muted-foreground" />
           </span>
-          <p className="text-base font-semibold">This pin no longer exists</p>
+          <p className="text-base font-semibold">{t("notFoundHeading")}</p>
           <p className="max-w-xs text-sm text-muted-foreground">
-            It may have been removed by its author.
+            {t("notFoundDescription")}
           </p>
           <Button variant="outline" className="mt-2 h-10 rounded-xl" onClick={onClose}>
-            Back to the map
+            {t("backToMap")}
           </Button>
         </div>
       </ResponsiveDialogPanel>
@@ -98,7 +100,7 @@ function PinDetail({
   const count = comments.data ? comments.total : pin?.comments_count ?? 0;
 
   return (
-    <ResponsiveDialogPanel title={pin?.name ?? "Pin"} headerClassName="sr-only">
+    <ResponsiveDialogPanel title={pin?.name ?? t("fallbackTitle")} headerClassName="sr-only">
       <div className="flex min-h-0 flex-1 flex-col">
         <PinHeader pin={pin} count={count} />
 
@@ -133,6 +135,8 @@ function PinDetail({
 }
 
 function PinHeader({ pin, count }: { pin: PinSummary | undefined; count: number }) {
+  const t = useTranslations("pins");
+  const locale = useLocale();
   const activity = pinActivity(count);
   const tier = PIN_ACTIVITY[activity];
   return (
@@ -162,21 +166,21 @@ function PinHeader({ pin, count }: { pin: PinSummary | undefined; count: number 
                     : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
                 )}
               >
-                {tier.label}
+                {t(`activity.${activity}`)}
               </span>
             ) : null}
             <span className="inline-flex items-center gap-1 tabular-nums">
               <MessageCircle className="size-3.5" aria-hidden />
-              {count} {count === 1 ? "comment" : "comments"}
+              {t("detail.commentCount", { count })}
             </span>
           </div>
           {pin ? (
             <p className="mt-0.5 truncate text-xs text-muted-foreground">
-              by{" "}
-              <span className="font-medium text-foreground/80">
-                {pin.user.display_name ?? "Deleted user"}
-              </span>{" "}
-              · {formatTimeAgo(pin.created_at)}
+              {t.rich("detail.byline", {
+                name: pin.user.display_name ?? t("deletedUser"),
+                time: formatTimeAgo(pin.created_at, locale),
+                b: (chunks) => <span className="font-medium text-foreground/80">{chunks}</span>,
+              })}
             </p>
           ) : (
             <Skeleton className="mt-1.5 h-3 w-32" />

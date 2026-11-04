@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/responsive-dialog";
 import type { OwnUserProfile } from "@/types/userTypes";
 import { ChevronRight, ShieldOff } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { DeleteAccountSection } from "@/features/profile/components/settings/DeleteAccountSection";
 import { EmailSection } from "@/features/profile/components/settings/EmailSection";
 import { PasswordSection } from "@/features/profile/components/settings/PasswordSection";
@@ -24,6 +25,7 @@ export function AccountSettingsDialog({
   onOpenChange: (open: boolean) => void;
   onOpenBlocked?: () => void;
 }) {
+  const t = useTranslations("profile.settings");
   return (
     <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
       <ResponsiveDialogContent
@@ -31,15 +33,15 @@ export function AccountSettingsDialog({
         desktopClassName="sm:max-w-lg sm:max-h-[min(48rem,90dvh)] sm:overflow-y-auto"
       >
         <ResponsiveDialogPanel
-          title="Account settings"
-          description="Email, password, signed-in devices and privacy."
+          title={t("title")}
+          description={t("description")}
         >
           <div className="flex min-w-0 flex-col divide-y divide-border/60 px-5 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-6 [&>section:first-child]:pt-2">
             <EmailSection email={profile.email} emailVerified={profile.email_verified} />
             <PasswordSection email={profile.email} />
             {open ? <SessionsSection /> : null}
             {onOpenBlocked ? (
-              <SettingsSection title="Privacy">
+              <SettingsSection title={t("privacy")}>
                 <button
                   type="button"
                   onClick={onOpenBlocked}
@@ -49,9 +51,9 @@ export function AccountSettingsDialog({
                     <ShieldOff aria-hidden className="size-4" />
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="text-sm font-medium text-foreground">Blocked users</span>
+                    <span className="text-sm font-medium text-foreground">{t("blockedUsers")}</span>
                     <span className="text-xs text-muted-foreground">
-                      See and unblock people you&apos;ve blocked
+                      {t("blockedUsersHint")}
                     </span>
                   </span>
                   <ChevronRight aria-hidden className="size-4 text-muted-foreground" />

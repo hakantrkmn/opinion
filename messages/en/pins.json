@@ -1,1 +1,50 @@
-{}
+{
+  "activity": {
+    "new": "New",
+    "active": "Active",
+    "hot": "Hot"
+  },
+  "deletedUser": "Deleted user",
+  "create": {
+    "title": "What's your droPINion?",
+    "description": "Name this spot and share the first opinion.",
+    "atYourLocation": "At your location",
+    "weakSignal": "weak GPS signal",
+    "refreshLocation": "Refresh my location",
+    "locating": "Locating…",
+    "refresh": "Refresh",
+    "locationFailed": "Couldn't get your location",
+    "nameLabel": "Place name",
+    "nameRequired": "Give this spot a name.",
+    "namePlaceholder": "e.g. Corner bakery on Moda street",
+    "commentLabel": "Your opinion",
+    "commentRequired": "Share a few words about this place.",
+    "commentPlaceholder": "What do you think about this place?",
+    "photoLabel": "Photo <muted>(optional)</muted>",
+    "selectedPhoto": "Selected photo",
+    "removePhoto": "Remove photo",
+    "tooFarTitle": "You're too far from this spot",
+    "failedTitle": "Couldn't drop the pin",
+    "tooFarBody": "{hasDistance, select, yes {This spot is {distance} m from your location. } other {}}Pins can only be dropped within {max} m of where you are. Refresh your location and try again.",
+    "tryAgain": "Please try again.",
+    "cancel": "Cancel",
+    "dropping": "Dropping…",
+    "drop": "Drop pin",
+    "dropped": "Pin dropped"
+  },
+  "detail": {
+    "notFoundTitle": "Pin not found",
+    "notFoundHeading": "This pin no longer exists",
+    "notFoundDescription": "It may have been removed by its author.",
+    "backToMap": "Back to the map",
+    "fallbackTitle": "Pin",
+    "commentCount": "{count, plural, one {# comment} other {# comments}}",
+    "byline": "by <b>{name}</b> · {time}"
+  },
+  "actions": {
+    "directions": "Directions",
+    "share": "Share",
+    "linkCopied": "Link copied",
+    "shareThisLink": "Share this link"
+  }
+}
