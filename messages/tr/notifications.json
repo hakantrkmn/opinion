@@ -1,0 +1,16 @@
+{
+  "title": "Bildirimler",
+  "description": "Pinlerine gelen fikirler, beğeniler ve yeni takipçiler.",
+  "bellLabel": "{count, plural, =0 {Bildirimler} other {Bildirimler, # okunmamış}}",
+  "unread": "Okunmadı",
+  "loadError": "Bildirimler yüklenemedi",
+  "tryAgain": "Tekrar dene",
+  "emptyTitle": "Henüz bir şey yok",
+  "emptyDescription": "Biri pinlerine cevap verdiğinde, fikirlerini beğendiğinde ya da seni takip ettiğinde burada görünür.",
+  "someone": "Birisi",
+  "aPin": "bir pin",
+  "pinCommentedMine": "<b>{name}</b>{others, plural, =0 {} other { ve # kişi daha}} <pin>{pinName}</pin> pinine {count, plural, one {fikrini yazdı} other {fikirlerini yazdı}}",
+  "pinCommentedOther": "<b>{name}</b>{others, plural, =0 {} other { ve # kişi daha}} de <pin>{pinName}</pin> hakkında {count, plural, one {fikrini yazdı} other {fikirlerini yazdı}}",
+  "commentLiked": "<b>{name}</b>{others, plural, =0 {} other { ve # kişi daha}} <pin>{pinName}</pin> hakkındaki fikrini beğendi",
+  "followed": "<b>{name}</b>{others, plural, =0 {} other { ve # kişi daha}} seni takip etmeye başladı"
+}

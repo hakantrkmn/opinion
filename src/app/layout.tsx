@@ -8,6 +8,8 @@ import {
 } from "@/lib/structured-data";
 
 import type { Metadata, Viewport } from "next";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale } from "next-intl/server";
 import { Geist, Geist_Mono } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
@@ -109,16 +111,17 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   const baseUrl = getBaseUrl();
   const organizationSchema = generateOrganizationSchema({ baseUrl });
+  const locale = await getLocale();
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <head>
         {/* Organization Schema */}
         <script
@@ -129,6 +132,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <NextIntlClientProvider>
         <QueryProvider>
           <ThemeProvider
             attribute="class"
@@ -141,6 +145,7 @@ export default function RootLayout({
             <LazyToaster />
           </ThemeProvider>
         </QueryProvider>
+        </NextIntlClientProvider>
       </body>
       <GoogleAnalytics gaId="G-E88MSVDNE6" />
     </html>

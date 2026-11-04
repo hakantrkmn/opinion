@@ -12,6 +12,7 @@ import {
 } from "@/server/services/blocks";
 import { recordNotifications } from "@/server/services/inbox";
 import { pushService } from "@/server/services/pushService";
+import { pushCopy, recipientLocale } from "@/server/i18n/push-copy";
 import { assertActiveUser } from "./profile";
 import { isoRequired, toUserSummary } from "./mappers";
 import type { Paginated, UserSummary } from "@/types/api";
@@ -50,15 +51,13 @@ async function notifyFollowed(followerId: string, followingId: string) {
   if (!recorded?.should_push) return;
   const devices = await pushService.getActiveDevicesForUser(followingId);
   if (devices.length === 0) return;
-  const [follower] = await db
-    .select({ displayName: user.displayName })
-    .from(user)
-    .where(eq(user.id, followerId))
-    .limit(1);
-  const name = follower?.displayName || "Birisi";
+  const [[follower], [recipient]] = await Promise.all([
+    db.select({ displayName: user.displayName }).from(user).where(eq(user.id, followerId)).limit(1),
+    db.select({ locale: user.locale }).from(user).where(eq(user.id, followingId)).limit(1),
+  ]);
+  const copy = pushCopy.followed(recipientLocale(recipient?.locale), follower?.displayName ?? null);
   await pushService.sendToDevices(devices, {
-    title: `${name} seni takip etmeye başladı`,
-    body: "Profiline göz at ve yeni pinlerini paylaş.",
+    ...copy,
     data: { type: "follow", follower_id: followerId },
   });
 }

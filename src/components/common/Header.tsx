@@ -7,9 +7,11 @@ import { useSession } from "@/features/auth/hooks/useSession";
 import { useUserProfile } from "@/features/profile/hooks/useUserProfile";
 import { cn } from "@/lib/utils";
 import { Coffee, Loader2, LogOut, Search, Shield } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { LocaleSwitcher } from "./LocaleSwitcher";
 import { SUPPORT_URL } from "./support";
 import { UserMenu } from "./UserMenu";
 
@@ -21,12 +23,13 @@ const textButton =
   "flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-xs font-medium transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-3.5";
 
 export default function Header() {
+  const t = useTranslations("header");
   const { user, isLoading, signOut, isSigningOut } = useSession();
   const { profile } = useUserProfile();
   const pathname = usePathname();
   const [showUserSearch, setShowUserSearch] = useState(false);
 
-  const name = profile?.display_name || user?.name || user?.email || "You";
+  const name = profile?.display_name || user?.name || user?.email || t("you");
   // `role` is an additional field on the better-auth user.
   const isAdmin = (user as { role?: string | null } | null)?.role === "admin";
 
@@ -40,19 +43,21 @@ export default function Header() {
           <Link
             href="/"
             className="-mx-1 rounded-lg px-1 text-lg font-bold tracking-tight text-foreground transition-opacity duration-150 hover:opacity-80"
-            aria-label="droPINion home"
+            aria-label={t("home")}
           >
             droPINion
           </Link>
 
-          <nav aria-label="Account" className="flex items-center gap-1">
+          <nav aria-label={t("account")} className="flex items-center gap-1">
+            {/* Phones, signed in: the language switch lives in the avatar menu. */}
+            <LocaleSwitcher className={cn(iconButton, (user || isLoading) && "max-sm:hidden")} />
             <a
               href={SUPPORT_URL}
               target="_blank"
               rel="noopener noreferrer"
               className={cn(iconButton, (user || isLoading) && "max-sm:hidden")}
-              aria-label="Buy me a coffee (opens in a new tab)"
-              title="Buy me a coffee"
+              aria-label={t("buyCoffeeNewTab")}
+              title={t("buyCoffee")}
             >
               <Coffee />
             </a>
@@ -63,8 +68,8 @@ export default function Header() {
                   type="button"
                   onClick={() => setShowUserSearch(true)}
                   className={iconButton}
-                  aria-label="Search people"
-                  title="Search people"
+                  aria-label={t("searchPeople")}
+                  title={t("searchPeople")}
                 >
                   <Search />
                 </button>
@@ -88,8 +93,8 @@ export default function Header() {
                     <Link
                       href="/admin"
                       className={cn(iconButton, pathname?.startsWith("/admin") && "bg-primary/10 text-primary")}
-                      aria-label="Admin panel"
-                      title="Admin panel"
+                      aria-label={t("adminPanel")}
+                      title={t("adminPanel")}
                     >
                       <Shield />
                     </Link>
@@ -123,7 +128,7 @@ export default function Header() {
                     className={cn(textButton, "text-muted-foreground hover:bg-muted hover:text-foreground")}
                   >
                     {isSigningOut ? <Loader2 className="animate-spin" /> : <LogOut />}
-                    {isSigningOut ? "Signing out…" : "Sign out"}
+                    {isSigningOut ? t("signingOut") : t("signOut")}
                   </button>
                 </div>
               </>
@@ -138,7 +143,7 @@ export default function Header() {
                   "ml-1 bg-primary px-4 font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 pointer-coarse:h-10"
                 )}
               >
-                Sign in
+                {t("signIn")}
               </Link>
             )}
           </nav>

@@ -1,4 +1,5 @@
 import "server-only";
+import { LOCALE_COOKIE, resolveLocale } from "@/i18n/config";
 import { hashPassword, verifyPassword } from "./password";
 import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
@@ -70,6 +71,16 @@ function validateDisplayName(raw: unknown): string {
     });
   }
   return value;
+}
+
+/** One cookie value from a Cookie header. */
+function readCookie(header: string | null | undefined, name: string): string | null {
+  if (!header) return null;
+  for (const part of header.split(";")) {
+    const [key, ...value] = part.trim().split("=");
+    if (key === name) return decodeURIComponent(value.join("="));
+  }
+  return null;
 }
 
 export const auth = betterAuth({
@@ -153,6 +164,13 @@ export const auth = betterAuth({
         defaultValue: "user",
         input: false,
       },
+      // Set at sign-up from the UI language, changed via POST /api/locale.
+      locale: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        input: false,
+      },
     },
   },
   plugins: [
@@ -176,13 +194,19 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
-        before: async (user) => {
+        before: async (user, ctx) => {
           // display name defaults to the sign-up `name`.
           const displayName = validateDisplayName(
             (user as { displayName?: unknown }).displayName ?? user.name
           );
+          // Push / email language: whatever the UI was shown in.
+          const headers = ctx?.headers ?? ctx?.request?.headers;
+          const locale = resolveLocale({
+            cookie: readCookie(headers?.get("cookie"), LOCALE_COOKIE),
+            acceptLanguage: headers?.get("accept-language"),
+          });
           return {
-            data: { ...user, name: displayName, displayName, role: "user" },
+            data: { ...user, name: displayName, displayName, role: "user", locale },
           };
         },
         after: async (user) => {

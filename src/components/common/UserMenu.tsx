@@ -2,9 +2,11 @@
 
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
-import { Coffee, Loader2, LogOut, Shield, User } from "lucide-react";
+import { Coffee, Languages, Loader2, LogOut, Shield, User } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useLocaleSwitch } from "./LocaleSwitcher";
 import { SUPPORT_URL } from "./support";
 
 interface UserMenuProps {
@@ -28,6 +30,8 @@ export function UserMenu({
   isSigningOut,
   onSignOut,
 }: UserMenuProps) {
+  const t = useTranslations("header");
+  const language = useLocaleSwitch();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -97,7 +101,7 @@ export function UserMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}
-        aria-label="Account menu"
+        aria-label={t("accountMenu")}
         className="flex size-11 items-center justify-center rounded-full transition-transform duration-150 ease-out active:scale-[0.96]"
       >
         <span
@@ -114,7 +118,7 @@ export function UserMenu({
         ref={menuRef}
         id={menuId}
         role="menu"
-        aria-label="Account"
+        aria-label={t("account")}
         onKeyDown={onMenuKeyDown}
         className={cn(
           "absolute right-0 top-[calc(100%+6px)] z-(--z-popover) w-64 origin-top-right rounded-2xl border border-border/60 bg-popover p-1.5 text-popover-foreground shadow-raised transition-[opacity,transform,visibility] duration-150 ease-out",
@@ -131,12 +135,12 @@ export function UserMenu({
         <div className="mb-1 h-px bg-border/70" role="separator" />
         <Link href="/profile" role="menuitem" className={item} onClick={() => close(false)}>
           <User />
-          Profile
+          {t("profile")}
         </Link>
         {isAdmin ? (
           <Link href="/admin" role="menuitem" className={item} onClick={() => close(false)}>
             <Shield />
-            Admin panel
+            {t("adminPanel")}
           </Link>
         ) : null}
         <a
@@ -148,8 +152,22 @@ export function UserMenu({
           onClick={() => close(false)}
         >
           <Coffee />
-          Buy me a coffee
+          {t("buyCoffee")}
         </a>
+        <button
+          type="button"
+          role="menuitem"
+          className={item}
+          disabled={language.pending}
+          lang={language.next}
+          onClick={() => {
+            language.switchTo();
+            close(false);
+          }}
+        >
+          <Languages />
+          {language.nextName}
+        </button>
         <div className="my-1 h-px bg-border/70" role="separator" />
         <button
           type="button"
@@ -161,7 +179,7 @@ export function UserMenu({
           }}
         >
           {isSigningOut ? <Loader2 className="animate-spin" /> : <LogOut />}
-          {isSigningOut ? "Signing out…" : "Sign out"}
+          {isSigningOut ? t("signingOut") : t("signOut")}
         </button>
       </div>
     </div>

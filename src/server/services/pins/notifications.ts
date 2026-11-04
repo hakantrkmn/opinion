@@ -3,6 +3,8 @@ import { db, sql } from "@/server/db";
 import { pushService, type PushDevice } from "@/server/services/pushService";
 import { isBlockedRelation } from "@/server/services/blocks";
 import { recordNotifications } from "@/server/services/inbox";
+import { pushCopy, recipientLocale } from "@/server/i18n/push-copy";
+import type { Locale } from "@/i18n/config";
 
 /**
  * Inbox rows and push notifications triggered by pin / comment activity.
@@ -19,16 +21,21 @@ function snippet(text: string, max = 80): string {
   return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
-/** "Mert" / "Mert ve 2 kişi daha" */
-function actorLabel(name: string, count: number): string {
-  return count > 1 ? `${name} ve ${count - 1} kişi daha` : name;
-}
-
-async function displayName(userId: string): Promise<string> {
+async function displayName(userId: string): Promise<string | null> {
   const [row] = (await db.execute(sql`
     SELECT COALESCE(display_name, name) AS name FROM "user" WHERE id = ${userId}
   `)) as unknown as Array<{ name: string | null }>;
-  return row?.name || "Birisi";
+  return row?.name || null;
+}
+
+/** Devices grouped by their owner's language (one message per language). */
+function byLocale<T extends { locale: string | null }>(rows: T[]): Map<Locale, T[]> {
+  const groups = new Map<Locale, T[]>();
+  for (const row of rows) {
+    const l = recipientLocale(row.locale);
+    groups.set(l, [...(groups.get(l) ?? []), row]);
+  }
+  return groups;
 }
 
 /**
@@ -45,13 +52,15 @@ export async function notifyCommentLiked(params: {
   const { commentId, likerId } = params;
   try {
     const [comment] = (await db.execute(sql`
-      SELECT c.user_id, c.pin_id, c.text, c.likes_count
-      FROM comments c WHERE c.id = ${commentId}
+      SELECT c.user_id, c.pin_id, c.text, c.likes_count, u.locale
+      FROM comments c JOIN "user" u ON u.id = c.user_id
+      WHERE c.id = ${commentId}
     `)) as unknown as Array<{
       user_id: string;
       pin_id: string;
       text: string;
       likes_count: number;
+      locale: string | null;
     }>;
     if (!comment || comment.user_id === likerId) return;
     if (await isBlockedRelation(likerId, comment.user_id)) return;
@@ -93,7 +102,7 @@ export async function notifyCommentLiked(params: {
     if (devices.length === 0) return;
 
     await pushService.sendToDevices(devices, {
-      title: `${actorLabel(await displayName(likerId), likes)} yorumunu beğendi`,
+      title: pushCopy.commentLiked(recipientLocale(comment.locale), await displayName(likerId), likes),
       body: snippet(comment.text),
       data: {
         type: "comment_like",
@@ -121,7 +130,7 @@ export async function notifyFollowersOfNewPin(params: {
 }): Promise<void> {
   try {
     const rows = (await db.execute(sql`
-      SELECT DISTINCT t.token, t.platform
+      SELECT DISTINCT t.token, t.platform, fu.locale
       FROM user_follows f
       JOIN push_tokens t ON t.user_id = f.follower_id AND t.is_active
       JOIN "user" fu ON fu.id = f.follower_id AND fu.deleted_at IS NULL
@@ -131,23 +140,25 @@ export async function notifyFollowersOfNewPin(params: {
           WHERE (b.blocker_id = f.follower_id AND b.blocked_id = f.following_id)
              OR (b.blocker_id = f.following_id AND b.blocked_id = f.follower_id)
         )
-    `)) as unknown as PushDevice[];
+    `)) as unknown as Array<PushDevice & { locale: string | null }>;
     if (rows.length === 0) return;
 
-    await pushService.sendToDevices(
-      rows,
-      {
-        title: `${await displayName(params.authorId)} yeni bir pin bıraktı`,
-        body: params.pinName,
-        data: {
-          type: "followed_user_pin",
-          authorId: params.authorId,
-          pinId: params.pinId,
-          pinName: params.pinName,
-          latitude: params.lat,
-          longitude: params.lng,
-        },
-      }
+    const author = await displayName(params.authorId);
+    await Promise.all(
+      [...byLocale(rows)].map(([locale, devices]) =>
+        pushService.sendToDevices(devices, {
+          title: pushCopy.followedUserPin(locale, author),
+          body: params.pinName,
+          data: {
+            type: "followed_user_pin",
+            authorId: params.authorId,
+            pinId: params.pinId,
+            pinName: params.pinName,
+            latitude: params.lat,
+            longitude: params.lng,
+          },
+        })
+      )
     );
   } catch (error) {
     console.error("[notifyFollowersOfNewPin]", params.pinId, error);
@@ -207,13 +218,14 @@ export async function notifyPinCommented(params: {
     if (toPush.length === 0) return;
 
     const devices = (await db.execute(sql`
-      SELECT t.user_id, t.token, t.platform
+      SELECT t.user_id, t.token, t.platform, u.locale
       FROM push_tokens t
+      JOIN "user" u ON u.id = t.user_id
       WHERE t.is_active AND t.user_id IN (${sql.join(
         toPush.map((r) => sql`${r.recipient_id}`),
         sql`, `
       )})
-    `)) as unknown as Array<PushDevice & { user_id: string }>;
+    `)) as unknown as Array<PushDevice & { user_id: string; locale: string | null }>;
     if (devices.length === 0) return;
 
     const name = await displayName(commenterId);
@@ -223,11 +235,14 @@ export async function notifyPinCommented(params: {
         const mine = devices.filter((d) => d.user_id === r.recipient_id);
         if (mine.length === 0) return null;
         const isOwner = r.recipient_id === ctx.owner_id;
+        const locale = recipientLocale(mine[0].locale);
         return pushService.sendToDevices(mine, {
           title: isOwner
-            ? `${actorLabel(name, r.count)} pinine yorum yaptı`
-            : `“${snippet(ctx.pin_name, 40)}” hakkında yeni yorum`,
-          body: isOwner ? `${snippet(ctx.pin_name, 40)} · ${body}` : `${name}: ${body}`,
+            ? pushCopy.pinCommentedOwner(locale, name, r.count)
+            : pushCopy.pinCommentedOthers(locale, snippet(ctx.pin_name, 40)),
+          body: isOwner
+            ? `${snippet(ctx.pin_name, 40)} · ${body}`
+            : `${name ?? pushCopy.someone(locale)}: ${body}`,
           data: {
             type: "pin_comment",
             pinId,

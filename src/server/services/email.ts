@@ -1,5 +1,8 @@
 import "server-only";
 import { Resend } from "resend";
+import { db, sql } from "@/server/db";
+import type { Locale } from "@/i18n/config";
+import { recipientLocale } from "@/server/i18n/push-copy";
 
 export type OtpEmailType =
   | "sign-in"
@@ -19,28 +22,80 @@ function getResend(): Resend {
   return cachedResend;
 }
 
-const OTP_COPY: Record<OtpEmailType, { subject: string; heading: string; intro: string }> = {
-  "forget-password": {
-    subject: "Your droPINion password reset code",
-    heading: "Reset your password",
-    intro: "Use the code below to reset your password. It expires in 10 minutes.",
+type OtpCopy = { subject: string; heading: string; intro: string };
+
+/** Shared lines of every code email. */
+const COMMON_COPY: Record<Locale, { code: string; expires: string; ignore: string }> = {
+  en: {
+    code: "Your code",
+    expires: "This code expires in 10 minutes.",
+    ignore: "If you didn't request this, you can safely ignore this email.",
   },
-  "email-verification": {
-    subject: "Verify your droPINion email",
-    heading: "Verify your email",
-    intro: "Use the code below to verify your email address. It expires in 10 minutes.",
-  },
-  "change-email": {
-    subject: "Confirm your new droPINion email",
-    heading: "Confirm your new email",
-    intro: "Use the code below to confirm this as your new email address. It expires in 10 minutes.",
-  },
-  "sign-in": {
-    subject: "Your droPINion sign-in code",
-    heading: "Sign in to droPINion",
-    intro: "Use the code below to sign in. It expires in 10 minutes.",
+  tr: {
+    code: "Kodun",
+    expires: "Bu kodun süresi 10 dakika içinde doluyor.",
+    ignore: "Bunu sen istemediysen bu e-postayı görmezden gelebilirsin.",
   },
 };
+
+const OTP_COPY: Record<Locale, Record<OtpEmailType, OtpCopy>> = {
+  en: {
+    "forget-password": {
+      subject: "Your droPINion password reset code",
+      heading: "Reset your password",
+      intro: "Use the code below to reset your password. It expires in 10 minutes.",
+    },
+    "email-verification": {
+      subject: "Verify your droPINion email",
+      heading: "Verify your email",
+      intro: "Use the code below to verify your email address. It expires in 10 minutes.",
+    },
+    "change-email": {
+      subject: "Confirm your new droPINion email",
+      heading: "Confirm your new email",
+      intro: "Use the code below to confirm this as your new email address. It expires in 10 minutes.",
+    },
+    "sign-in": {
+      subject: "Your droPINion sign-in code",
+      heading: "Sign in to droPINion",
+      intro: "Use the code below to sign in. It expires in 10 minutes.",
+    },
+  },
+  tr: {
+    "forget-password": {
+      subject: "droPINion şifre sıfırlama kodun",
+      heading: "Şifreni sıfırla",
+      intro: "Şifreni sıfırlamak için aşağıdaki kodu kullan. Kodun süresi 10 dakika.",
+    },
+    "email-verification": {
+      subject: "droPINion e-postanı doğrula",
+      heading: "E-postanı doğrula",
+      intro: "E-posta adresini doğrulamak için aşağıdaki kodu kullan. Kodun süresi 10 dakika.",
+    },
+    "change-email": {
+      subject: "Yeni droPINion e-postanı onayla",
+      heading: "Yeni e-postanı onayla",
+      intro: "Bu adresi yeni e-postan olarak onaylamak için aşağıdaki kodu kullan. Kodun süresi 10 dakika.",
+    },
+    "sign-in": {
+      subject: "droPINion giriş kodun",
+      heading: "droPINion'a giriş yap",
+      intro: "Giriş yapmak için aşağıdaki kodu kullan. Kodun süresi 10 dakika.",
+    },
+  },
+};
+
+/** The account's language for this address (Turkish when unknown). */
+async function localeForEmail(email: string): Promise<Locale> {
+  try {
+    const [row] = (await db.execute(sql`
+      SELECT locale FROM "user" WHERE lower(email) = lower(${email}) LIMIT 1
+    `)) as unknown as Array<{ locale: string | null }>;
+    return recipientLocale(row?.locale);
+  } catch {
+    return recipientLocale(null);
+  }
+}
 
 /**
  * Send a one-time code. When Resend is not configured the code is logged to
@@ -52,7 +107,9 @@ export async function sendOtpEmail(
   code: string,
   type: OtpEmailType
 ): Promise<void> {
-  const copy = OTP_COPY[type];
+  const locale = await localeForEmail(email);
+  const copy = OTP_COPY[locale][type];
+  const common = COMMON_COPY[locale];
   if (!isEmailConfigured()) {
     if (process.env.NODE_ENV !== "production") {
       console.warn(`[email:dev] ${type} code for ${email}: ${code}`);
@@ -69,8 +126,8 @@ export async function sendOtpEmail(
       from: process.env.RESEND_FROM_EMAIL as string,
       to: email,
       subject: copy.subject,
-      html: renderOtpHtml(code, copy.heading, copy.intro),
-      text: renderOtpText(code, copy.heading),
+      html: renderOtpHtml(code, copy.heading, copy.intro, common.ignore, locale),
+      text: renderOtpText(code, copy.heading, common),
     });
     if (error) console.error(`[email] Resend error (${type}):`, error.message);
   } catch (error) {
@@ -83,9 +140,15 @@ export async function sendPasswordResetOtp(email: string, code: string) {
   await sendOtpEmail(email, code, "forget-password");
 }
 
-function renderOtpHtml(code: string, heading: string, intro: string): string {
+function renderOtpHtml(
+  code: string,
+  heading: string,
+  intro: string,
+  ignore: string,
+  locale: Locale
+): string {
   return `<!doctype html>
-<html>
+<html lang="${locale}">
   <body style="margin:0;padding:0;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:40px 16px;">
       <tr>
@@ -116,7 +179,7 @@ function renderOtpHtml(code: string, heading: string, intro: string): string {
             <tr>
               <td style="padding:0 32px 32px;">
                 <p style="margin:0;font-size:13px;line-height:1.6;color:#737373;">
-                  If you didn't request this, you can safely ignore this email.
+                  ${escapeHtml(ignore)}
                 </p>
               </td>
             </tr>
@@ -133,15 +196,14 @@ function renderOtpHtml(code: string, heading: string, intro: string): string {
 </html>`;
 }
 
-function renderOtpText(code: string, heading: string): string {
-  return [
-    `droPINion — ${heading}`,
-    "",
-    `Your code: ${code}`,
-    "",
-    "This code expires in 10 minutes.",
-    "If you didn't request this, you can safely ignore this email.",
-  ].join("\n");
+function renderOtpText(
+  code: string,
+  heading: string,
+  common: (typeof COMMON_COPY)[Locale]
+): string {
+  return [`droPINion — ${heading}`, "", `${common.code}: ${code}`, "", common.expires, common.ignore].join(
+    "\n"
+  );
 }
 
 function escapeHtml(s: string): string {

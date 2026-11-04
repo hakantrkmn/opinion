@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { Bell } from "lucide-react";
+import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { useUnreadNotificationCount } from "../hooks/use-notifications";
@@ -13,11 +14,12 @@ const NotificationInbox = dynamic(
 
 /** Header bell with an unread badge; opens the inbox. Signed-in only. */
 export function NotificationBell({ className }: { className?: string }) {
+  const t = useTranslations("notifications");
   const [open, setOpen] = useState(false);
   // Loaded once opened, then kept mounted so the close animation plays.
   const [mounted, setMounted] = useState(false);
   const { data: unread = 0 } = useUnreadNotificationCount(true);
-  const label = unread > 0 ? `Notifications, ${unread} unread` : "Notifications";
+  const label = t("bellLabel", { count: unread });
 
   return (
     <>
@@ -29,7 +31,7 @@ export function NotificationBell({ className }: { className?: string }) {
         }}
         className={cn("relative", className)}
         aria-label={label}
-        title="Notifications"
+        title={t("title")}
       >
         <Bell />
         {unread > 0 ? (

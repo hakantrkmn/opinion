@@ -1,0 +1,16 @@
+{
+  "title": "Notifications",
+  "description": "Opinions on your pins, likes and new followers.",
+  "bellLabel": "{count, plural, =0 {Notifications} other {Notifications, # unread}}",
+  "unread": "Unread",
+  "loadError": "Couldn't load notifications",
+  "tryAgain": "Try again",
+  "emptyTitle": "Nothing yet",
+  "emptyDescription": "When someone answers your pins, likes your opinions or follows you, it shows up here.",
+  "someone": "Someone",
+  "aPin": "a pin",
+  "pinCommentedMine": "<b>{name}</b>{others, plural, =0 {} one { and # other} other { and # others}} shared {count, plural, one {an opinion} other {opinions}} on your pin <pin>{pinName}</pin>",
+  "pinCommentedOther": "<b>{name}</b>{others, plural, =0 {} one { and # other} other { and # others}} also shared {count, plural, one {an opinion} other {opinions}} on <pin>{pinName}</pin>",
+  "commentLiked": "<b>{name}</b>{others, plural, =0 {} one { and # other} other { and # others}} liked your opinion on <pin>{pinName}</pin>",
+  "followed": "<b>{name}</b>{others, plural, =0 {} one { and # other} other { and # others}} started following you"
+}

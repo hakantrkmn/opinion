@@ -14,6 +14,7 @@ import { formatTimeAgo } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { NotificationItem } from "@/types/api";
 import { AlertCircle, Bell, Heart, MessageCircle, RotateCcw, UserPlus } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { useMarkNotificationsRead, useNotifications } from "../hooks/use-notifications";
@@ -27,46 +28,36 @@ const TYPE_ICON = {
   followed: { icon: UserPlus, className: "bg-emerald-600 text-white" },
 } as const;
 
-function Actor({ item }: { item: NotificationItem }) {
-  const name = item.actor.display_name || "Someone";
-  const others = item.count - 1;
-  return (
-    <>
-      <span className="font-semibold text-foreground">{name}</span>
-      {others > 0 ? ` and ${others} ${others === 1 ? "other" : "others"}` : null}
-    </>
-  );
-}
+const RICH_TAGS = {
+  b: (chunks: React.ReactNode) => <span className="font-semibold text-foreground">{chunks}</span>,
+  pin: (chunks: React.ReactNode) => <span className="font-medium text-foreground">{chunks}</span>,
+};
+
+const MESSAGE_KEY = {
+  comment_liked: "commentLiked",
+  followed: "followed",
+} as const;
 
 function Message({ item }: { item: NotificationItem }) {
-  const pinName = item.pin ? <span className="font-medium text-foreground">{item.pin.name}</span> : "a pin";
-  switch (item.type) {
-    case "pin_commented":
-      return item.pin?.is_mine ? (
-        <>
-          <Actor item={item} /> shared {item.count > 1 ? "opinions" : "an opinion"} on your pin {pinName}
-        </>
-      ) : (
-        <>
-          <Actor item={item} /> also shared {item.count > 1 ? "opinions" : "an opinion"} on {pinName}
-        </>
-      );
-    case "comment_liked":
-      return (
-        <>
-          <Actor item={item} /> liked your opinion on {pinName}
-        </>
-      );
-    case "followed":
-      return (
-        <>
-          <Actor item={item} /> started following you
-        </>
-      );
-  }
+  const t = useTranslations("notifications");
+  const key =
+    item.type === "pin_commented"
+      ? item.pin?.is_mine
+        ? "pinCommentedMine"
+        : "pinCommentedOther"
+      : MESSAGE_KEY[item.type];
+  return t.rich(key, {
+    ...RICH_TAGS,
+    name: item.actor.display_name || t("someone"),
+    others: item.count - 1,
+    count: item.count,
+    pinName: item.pin?.name ?? t("aPin"),
+  });
 }
 
 function NotificationRow({ item, onOpen }: { item: NotificationItem; onOpen: () => void }) {
+  const t = useTranslations("notifications");
+  const locale = useLocale();
   const { icon: Icon, className: iconClass } = TYPE_ICON[item.type];
   return (
     <li>
@@ -105,12 +96,12 @@ function NotificationRow({ item, onOpen }: { item: NotificationItem; onOpen: () 
             </span>
           ) : null}
           <time dateTime={item.updated_at} className="text-xs text-muted-foreground/80">
-            {formatTimeAgo(item.updated_at)}
+            {formatTimeAgo(item.updated_at, locale)}
           </time>
         </span>
         {!item.read ? (
           <span className="mt-2 size-2 shrink-0 rounded-full bg-primary">
-            <span className="sr-only">Unread</span>
+            <span className="sr-only">{t("unread")}</span>
           </span>
         ) : null}
       </button>
@@ -126,6 +117,7 @@ export function NotificationInbox({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const t = useTranslations("notifications");
   const query = useNotifications(open);
   const items = query.items;
   const markRead = useMarkNotificationsRead();
@@ -169,8 +161,8 @@ export function NotificationInbox({
         className="flex flex-col"
       >
         <ResponsiveDialogPanel
-          title="Notifications"
-          description="Opinions on your pins, likes and new followers."
+          title={t("title")}
+          description={t("description")}
         >
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:max-h-[65dvh] sm:px-4">
             {query.isLoading ? (
@@ -179,20 +171,20 @@ export function NotificationInbox({
               <ListMessage
                 tone="error"
                 icon={<AlertCircle aria-hidden />}
-                title="Couldn't load notifications"
+                title={t("loadError")}
                 description={query.error.message}
                 action={
                   <Button variant="outline" className="h-10 rounded-xl" onClick={() => void query.refetch()}>
                     <RotateCcw aria-hidden />
-                    Try again
+                    {t("tryAgain")}
                   </Button>
                 }
               />
             ) : items.length === 0 ? (
               <ListMessage
                 icon={<Bell aria-hidden />}
-                title="Nothing yet"
-                description="When someone answers your pins, likes your opinions or follows you, it shows up here."
+                title={t("emptyTitle")}
+                description={t("emptyDescription")}
               />
             ) : (
               <>

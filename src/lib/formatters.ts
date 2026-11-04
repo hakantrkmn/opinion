@@ -2,47 +2,38 @@ const dateFormatterCache = new Map<string, Intl.DateTimeFormat>();
 const numberFormatterCache = new Map<string, Intl.NumberFormat>();
 
 /**
- * The UI copy is English, and server and client must format identically to
- * avoid hydration mismatches, so formatting is pinned to "en".
+ * Locale-aware formatting. Pass the UI locale (`useLocale()` in client
+ * components, `getLocale()` on the server) so SSR and the browser format
+ * identically; it defaults to English.
  */
-function getLocale() {
-  return "en";
-}
-
-function getDateFormatter(options: Intl.DateTimeFormatOptions) {
-  const locale = getLocale();
+function getDateFormatter(locale: string, options: Intl.DateTimeFormatOptions) {
   const key = `${locale}:${JSON.stringify(options)}`;
-
   if (!dateFormatterCache.has(key)) {
     dateFormatterCache.set(key, new Intl.DateTimeFormat(locale, options));
   }
-
   return dateFormatterCache.get(key)!;
 }
 
-function getNumberFormatter(options: Intl.NumberFormatOptions) {
-  const locale = getLocale();
+function getNumberFormatter(locale: string, options: Intl.NumberFormatOptions) {
   const key = `${locale}:${JSON.stringify(options)}`;
-
   if (!numberFormatterCache.has(key)) {
     numberFormatterCache.set(key, new Intl.NumberFormat(locale, options));
   }
-
   return numberFormatterCache.get(key)!;
 }
 
-export function formatShortDate(value: string | Date) {
+export function formatShortDate(value: string | Date, locale = "en") {
   const date = typeof value === "string" ? new Date(value) : value;
-  return getDateFormatter({
+  return getDateFormatter(locale, {
     day: "numeric",
     month: "short",
     year: "numeric",
   }).format(date);
 }
 
-export function formatRelativeDateTime(value: string | Date) {
+export function formatRelativeDateTime(value: string | Date, locale = "en") {
   const date = typeof value === "string" ? new Date(value) : value;
-  return getDateFormatter({
+  return getDateFormatter(locale, {
     day: "numeric",
     month: "short",
     hour: "2-digit",
@@ -50,19 +41,19 @@ export function formatRelativeDateTime(value: string | Date) {
   }).format(date);
 }
 
-export function formatCompactNumber(value: number) {
-  return getNumberFormatter({
+export function formatCompactNumber(value: number, locale = "en") {
+  return getNumberFormatter(locale, {
     notation: "compact",
     maximumFractionDigits: value >= 1000 ? 1 : 0,
   }).format(value);
 }
 
 /** "650 m", "2.4 km", "183 km". */
-export function formatDistance(meters: number) {
+export function formatDistance(meters: number, locale = "en") {
   const rounded = Math.round(meters / 10) * 10;
   if (rounded < 1000) return `${Math.max(10, rounded)} m`;
   const km = meters / 1000;
-  return `${getNumberFormatter({ maximumFractionDigits: km < 10 ? 1 : 0 }).format(km)} km`;
+  return `${getNumberFormatter(locale, { maximumFractionDigits: km < 10 ? 1 : 0 }).format(km)} km`;
 }
 
 const relativeFormatterCache = new Map<string, Intl.RelativeTimeFormat>();
@@ -77,21 +68,20 @@ const RELATIVE_STEPS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["year", Number.POSITIVE_INFINITY],
 ];
 
-/** "3 hours ago", "yesterday"… (English, like the rest of the UI). */
-export function formatTimeAgo(value: string | Date, now = Date.now()) {
+/** "3 hours ago", "yesterday", "now"… in the given locale. */
+export function formatTimeAgo(value: string | Date, locale = "en", now = Date.now()) {
   const date = typeof value === "string" ? new Date(value) : value;
   let delta = (date.getTime() - now) / 1000;
-  if (Math.abs(delta) < 45) return "just now";
 
-  const locale = "en";
   let formatter = relativeFormatterCache.get(locale);
   if (!formatter) {
     formatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
     relativeFormatterCache.set(locale, formatter);
   }
+  if (Math.abs(delta) < 45) return formatter.format(0, "second");
   for (const [unit, size] of RELATIVE_STEPS) {
     if (Math.abs(delta) < size) return formatter.format(Math.round(delta), unit);
     delta /= size;
   }
-  return formatShortDate(date);
+  return formatShortDate(date, locale);
 }

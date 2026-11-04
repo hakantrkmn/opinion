@@ -26,6 +26,8 @@ export const user = pgTable(
     displayName: text("display_name"),
     avatarUrl: text("avatar_url"),
     role: text("role").notNull().default("user"),
+    /** UI language ("en" | "tr") for push and email; null = not chosen. */
+    locale: text("locale"),
     /** Soft-delete marker set by account deletion (see 0007). */
     deletedAt: tstz("deleted_at"),
   },
