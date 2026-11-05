@@ -82,7 +82,7 @@ export const CommentCard = memo(function CommentCard({
         >
           <Avatar src={comment.user.avatar_url} alt={name} size="sm" fallbackText={name} />
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
               <span className="truncate text-sm font-semibold leading-tight">{name}</span>
               {comment.is_first_comment ? (
                 <span
