@@ -78,6 +78,11 @@
         "title": "Delete this account?",
         "description": "This permanently deletes the account of {label}. All open reports on it will be marked resolved.",
         "confirm": "Delete account"
+      },
+      "community": {
+        "title": "Delete this community?",
+        "description": "This permanently deletes the community \"{label}\" and its member list. Pins and opinions stay. All open reports on it will be marked resolved.",
+        "confirm": "Delete community"
       }
     },
     "broadcast": {
@@ -105,7 +110,8 @@
     "target": {
       "pin": "Pin",
       "comment": "Comment",
-      "user": "User"
+      "user": "User",
+      "community": "Community"
     },
     "reason": {
       "spam": "Spam",
@@ -123,7 +129,8 @@
     "remove": {
       "pin": "Remove pin",
       "comment": "Remove comment",
-      "user": "Remove user"
+      "user": "Remove user",
+      "community": "Delete community"
     },
     "closed": "Closed {date}"
   },

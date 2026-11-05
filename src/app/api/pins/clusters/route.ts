@@ -12,7 +12,7 @@ import { getPinClusters, mapCacheHeaders } from "@/server/services/pins";
 import type { PinClustersResponse } from "@/types/api";
 
 /**
- * GET /api/pins/clusters?minLat&maxLat&minLng&maxLng&zoom&scope
+ * GET /api/pins/clusters?minLat&maxLat&minLng&maxLng&zoom&scope&community_id
  * → PinClustersResponse. `zoom` is clamped to [0, PIN_DETAIL_MIN_ZOOM - 1].
  */
 export async function GET(request: NextRequest) {
@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
     const body: PinClustersResponse = await getPinClusters({
       bounds: q.data,
       scope: q.data.scope,
+      communityId: q.data.community_id,
       zoom: q.data.zoom,
       viewerId,
     });

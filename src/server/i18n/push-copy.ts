@@ -44,6 +44,12 @@ export const pushCopy = {
   pinCommentedOthers: (l: Locale, pinName: string) =>
     l === "tr" ? `“${pinName}” hakkında yeni yorum` : `New opinion on “${pinName}”`,
 
+  /** To the founder; the body is the community name. */
+  communityJoined: (l: Locale, name: string | null, count: number) =>
+    l === "tr"
+      ? `${actors(l, name, count)} topluluğuna katıldı`
+      : `${actors(l, name, count)} joined your community`,
+
   followed: (l: Locale, name: string | null) =>
     l === "tr"
       ? {

@@ -78,7 +78,7 @@ export const unregisterPushTokenSchema = z.object({
   token: z.string().min(1).max(1024),
 });
 
-export const reportTargetTypeSchema = z.enum(["pin", "comment", "user"]);
+export const reportTargetTypeSchema = z.enum(["pin", "comment", "user", "community"]);
 export const reportReasonSchema = z.enum([
   "spam",
   "harassment",

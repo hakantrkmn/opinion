@@ -22,8 +22,8 @@ const SAFE_ID = /^[a-zA-Z0-9_-]{1,64}$/;
  * deletion ("ban").
  *
  * - Removes the user's votes, comments (and their photos), follows, blocks,
- *   filed reports, inbox rows (received and caused), push tokens, sessions
- *   and credentials.
+ *   communities they founded, memberships, filed reports, inbox rows
+ *   (received and caused), push tokens, sessions and credentials.
  * - Pins left without comments are removed by the comment-deletion trigger;
  *   pins that still have other people's comments stay, shown with an
  *   anonymous author (display_name null).
@@ -68,6 +68,10 @@ export async function deleteAccount(userId: string): Promise<boolean> {
     await tx
       .delete(userBlocks)
       .where(or(eq(userBlocks.blockerId, userId), eq(userBlocks.blockedId, userId)));
+    // Founded communities go with their members; removals cascade too.
+    await tx.execute(sql`DELETE FROM communities WHERE owner_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM community_members WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM community_removals WHERE user_id = ${userId}`);
     await tx.delete(reports).where(eq(reports.reporterId, userId));
     // Inbox: drop the user's own rows and groups only they caused; remove
     // them from other groups so the remaining actors' events survive.

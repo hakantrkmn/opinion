@@ -14,12 +14,14 @@ export type AuditAction =
   | "admin.report.dismiss"
   | "admin.report.delete_target.pin"
   | "admin.report.delete_target.comment"
-  | "admin.report.delete_target.user";
+  | "admin.report.delete_target.user"
+  | "admin.report.delete_target.community";
 
 export type AuditTargetType =
   | "user"
   | "pin"
   | "comment"
+  | "community"
   | "system"
   | "broadcast"
   | "report";

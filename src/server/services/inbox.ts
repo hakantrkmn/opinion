@@ -45,6 +45,7 @@ export async function recordNotifications(params: {
   actorId: string;
   pinId?: string | null;
   commentId?: string | null;
+  communityId?: string | null;
   pushCooldown?: string;
 }): Promise<RecordedNotification[]> {
   const { type, actorId } = params;
@@ -54,10 +55,11 @@ export async function recordNotifications(params: {
   const cooldown = params.pushCooldown ?? "0 seconds";
   const pinId = params.pinId ?? null;
   const commentId = params.commentId ?? null;
+  const communityId = params.communityId ?? null;
   const ids = (list: string[]) => sql.join(list.map((id) => sql`${id}`), sql`, `);
 
   return db.transaction(async (tx) => {
-    // Lock order user → pin → comment → notification: deleteAccount locks
+    // Lock order user → community / pin → comment → notification: deleteAccount locks
     // the user first and pin / comment deletes go pin → comment, so a
     // concurrent delete either waits for this insert or is seen here.
     const live = (await tx.execute(sql`
@@ -69,6 +71,12 @@ export async function recordNotifications(params: {
     const liveIds = new Set(live.map((r) => r.id));
     const recipients = candidates.filter((id) => liveIds.has(id));
     if (!liveIds.has(actorId) || recipients.length === 0) return [];
+    if (communityId) {
+      const community = await tx.execute(
+        sql`SELECT 1 FROM communities WHERE id = ${communityId} FOR KEY SHARE`
+      );
+      if (community.length === 0) return [];
+    }
     if (pinId) {
       const pin = await tx.execute(sql`SELECT 1 FROM pins WHERE id = ${pinId} FOR KEY SHARE`);
       if (pin.length === 0) return [];
@@ -85,9 +93,9 @@ export async function recordNotifications(params: {
       ELSE notifications.actor_ids || EXCLUDED.actor_id END`;
     const rows = (await tx.execute(sql`
       INSERT INTO notifications
-        (id, recipient_id, type, group_key, actor_id, actor_ids, pin_id, comment_id, pushed_at)
+        (id, recipient_id, type, group_key, actor_id, actor_ids, pin_id, comment_id, community_id, pushed_at)
       SELECT gen_random_uuid()::text, r.id, ${type}, ${key}, ${actorId}, ARRAY[${actorId}]::text[],
-             ${pinId}, ${commentId},
+             ${pinId}, ${commentId}, ${communityId},
              CASE WHEN EXISTS (
                SELECT 1 FROM notifications o
                WHERE o.recipient_id = r.id AND o.group_key = ${key}
@@ -144,6 +152,8 @@ interface NotificationRow {
   pin_is_mine: boolean | null;
   comment_id: string | null;
   comment_text: string | null;
+  community_id: string | null;
+  community_name: string | null;
 }
 
 function toNotificationItem(row: NotificationRow): NotificationItem {
@@ -173,6 +183,10 @@ function toNotificationItem(row: NotificationRow): NotificationItem {
       row.comment_id && row.comment_text !== null
         ? { id: row.comment_id, text: row.comment_text }
         : null,
+    community:
+      row.community_id && row.community_name !== null
+        ? { id: row.community_id, name: row.community_name }
+        : null,
   };
 }
 
@@ -190,11 +204,13 @@ export async function listNotifications(
       p.id AS pin_id, p.name AS pin_name,
       ST_Y(p.location) AS pin_lat, ST_X(p.location) AS pin_lng,
       (p.user_id = n.recipient_id) AS pin_is_mine,
-      c.id AS comment_id, left(c.text, ${SNIPPET_LENGTH}) AS comment_text
+      c.id AS comment_id, left(c.text, ${SNIPPET_LENGTH}) AS comment_text,
+      cm.id AS community_id, cm.name AS community_name
     FROM notifications n
     JOIN "user" a ON a.id = n.actor_id
     LEFT JOIN pins p ON p.id = n.pin_id
     LEFT JOIN comments c ON c.id = n.comment_id
+    LEFT JOIN communities cm ON cm.id = n.community_id
     WHERE ${visibleRowsSql(recipientId)}
     ORDER BY n.updated_at DESC, n.id
     LIMIT ${page.limit + 1} OFFSET ${page.offset}

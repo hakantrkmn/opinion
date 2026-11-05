@@ -78,6 +78,11 @@
         "title": "Bu hesap silinsin mi?",
         "description": "{label} hesabı kalıcı olarak silinecek. Bu hesapla ilgili tüm açık şikayetler çözüldü olarak işaretlenecek.",
         "confirm": "Hesabı sil"
+      },
+      "community": {
+        "title": "Bu topluluk silinsin mi?",
+        "description": "\"{label}\" topluluğu ve üye listesi kalıcı olarak silinecek. Pinler ve fikirler kalır. Bu toplulukla ilgili tüm açık şikayetler çözüldü olarak işaretlenecek.",
+        "confirm": "Topluluğu sil"
       }
     },
     "broadcast": {
@@ -105,7 +110,8 @@
     "target": {
       "pin": "Pin",
       "comment": "Yorum",
-      "user": "Kullanıcı"
+      "user": "Kullanıcı",
+      "community": "Topluluk"
     },
     "reason": {
       "spam": "Spam",
@@ -123,7 +129,8 @@
     "remove": {
       "pin": "Pini kaldır",
       "comment": "Yorumu kaldır",
-      "user": "Kullanıcıyı kaldır"
+      "user": "Kullanıcıyı kaldır",
+      "community": "Topluluğu sil"
     },
     "closed": "{date} tarihinde kapatıldı"
   },

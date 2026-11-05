@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/server/db";
 import { comments, pins, reports } from "@/server/db/schema/app";
 import { user } from "@/server/db/schema/auth";
@@ -15,8 +15,23 @@ import {
 import { RATE_LIMITS } from "@/server/http/rate-limit";
 import { createReportSchema } from "@/lib/validation/user-schemas";
 
-/** Owner of the reported entity, or null when it doesn't exist. */
-async function findTargetOwner(type: "pin" | "comment" | "user", id: string) {
+/**
+ * Owner of the reported entity, or null when it doesn't exist (or, for a
+ * community, the reporter is not a member: only members can see it).
+ */
+async function findTargetOwner(
+  type: "pin" | "comment" | "user" | "community",
+  id: string,
+  reporterId: string
+) {
+  if (type === "community") {
+    const [row] = (await db.execute(sql`
+      SELECT c.owner_id FROM communities c
+      JOIN community_members m ON m.community_id = c.id AND m.user_id = ${reporterId}
+      WHERE c.id = ${id}
+    `)) as unknown as Array<{ owner_id: string }>;
+    return row?.owner_id ?? null;
+  }
   if (type === "pin") {
     const [row] = await db.select({ ownerId: pins.userId }).from(pins).where(eq(pins.id, id)).limit(1);
     return row?.ownerId ?? null;
@@ -53,7 +68,7 @@ export async function POST(request: NextRequest) {
     if (body.error) return body.error;
 
     const { target_type, target_id, reason, note } = body.data;
-    const ownerId = await findTargetOwner(target_type, target_id);
+    const ownerId = await findTargetOwner(target_type, target_id, session.user.id);
     if (!ownerId) return errors.notFound(`The reported ${target_type} no longer exists`);
     if (ownerId === session.user.id) {
       return errors.badRequest("You cannot report your own content");

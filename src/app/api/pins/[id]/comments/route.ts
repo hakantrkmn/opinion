@@ -23,8 +23,9 @@ import type { CommentResponse, PinCommentsResponse } from "@/types/api";
 type Ctx = { params: Promise<{ id: string }> };
 
 /**
- * GET /api/pins/:id/comments?sort=popular|newest|oldest&limit&offset
- * → PinCommentsResponse (404 NOT_FOUND when the pin does not exist).
+ * GET /api/pins/:id/comments?sort=popular|newest|oldest&limit&offset&community_id?
+ * → PinCommentsResponse (404 NOT_FOUND when the pin does not exist, or the
+ * viewer is not a member of `community_id`).
  */
 export async function GET(request: NextRequest, { params }: Ctx) {
   try {
@@ -39,10 +40,12 @@ export async function GET(request: NextRequest, { params }: Ctx) {
     const q = parseQuery(request, pinCommentsQuerySchema);
     if (q.error) return q.error;
 
+    const { community_id, ...rest } = q.data;
     const body: PinCommentsResponse = await listPinComments({
       pinId: p.data.id,
       viewerId,
-      ...q.data,
+      communityId: community_id,
+      ...rest,
     });
     return json(body, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {

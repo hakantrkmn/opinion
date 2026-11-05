@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  COMMUNITY_DESCRIPTION_MAX_LENGTH,
+  COMMUNITY_NAME_MAX_LENGTH,
+} from "@/constants/limits";
 
 const MAX_COMMENT_LEN = 2000;
 const MAX_PHOTO_URL_LEN = 500;
@@ -31,19 +35,22 @@ const viewportBoundsSchema = z
     path: ["minLat"],
   });
 
-export const pinQueryScopeSchema = z.enum(["all", "following"]).default("all");
+export const pinQueryScopeSchema = z.enum(["all", "following", "community"]).default("all");
+
+/** `scope=community` needs `community_id`. */
+const mapScopeSchema = z
+  .object({ scope: pinQueryScopeSchema, community_id: idSchema.optional() })
+  .refine((q) => q.scope !== "community" || !!q.community_id, {
+    message: "community_id is required with scope=community",
+    path: ["community_id"],
+  });
 
 /** GET /api/pins */
-export const pinsQuerySchema = viewportBoundsSchema.and(
-  z.object({ scope: pinQueryScopeSchema })
-);
+export const pinsQuerySchema = viewportBoundsSchema.and(mapScopeSchema);
 
 /** GET /api/pins/clusters */
-export const pinClustersQuerySchema = viewportBoundsSchema.and(
-  z.object({
-    scope: pinQueryScopeSchema,
-    zoom: z.coerce.number().min(0).max(30),
-  })
+export const pinClustersQuerySchema = viewportBoundsSchema.and(mapScopeSchema).and(
+  z.object({ zoom: z.coerce.number().min(0).max(30) })
 );
 
 /** GET /api/pins/nearest */
@@ -68,6 +75,7 @@ export const pinCommentsQuerySchema = z.object({
   sort: z.enum(["popular", "newest", "oldest"]).default("popular"),
   limit: z.coerce.number().int().min(1).max(100).default(50),
   offset: z.coerce.number().int().min(0).max(10_000).default(0),
+  community_id: idSchema.optional(),
 });
 
 const commentPhotoUrlSchema = z.string().min(1).max(MAX_PHOTO_URL_LEN);
@@ -138,3 +146,32 @@ export const markNotificationsReadSchema = z.union([
   z.object({ all: z.literal(true), seen_until: seenUntilSchema }),
   z.object({ ids: z.array(idSchema).min(1).max(100), seen_until: seenUntilSchema }),
 ]);
+
+// ---------------------------------------------------------------------------
+// Communities
+// ---------------------------------------------------------------------------
+
+const communityNameSchema = z.string().trim().min(1).max(COMMUNITY_NAME_MAX_LENGTH);
+const communityDescriptionSchema = z.string().trim().max(COMMUNITY_DESCRIPTION_MAX_LENGTH);
+
+/** POST /api/communities */
+export const createCommunitySchema = z.object({
+  name: communityNameSchema,
+  description: communityDescriptionSchema.nullish(),
+});
+
+/** PATCH /api/communities/:id — `description: null` (or "") clears it. */
+export const updateCommunitySchema = z
+  .object({
+    name: communityNameSchema.optional(),
+    description: communityDescriptionSchema.nullable().optional(),
+  })
+  .refine((b) => b.name !== undefined || b.description !== undefined, {
+    message: "Nothing to update",
+  });
+
+export const communityMemberParamSchema = z.object({ id: idSchema, userId: idSchema });
+
+export const inviteCodeParamSchema = z.object({
+  code: z.string().min(6).max(32).regex(/^[a-zA-Z0-9_-]+$/, "Invalid code"),
+});

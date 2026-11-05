@@ -106,7 +106,7 @@ export interface BlockStatusResponse {
   is_blocked: boolean;
 }
 
-export type ReportTargetType = "pin" | "comment" | "user";
+export type ReportTargetType = "pin" | "comment" | "user" | "community";
 export type ReportReason = "spam" | "harassment" | "inappropriate" | "other";
 
 /** POST /api/reports → 201 { ok: true } (duplicates are idempotent) */
@@ -200,7 +200,7 @@ export interface AdminReport {
   resolved_at: string | null;
   reporter: (UserSummary & { email: string | null }) | null;
   target: {
-    /** Pin name, comment excerpt or user display name. */
+    /** Pin name, comment excerpt, user display name or community name. */
     label: string | null;
     author: (UserSummary & { email: string | null }) | null;
     /** The reported entity no longer exists. */

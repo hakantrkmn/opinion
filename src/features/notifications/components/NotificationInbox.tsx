@@ -13,7 +13,7 @@ import { ListMessage, UserListSkeleton } from "@/features/users/components/UserR
 import { formatTimeAgo } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { NotificationItem } from "@/types/api";
-import { AlertCircle, Bell, Heart, MessageCircle, RotateCcw, UserPlus } from "lucide-react";
+import { AlertCircle, Bell, Heart, MessageCircle, RotateCcw, UserPlus, UsersRound } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
@@ -26,16 +26,19 @@ const TYPE_ICON = {
   pin_commented: { icon: MessageCircle, className: "bg-primary text-primary-foreground" },
   comment_liked: { icon: Heart, className: "bg-rose-500 text-white" },
   followed: { icon: UserPlus, className: "bg-emerald-600 text-white" },
+  community_joined: { icon: UsersRound, className: "bg-violet-600 text-white" },
 } as const;
 
 const RICH_TAGS = {
   b: (chunks: React.ReactNode) => <span className="font-semibold text-foreground">{chunks}</span>,
   pin: (chunks: React.ReactNode) => <span className="font-medium text-foreground">{chunks}</span>,
+  community: (chunks: React.ReactNode) => <span className="font-medium text-foreground">{chunks}</span>,
 };
 
 const MESSAGE_KEY = {
   comment_liked: "commentLiked",
   followed: "followed",
+  community_joined: "communityJoined",
 } as const;
 
 function Message({ item }: { item: NotificationItem }) {
@@ -52,6 +55,7 @@ function Message({ item }: { item: NotificationItem }) {
     others: item.count - 1,
     count: item.count,
     pinName: item.pin?.name ?? t("aPin"),
+    communityName: item.community?.name ?? t("aCommunity"),
   });
 }
 
@@ -143,7 +147,9 @@ export function NotificationInbox({
 
   const openItem = (item: NotificationItem) => {
     onOpenChange(false);
-    if (item.type === "followed" || !item.pin) {
+    if (item.type === "community_joined") {
+      router.push(item.community ? `/communities/${encodeURIComponent(item.community.id)}` : "/communities");
+    } else if (item.type === "followed" || !item.pin) {
       router.push(`/u/${encodeURIComponent(item.actor.id)}`);
     } else if (pathname === "/") {
       focusPin(item.pin);

@@ -30,22 +30,44 @@ import {
   type PinRow,
 } from "./sql";
 import { notFound } from "./errors";
+import { assertCommunityMember, communityPinFilterSql } from "@/server/services/communities";
 import { HttpError } from "@/server/http/api-helpers";
 import type { SQL } from "drizzle-orm";
 
 export interface MapQuery {
   bounds: Bounds;
   scope: PinScope;
+  /** Required with scope "community". */
+  communityId?: string | null;
   viewerId: string | null;
 }
 
-/** Scope + block filters shared by the pins and clusters queries. */
-function mapFiltersSql(scope: PinScope, viewerId: string | null): SQL {
-  const following =
+/**
+ * Scope + block filters shared by the pins and clusters queries. Community
+ * scope must have passed `checkScope` first.
+ */
+function mapFiltersSql(q: Pick<MapQuery, "scope" | "communityId" | "viewerId">): SQL {
+  const { scope, viewerId } = q;
+  const scoped =
     scope === "following" && viewerId
       ? sql` AND p.user_id IN (SELECT f.following_id FROM user_follows f WHERE f.follower_id = ${viewerId})`
-      : sql.empty();
-  return sql`${following}${visibleToViewerSql(sql`p.user_id`, viewerId)}`;
+      : scope === "community" && viewerId && q.communityId
+        ? communityPinFilterSql(q.communityId, viewerId)
+        : sql.empty();
+  return sql`${scoped}${visibleToViewerSql(sql`p.user_id`, viewerId)}`;
+}
+
+/**
+ * False when the scope is empty for this viewer (anonymous "following").
+ * Community scope is for members only: 404 otherwise.
+ */
+async function checkScope(q: MapQuery): Promise<boolean> {
+  if (q.scope === "following") return !!q.viewerId;
+  if (q.scope === "community") {
+    if (!q.communityId) throw HttpError.badRequest("community_id is required");
+    await assertCommunityMember(q.communityId, q.viewerId);
+  }
+  return true;
 }
 
 /**
@@ -54,7 +76,7 @@ function mapFiltersSql(scope: PinScope, viewerId: string | null): SQL {
  * `truncated`.
  */
 export async function getPinsInBounds(q: MapQuery): Promise<PinsInBoundsResponse> {
-  if (q.scope === "following" && !q.viewerId) return { pins: [], truncated: false };
+  if (!(await checkScope(q))) return { pins: [], truncated: false };
 
   const rows = (await db.execute(sql`
     SELECT ${pinColumnsSql}
@@ -62,7 +84,7 @@ export async function getPinsInBounds(q: MapQuery): Promise<PinsInBoundsResponse
     JOIN "user" u ON u.id = p.user_id
     WHERE ${envelopesSql(toEnvelopes(q.bounds))}
       AND p.comments_count > 0
-      ${mapFiltersSql(q.scope, q.viewerId)}
+      ${mapFiltersSql(q)}
     ORDER BY p.created_at DESC, p.id
     LIMIT ${PINS_MAX_RESULTS + 1}
   `)) as unknown as PinRow[];
@@ -94,7 +116,7 @@ export async function getNearestPin(q: {
       FROM pins p
       JOIN "user" u ON u.id = p.user_id
       WHERE p.comments_count > 0
-        ${mapFiltersSql("all", q.viewerId)}
+        ${mapFiltersSql({ scope: "all", viewerId: q.viewerId })}
       ORDER BY p.location <-> ${point}
       LIMIT ${NEAREST_CANDIDATES}
     ) candidates
@@ -115,7 +137,7 @@ export async function getNearestPin(q: {
 export async function getPinClusters(
   q: MapQuery & { zoom: number }
 ): Promise<PinClustersResponse> {
-  if (q.scope === "following" && !q.viewerId) return { clusters: [] };
+  if (!(await checkScope(q))) return { clusters: [] };
 
   const zoom = clampClusterZoom(q.zoom);
   const n = clusterGridSize(zoom);
@@ -142,7 +164,7 @@ export async function getPinClusters(
       CROSS JOIN LATERAL (SELECT ST_Y(p.location) AS lat, ST_X(p.location) AS lng) c
       WHERE ${envelopesSql(envelopes)}
         AND p.comments_count > 0
-        ${mapFiltersSql(q.scope, q.viewerId)}
+        ${mapFiltersSql(q)}
     ) g
     GROUP BY g.ix, g.iy
   `;

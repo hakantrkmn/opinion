@@ -260,7 +260,7 @@ export const reports = pgTable(
     index("idx_reports_target").on(table.targetType, table.targetId),
     check(
       "reports_target_type_check",
-      sql`${table.targetType} in ('pin', 'comment', 'user')`
+      sql`${table.targetType} in ('pin', 'comment', 'user', 'community')`
     ),
     check(
       "reports_status_check",
@@ -348,6 +348,9 @@ export const notifications = pgTable(
     commentId: text("comment_id").references(() => comments.id, {
       onDelete: "set null",
     }),
+    communityId: text("community_id").references(() => communities.id, {
+      onDelete: "cascade",
+    }),
     count: integer("count").notNull().default(1),
     readAt: tstz("read_at"),
     pushedAt: tstz("pushed_at"),
@@ -366,13 +369,78 @@ export const notifications = pgTable(
     index("idx_notifications_actor_ids").using("gin", table.actorIds),
     index("idx_notifications_pin").on(table.pinId),
     index("idx_notifications_comment").on(table.commentId),
+    index("idx_notifications_community").on(table.communityId),
     check(
       "notifications_type_check",
-      sql`${table.type} in ('pin_commented', 'comment_liked', 'followed')`
+      sql`${table.type} in ('pin_commented', 'comment_liked', 'followed', 'community_joined')`
     ),
     check(
       "notifications_count_matches_actors",
       sql`${table.count} = cardinality(${table.actorIds}) AND ${table.count} > 0`
     ),
+  ]
+);
+
+/**
+ * Communities: a founder-made circle people join by invite link. A filter
+ * lens over public content (map pins and comments of its members), never a
+ * container for private content. The founder is also a member row.
+ */
+export const communities = pgTable(
+  "communities",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    /** Join code of the invite link; replaced when the founder resets it. */
+    inviteCode: text("invite_code").notNull(),
+    createdAt: tstz("created_at").notNull().defaultNow(),
+    updatedAt: tstz("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("unique_community_invite_code").on(table.inviteCode),
+    index("idx_communities_owner").on(table.ownerId),
+  ]
+);
+
+// PK (community_id, user_id) serves member lists; the user index serves
+// "my communities" and the per-user limit.
+export const communityMembers = pgTable(
+  "community_members",
+  {
+    communityId: text("community_id")
+      .notNull()
+      .references(() => communities.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: tstz("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.communityId, table.userId] }),
+    index("idx_community_members_user").on(table.userId, table.createdAt),
+  ]
+);
+
+/** People the founder removed; they cannot rejoin through the invite link. */
+export const communityRemovals = pgTable(
+  "community_removals",
+  {
+    communityId: text("community_id")
+      .notNull()
+      .references(() => communities.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: tstz("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.communityId, table.userId] }),
+    index("idx_community_removals_user").on(table.userId),
   ]
 );

@@ -5,7 +5,7 @@ import { pinMapHref } from "@/features/profile/components/sections/ProfileLists"
 import { Button } from "@/components/ui/button";
 import type { AdminReport, useAdminReports } from "@/features/admin/hooks/use-admin";
 import { cn } from "@/lib/utils";
-import { Check, MessageSquare, Trash2, User as UserIcon, X } from "lucide-react";
+import { Check, MessageSquare, Trash2, User as UserIcon, UsersRound, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { AdminListShell } from "@/features/admin/components/AdminListShell";
@@ -26,6 +26,7 @@ const TARGET_ICON = {
   pin: PinIcon,
   comment: MessageSquare,
   user: UserIcon,
+  community: UsersRound,
 } as const;
 
 const STATUS_STYLE: Record<AdminReport["status"], string> = {

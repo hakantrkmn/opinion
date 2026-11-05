@@ -23,11 +23,12 @@ import {
   setReportStatus,
 } from "@/server/services/adminService";
 import { recordAudit } from "@/server/services/audit-log";
+import { deleteCommunityAsAdmin } from "@/server/services/communities";
 
 /**
  * PATCH /api/admin/reports/:id { action: resolve|dismiss|delete_target }
  *   → { report: { id, status } }
- * delete_target removes the reported pin/comment (or soft-deletes the user)
+ * delete_target removes the reported pin/comment/community (or soft-deletes the user)
  * and resolves every open report on that target.
  */
 export async function PATCH(
@@ -70,6 +71,8 @@ export async function PATCH(
     } else if (report.targetType === "comment") {
       const result = await deleteComment(report.targetId);
       if (result) metadata = { ...metadata, ...result };
+    } else if (report.targetType === "community") {
+      await deleteCommunityAsAdmin(report.targetId);
     } else {
       await deleteUser(session.user.id, report.targetId);
     }
@@ -79,8 +82,9 @@ export async function PATCH(
       action: `admin.report.delete_target.${report.targetType}` as
         | "admin.report.delete_target.pin"
         | "admin.report.delete_target.comment"
-        | "admin.report.delete_target.user",
-      targetType: report.targetType as "pin" | "comment" | "user",
+        | "admin.report.delete_target.user"
+        | "admin.report.delete_target.community",
+      targetType: report.targetType as "pin" | "comment" | "user" | "community",
       targetId: report.targetId,
       metadata,
     });

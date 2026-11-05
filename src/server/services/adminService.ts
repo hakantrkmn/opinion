@@ -19,6 +19,7 @@ import { user } from "@/server/db/schema/auth";
 import {
   adminAuditLogs,
   comments,
+  communities,
   pins,
   pushTokens,
   reports,
@@ -491,6 +492,7 @@ export async function listReports(
   const pinAuthor = alias(user, "pin_author");
   const commentAuthor = alias(user, "comment_author");
   const targetUser = alias(user, "target_user");
+  const communityOwner = alias(user, "community_owner");
 
   const where: SQL | undefined =
     params.status === "all" ? undefined : eq(reports.status, params.status);
@@ -530,6 +532,14 @@ export async function listReports(
           deletedAt: commentAuthor.deletedAt,
           email: commentAuthor.email,
         },
+        communityName: communities.name,
+        communityOwner: {
+          id: communityOwner.id,
+          displayName: communityOwner.displayName,
+          avatarUrl: communityOwner.avatarUrl,
+          deletedAt: communityOwner.deletedAt,
+          email: communityOwner.email,
+        },
         targetUser: {
           id: targetUser.id,
           displayName: targetUser.displayName,
@@ -551,6 +561,11 @@ export async function listReports(
         targetUser,
         and(eq(reports.targetType, "user"), eq(targetUser.id, reports.targetId))
       )
+      .leftJoin(
+        communities,
+        and(eq(reports.targetType, "community"), eq(communities.id, reports.targetId))
+      )
+      .leftJoin(communityOwner, eq(communityOwner.id, communities.ownerId))
       .where(where)
       .orderBy(desc(reports.createdAt), desc(reports.id))
       .limit(params.limit)
@@ -569,6 +584,9 @@ export async function listReports(
           ? `${r.commentText.slice(0, 160)}…`
           : r.commentText;
       author = authorWithEmail(r.commentAuthor);
+    } else if (r.targetType === "community") {
+      label = r.communityName;
+      author = authorWithEmail(r.communityOwner);
     } else {
       author = authorWithEmail(r.targetUser);
       label = author?.display_name ?? null;
@@ -578,7 +596,9 @@ export async function listReports(
         ? r.pinName === null
         : r.targetType === "comment"
           ? r.commentText === null
-          : !r.targetUser?.id || !!r.targetUser.deletedAt;
+          : r.targetType === "community"
+            ? r.communityName === null
+            : !r.targetUser?.id || !!r.targetUser.deletedAt;
     return {
       id: r.id,
       target_type: r.targetType as ReportTargetType,

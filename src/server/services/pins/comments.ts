@@ -9,6 +9,10 @@ import type {
 import { deleteUploadByUrl, isOwnedUploadUrl, resolveUploadPath } from "@/server/uploads";
 import { isBlockedRelation } from "@/server/services/blocks";
 import {
+  assertCommunityMember,
+  communityCommentFilterSql,
+} from "@/server/services/communities";
+import {
   commentColumnsSql,
   toCommentItem,
   visibleToViewerSql,
@@ -72,9 +76,14 @@ export async function listPinComments(params: {
   sort: CommentSort;
   limit: number;
   offset: number;
+  /** Only this community's members (the viewer must be one: 404 otherwise). */
+  communityId?: string | null;
 }): Promise<PinCommentsResponse> {
-  const { pinId, viewerId, sort, limit, offset } = params;
-  const visible = visibleToViewerSql(sql`c.user_id`, viewerId);
+  const { pinId, viewerId, sort, limit, offset, communityId } = params;
+  if (communityId) await assertCommunityMember(communityId, viewerId);
+  const visible = sql`${visibleToViewerSql(sql`c.user_id`, viewerId)}${
+    communityId ? communityCommentFilterSql(communityId) : sql.empty()
+  }`;
   const mv = myVoteSql(viewerId);
 
   const [meta, rows] = await Promise.all([

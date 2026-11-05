@@ -24,7 +24,7 @@ import { deleteUploadByUrl } from "@/server/uploads";
 import type { CreatePinResponse, PinsInBoundsResponse } from "@/types/api";
 
 /**
- * GET /api/pins?minLat&maxLat&minLng&maxLng&scope=all|following
+ * GET /api/pins?minLat&maxLat&minLng&maxLng&scope=all|following|community&community_id
  * → PinsInBoundsResponse (newest first, capped, `truncated` when capped).
  */
 export async function GET(request: NextRequest) {
@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
     const body: PinsInBoundsResponse = await getPinsInBounds({
       bounds: q.data,
       scope: q.data.scope,
+      communityId: q.data.community_id,
       viewerId,
     });
     return json(body, { headers: mapCacheHeaders(viewerId, q.data.scope) });
