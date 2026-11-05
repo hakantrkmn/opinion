@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
  * present (no DB / network). The real check — session validity and the
  * admin role — happens in the page's server component.
  */
-const PROTECTED_PREFIXES = ["/profile", "/admin"];
+const PROTECTED_PREFIXES = ["/profile", "/admin", "/communities"];
 
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(
@@ -31,5 +31,5 @@ export function middleware(request: NextRequest) {
 // warning comes from better-auth/cookies' jose import and is harmless:
 // getSessionCookie only reads the cookie.
 export const config = {
-  matcher: ["/profile/:path*", "/admin/:path*"],
+  matcher: ["/profile/:path*", "/admin/:path*", "/communities/:path*"],
 };

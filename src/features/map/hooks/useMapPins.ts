@@ -2,12 +2,7 @@
 
 import { PIN_DETAIL_MIN_ZOOM } from "@/constants/map";
 import { queryKeys } from "@/lib/api/query-keys";
-import type {
-  PinCluster,
-  PinScope,
-  PinsInBoundsResponse,
-  PinSummary,
-} from "@/types/api";
+import type { PinCluster, PinsInBoundsResponse, PinSummary } from "@/types/api";
 import {
   keepPreviousData,
   useQuery,
@@ -23,6 +18,7 @@ import {
   type BBox,
 } from "../lib/geo";
 import { EMPTY_FC } from "../lib/layers";
+import { mapFilterKey, type MapFilter } from "./useMapScope";
 
 const MOVE_DEBOUNCE_MS = 200;
 const MAP_STALE_TIME = 60_000;
@@ -108,11 +104,12 @@ function pinsToFC(pins: PinSummary[]): GeoJSON.FeatureCollection {
 
 /**
  * All map data through TanStack Query: one request per (quantized) viewport,
- * keyed by scope so switching scope always refetches/hits the right cache.
+ * keyed by filter so switching scope always refetches/hits the right cache.
  */
-export function useMapPins(map: MapLibreMap | null, scope: PinScope) {
+export function useMapPins(map: MapLibreMap | null, filter: MapFilter) {
   const queryClient = useQueryClient();
   const [area, setArea] = useState<QueryArea | null>(null);
+  const scope = mapFilterKey(filter);
   const scopeRef = useRef(scope);
   scopeRef.current = scope;
 
@@ -141,7 +138,7 @@ export function useMapPins(map: MapLibreMap | null, scope: PinScope) {
 
   const clustersQuery = useQuery({
     queryKey: queryKeys.pins.clusters(scope, area?.zoom ?? -1, area?.key ?? ""),
-    queryFn: ({ signal }) => fetchPinClusters(area!.bbox, area!.zoom, scope, signal),
+    queryFn: ({ signal }) => fetchPinClusters(area!.bbox, area!.zoom, filter, signal),
     enabled: mode === "clusters",
     placeholderData: keepPreviousData,
     staleTime: MAP_STALE_TIME,
@@ -149,7 +146,7 @@ export function useMapPins(map: MapLibreMap | null, scope: PinScope) {
 
   const pinsQuery = useQuery({
     queryKey: queryKeys.pins.bbox(scope, area?.key ?? ""),
-    queryFn: ({ signal }) => fetchPinsInBounds(area!.bbox, scope, signal),
+    queryFn: ({ signal }) => fetchPinsInBounds(area!.bbox, filter, signal),
     enabled: mode === "pins",
     placeholderData: keepPreviousData,
     staleTime: MAP_STALE_TIME,
@@ -181,6 +178,7 @@ export function useMapPins(map: MapLibreMap | null, scope: PinScope) {
     truncated: mode === "pins" && !!pinData?.truncated,
     isFetching: active.isFetching,
     isError: active.isError && !active.isFetching,
+    error: active.error,
     refetch: active.refetch,
   };
 }

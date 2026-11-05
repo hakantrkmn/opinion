@@ -6,7 +6,7 @@ import { UserSearchDialog } from "@/features/users/components/UserSearchDialog";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { useUserProfile } from "@/features/profile/hooks/useUserProfile";
 import { cn } from "@/lib/utils";
-import { Coffee, Loader2, LogOut, Search, Shield } from "lucide-react";
+import { Coffee, Loader2, LogOut, Search, Shield, UsersRound } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -73,6 +73,19 @@ export default function Header() {
                 >
                   <Search />
                 </button>
+
+                <Link
+                  href="/communities"
+                  className={cn(
+                    iconButton,
+                    "max-sm:hidden",
+                    pathname?.startsWith("/communities") && "bg-primary/10 text-primary"
+                  )}
+                  aria-label={t("communities")}
+                  title={t("communities")}
+                >
+                  <UsersRound />
+                </Link>
 
                 <NotificationBell className={iconButton} />
 

@@ -14,13 +14,15 @@ export function fetchPinComments(
   pinId: string,
   sort: CommentSort,
   offset: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  communityId?: string | null
 ) {
   const params = new URLSearchParams({
     sort,
     limit: String(COMMENTS_PAGE_SIZE),
     offset: String(offset),
   });
+  if (communityId) params.set("community_id", communityId);
   return apiClient<PinCommentsResponse>(
     `/api/pins/${encodeURIComponent(pinId)}/comments?${params}`,
     { signal }

@@ -12,7 +12,8 @@ interface MapStatusProps {
   fetching: boolean;
   error: boolean;
   truncated: boolean;
-  followingHint: "signin" | "empty" | null;
+  /** Following / community scope: signed out, or nothing of theirs in view. */
+  followingHint: "signin" | "empty" | "communityEmpty" | null;
   /** Nothing in view: the closest pin anywhere (or none at all). */
   emptyArea: NearestPinResponse | null;
   onRetry: () => void;
@@ -87,6 +88,8 @@ export function MapStatus({
     );
   } else if (followingHint === "empty") {
     content = t("followingEmpty");
+  } else if (followingHint === "communityEmpty") {
+    content = t("communityEmpty");
   } else if (emptyArea) {
     const nearest = emptyArea.pin;
     content = nearest ? (

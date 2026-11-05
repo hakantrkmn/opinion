@@ -17,8 +17,9 @@ export const queryKeys = {
     nearest: (lat: number, lng: number) => ["pins", "nearest", lat, lng] as const,
     detail: (pinId: string) => ["pins", pinId] as const,
     commentsAll: (pinId: string) => ["pins", pinId, "comments"] as const,
-    comments: (pinId: string, sort: string) =>
-      ["pins", pinId, "comments", sort] as const,
+    /** `community` is the community filter ("" for everyone). */
+    comments: (pinId: string, sort: string, community = "") =>
+      ["pins", pinId, "comments", sort, community] as const,
   },
   profile: {
     all: ["profile"] as const,
@@ -48,6 +49,13 @@ export const queryKeys = {
   },
   blocks: {
     list: ["blocks", "list"] as const,
+  },
+  communities: {
+    all: ["communities"] as const,
+    mine: ["communities", "mine"] as const,
+    detail: (id: string) => ["communities", id] as const,
+    members: (id: string) => ["communities", id, "members"] as const,
+    invite: (code: string) => ["communities", "invite", code] as const,
   },
   notifications: {
     all: ["notifications"] as const,

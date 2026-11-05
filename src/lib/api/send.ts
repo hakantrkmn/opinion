@@ -22,8 +22,9 @@ export async function apiSend<T = void>(
     const data = (await res.json().catch(() => null)) as {
       message?: string;
       code?: ApiErrorCode;
+      issues?: unknown;
     } | null;
-    throw new ApiError(data?.message || "Request failed", res.status, data?.code);
+    throw new ApiError(data?.message || "Request failed", res.status, data?.code, data?.issues);
   }
   if (res.status === 204) return undefined as T;
   const text = await res.text();

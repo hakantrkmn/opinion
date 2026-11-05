@@ -12,6 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CommentComposer } from "@/features/comments/components/CommentComposer";
 import { CommentList } from "@/features/comments/components/CommentList";
 import { CommentSortTabs } from "@/features/comments/components/CommentSortTabs";
+import { CommunityCommentFilter } from "@/features/communities/components/CommunityCommentFilter";
+import { useMyCommunities } from "@/features/communities/hooks/use-communities";
 import { usePinComments } from "@/features/comments/hooks/usePinComments";
 import { DEFAULT_COMMENT_SORT } from "@/features/comments/lib/sort";
 import { useSession } from "@/features/auth/hooks/useSession";
@@ -21,7 +23,7 @@ import { cn } from "@/lib/utils";
 import type { CommentSort, PinSummary } from "@/types/api";
 import { MapPinOff, MessageCircle } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePin } from "../hooks/usePin";
 import { PIN_ACTIVITY, pinActivity } from "../lib/activity";
 import { PinActions } from "./PinActions";
@@ -30,9 +32,16 @@ interface PinDetailSheetProps {
   pinId: string | null;
   onClose: () => void;
   onRequireSignIn: () => void;
+  /** The map's community filter: comments open filtered to it. */
+  communityId?: string | null;
 }
 
-export function PinDetailSheet({ pinId, onClose, onRequireSignIn }: PinDetailSheetProps) {
+export function PinDetailSheet({
+  pinId,
+  onClose,
+  onRequireSignIn,
+  communityId = null,
+}: PinDetailSheetProps) {
   // Keep rendering the last pin while the sheet animates out.
   const [shownId, setShownId] = useState(pinId);
   if (pinId && pinId !== shownId) setShownId(pinId);
@@ -51,6 +60,7 @@ export function PinDetailSheet({ pinId, onClose, onRequireSignIn }: PinDetailShe
             pinId={shownId}
             onClose={onClose}
             onRequireSignIn={onRequireSignIn}
+            initialCommunityId={communityId}
           />
         ) : null}
       </ResponsiveDialogContent>
@@ -62,21 +72,36 @@ function PinDetail({
   pinId,
   onClose,
   onRequireSignIn,
+  initialCommunityId,
 }: {
   pinId: string;
   onClose: () => void;
   onRequireSignIn: () => void;
+  initialCommunityId: string | null;
 }) {
   const t = useTranslations("pins.detail");
+  const tFilter = useTranslations("communities.commentFilter");
   const { user } = useSession();
   const [sort, setSort] = useState<CommentSort>(DEFAULT_COMMENT_SORT);
+  const communities = useMyCommunities();
+  const [pickedCommunity, setCommunity] = useState(initialCommunityId);
+  // Only filter by a community the viewer is (still) in.
+  const community = user
+    ? communities.data?.find((c) => c.id === pickedCommunity) ?? null
+    : null;
   const pinQuery = usePin(pinId);
-  const comments = usePinComments(pinId, sort);
+  const comments = usePinComments(pinId, sort, community?.id ?? null);
   const pin = pinQuery.data;
 
   const notFound =
     (pinQuery.error instanceof ApiError && pinQuery.error.status === 404) ||
-    (comments.error instanceof ApiError && comments.error.status === 404);
+    // With a community filter a 404 means "not a member (any more)".
+    (!community && comments.error instanceof ApiError && comments.error.status === 404);
+  const lostCommunity =
+    !!community && comments.error instanceof ApiError && comments.error.status === 404;
+  useEffect(() => {
+    if (lostCommunity) setCommunity(null);
+  }, [lostCommunity]);
 
   if (notFound) {
     return (
@@ -97,16 +122,27 @@ function PinDetail({
     );
   }
 
-  const count = comments.data ? comments.total : pin?.comments_count ?? 0;
+  // The header always counts everyone; the filter only narrows the list.
+  const count =
+    comments.data && !community ? comments.total : pin?.comments_count ?? 0;
+  const listCount = comments.data ? comments.total : count;
+  const showFilter = !!communities.data?.length && count > 0;
 
   return (
     <ResponsiveDialogPanel title={pin?.name ?? t("fallbackTitle")} headerClassName="sr-only">
       <div className="flex min-h-0 flex-1 flex-col">
         <PinHeader pin={pin} count={count} />
 
-        {count > 1 ? (
-          <div className="px-5 pb-3 sm:px-6">
-            <CommentSortTabs value={sort} onChange={setSort} />
+        {showFilter || listCount > 1 ? (
+          <div className="flex flex-col gap-2.5 px-5 pb-3 sm:px-6">
+            {showFilter ? (
+              <CommunityCommentFilter
+                communities={communities.data!}
+                value={community?.id ?? null}
+                onChange={setCommunity}
+              />
+            ) : null}
+            {listCount > 1 ? <CommentSortTabs value={sort} onChange={setSort} /> : null}
           </div>
         ) : null}
 
@@ -118,6 +154,14 @@ function PinDetail({
             currentUserId={user?.id ?? null}
             onRequireSignIn={onRequireSignIn}
             onPinDeleted={onClose}
+            filteredEmpty={
+              community
+                ? {
+                    title: tFilter("emptyTitle", { name: community.name }),
+                    description: tFilter("emptyDescription"),
+                  }
+                : null
+            }
           />
         </ScrollArea>
 

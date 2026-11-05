@@ -40,12 +40,21 @@
     "emptyHere": "Burada henüz fikir yok",
     "nearestLabel": "En yakın fikri göster: {name}, {distance} uzakta",
     "nearestName": "{name} ·",
-    "noneAnywhere": "Henüz hiç fikir yok. İlk pini sen bırak!"
+    "noneAnywhere": "Henüz hiç fikir yok. İlk pini sen bırak!",
+    "communityEmpty": "Burada bu topluluktan pin yok"
   },
   "scope": {
     "label": "Kimin pinleri gösterilsin",
     "all": "Tümü",
-    "following": "Takip edilenler"
+    "following": "Takip edilenler",
+    "community": "Topluluk",
+    "communitiesMenu": "Topluluklar",
+    "communitiesHeading": "Kimin pinleri",
+    "members": "{count, plural, one {# üye} other {# üye}}",
+    "noCommunities": "Sadece kendi çevrenin pinlerini ve fikirlerini görmek için bir topluluk kur.",
+    "loadingCommunities": "Yükleniyor…",
+    "manageCommunities": "Toplulukların",
+    "createCommunity": "Topluluk kur"
   },
   "signInPrompt": {
     "title": "Katılmak için giriş yap",

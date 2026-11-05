@@ -2,7 +2,7 @@
 
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
-import { Coffee, Languages, Loader2, LogOut, Shield, User } from "lucide-react";
+import { Coffee, Languages, Loader2, LogOut, Shield, User, UsersRound } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
@@ -136,6 +136,10 @@ export function UserMenu({
         <Link href="/profile" role="menuitem" className={item} onClick={() => close(false)}>
           <User />
           {t("profile")}
+        </Link>
+        <Link href="/communities" role="menuitem" className={item} onClick={() => close(false)}>
+          <UsersRound />
+          {t("communities")}
         </Link>
         {isAdmin ? (
           <Link href="/admin" role="menuitem" className={item} onClick={() => close(false)}>

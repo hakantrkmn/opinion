@@ -88,6 +88,18 @@ export function addCachedPin(queryClient: QueryClient, pin: PinSummary) {
   void queryClient.invalidateQueries({
     queryKey: [...queryKeys.pins.bboxAll, "following"],
   });
+  invalidateCommunityMaps(queryClient);
+}
+
+/**
+ * Community-filtered map data: a new opinion by a member can add a pin to
+ * it, which only the server can tell.
+ */
+export function invalidateCommunityMaps(queryClient: QueryClient) {
+  void queryClient.invalidateQueries({
+    queryKey: queryKeys.pins.bboxAll,
+    predicate: (q) => String(q.queryKey[2]).startsWith("community:"),
+  });
 }
 
 /** Removes a pin from every map cache (after delete / last comment removed). */

@@ -2,6 +2,10 @@
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
+import { useMyCommunities } from "@/features/communities/hooks/use-communities";
+import { ApiError } from "@/lib/api/client";
+import { queryKeys } from "@/lib/api/query-keys";
+import { useQueryClient } from "@tanstack/react-query";
 import { CreatePinDialog } from "@/features/pins/components/CreatePinDialog";
 import { PinDetailSheet } from "@/features/pins/components/PinDetailSheet";
 import { useSession } from "@/features/auth/hooks/useSession";
@@ -63,9 +67,31 @@ export default function MapScreen({ initialCenter, initialPinId }: MapScreenProp
   useBasemapSync(map, manager, basemap);
 
   const { user, isLoading: sessionLoading } = useSession();
-  const { scope, setScope } = useMapScope();
+  const { filter, setFilter } = useMapScope();
+  const scope = filter.scope;
+  const communities = useMyCommunities();
+  const queryClient = useQueryClient();
 
-  const pins = useMapPins(map, scope);
+  // A community the viewer left (or was removed from): back to everyone.
+  const staleCommunity =
+    scope === "community" &&
+    !sessionLoading &&
+    (!user || (!!communities.data && !communities.data.some((c) => c.id === filter.communityId)));
+  useEffect(() => {
+    if (staleCommunity) setFilter({ scope: "all", communityId: null });
+  }, [staleCommunity, setFilter]);
+
+  const pins = useMapPins(map, staleCommunity ? { scope: "all", communityId: null } : filter);
+
+  // Removed from the community since the list was fetched: the map answers
+  // 404. Refresh the list (which drops it) and fall back to everyone.
+  const lostCommunity =
+    scope === "community" && pins.error instanceof ApiError && pins.error.status === 404;
+  useEffect(() => {
+    if (!lostCommunity) return;
+    void queryClient.invalidateQueries({ queryKey: queryKeys.communities.mine });
+    setFilter({ scope: "all", communityId: null });
+  }, [lostCommunity, queryClient, setFilter]);
   useEffect(() => {
     manager?.setData("serverClusters", pins.clustersFC);
   }, [manager, pins.clustersFC]);
@@ -93,16 +119,20 @@ export default function MapScreen({ initialCenter, initialPinId }: MapScreenProp
   useDeepLinkPin(map, initialPinId, !!initialCenter);
 
   // Anonymous "following" is an empty list server-side: explain instead.
+  const nothingInView =
+    !pins.isFetching &&
+    pins.mode !== null &&
+    pins.clustersFC.features.length === 0 &&
+    pins.pinsFC.features.length === 0;
   const followingHint =
-    scope !== "following" || sessionLoading
+    scope === "all" || sessionLoading || staleCommunity
       ? null
-      : !user
+      : scope === "following" && !user
         ? ("signin" as const)
-        : !pins.isFetching &&
-            pins.mode !== null &&
-            pins.clustersFC.features.length === 0 &&
-            pins.pinsFC.features.length === 0
-          ? ("empty" as const)
+        : nothingInView
+          ? scope === "community"
+            ? ("communityEmpty" as const)
+            : ("empty" as const)
           : null;
 
   // "All" scope and nothing loaded in view: point at the closest opinion.
@@ -129,10 +159,11 @@ export default function MapScreen({ initialCenter, initialPinId }: MapScreenProp
       <div className="pointer-events-none absolute inset-0 z-(--z-map-controls)">
         <div className="absolute left-[max(0.75rem,env(safe-area-inset-left))] right-[max(0.75rem,env(safe-area-inset-right))] top-3 flex items-start justify-between gap-2 sm:left-4 sm:right-4 sm:top-4">
           <ScopeToggle
-            scope={scope}
-            onChange={setScope}
+            filter={filter}
+            onChange={setFilter}
             onRequireSignIn={requireSignIn}
             signedIn={!!user}
+            communities={communities.data}
           />
           <div className="flex flex-col gap-2">
             <ThemeToggle />
@@ -169,6 +200,7 @@ export default function MapScreen({ initialCenter, initialPinId }: MapScreenProp
         pinId={selectedPinId}
         onClose={closePin}
         onRequireSignIn={requireSignIn}
+        communityId={scope === "community" && !staleCommunity ? filter.communityId : null}
       />
       <CreatePinDialog />
       <SignInPrompt />

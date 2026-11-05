@@ -25,6 +25,8 @@ interface CommentListProps {
   currentUserId: string | null;
   onRequireSignIn: () => void;
   onPinDeleted: () => void;
+  /** Empty-state copy while a filter (e.g. a community) hides everything. */
+  filteredEmpty?: { title: string; description: string } | null;
 }
 
 export function CommentList({
@@ -34,6 +36,7 @@ export function CommentList({
   currentUserId,
   onRequireSignIn,
   onPinDeleted,
+  filteredEmpty = null,
 }: CommentListProps) {
   const t = useTranslations("comments.list");
   const vote = useVoteComment(pinId);
@@ -121,9 +124,9 @@ export function CommentList({
         <span className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-muted">
           <MessageCircle className="size-5 text-muted-foreground" />
         </span>
-        <p className="text-sm font-semibold">{t("emptyTitle")}</p>
+        <p className="text-sm font-semibold">{filteredEmpty?.title ?? t("emptyTitle")}</p>
         <p className="mt-1 max-w-[16rem] text-xs leading-relaxed text-muted-foreground">
-          {t("emptyDescription")}
+          {filteredEmpty?.description ?? t("emptyDescription")}
         </p>
       </div>
     );

@@ -17,7 +17,7 @@
     "report": "Şikayet et"
   },
   "reportDialog": {
-    "title": "{targetType, select, pin {Bu pini} comment {Bu yorumu} other {Bu kişiyi}} şikayet et",
+    "title": "{targetType, select, pin {Bu pini} comment {Bu yorumu} community {Bu topluluğu} other {Bu kişiyi}} şikayet et",
     "description": "Şikayetler gizli kalır. Moderatörler inceler ve kurallara aykırı olanı kaldırır.",
     "legend": "Neden şikayet ediyorsun?",
     "reasons": {

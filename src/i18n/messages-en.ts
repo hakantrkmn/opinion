@@ -12,7 +12,8 @@ import users from "../../messages/en/users.json";
 import auth from "../../messages/en/auth.json";
 import admin from "../../messages/en/admin.json";
 import pages from "../../messages/en/pages.json";
+import communities from "../../messages/en/communities.json";
 
-export const enMessages = { common, header, map, pins, comments, media, moderation, notifications, profile, users, auth, admin, pages };
+export const enMessages = { common, header, map, pins, comments, media, moderation, notifications, profile, users, auth, admin, pages, communities };
 
 export type Messages = typeof enMessages;

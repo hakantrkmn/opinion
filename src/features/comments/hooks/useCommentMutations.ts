@@ -2,6 +2,7 @@
 
 import {
   adjustCommentsCount,
+  invalidateCommunityMaps,
   removeCachedPin,
 } from "@/features/pins/lib/cache";
 import { uploadCommentPhoto } from "@/features/media/lib/upload";
@@ -69,6 +70,7 @@ export function useAddComment(pinId: string) {
         })
       );
       adjustCommentsCount(queryClient, pinId, 1);
+      invalidateCommunityMaps(queryClient);
       // Background refresh puts it in the right place for "popular".
       void queryClient.invalidateQueries({
         queryKey: queryKeys.pins.commentsAll(pinId),

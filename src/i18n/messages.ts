@@ -6,7 +6,7 @@ import type { Messages } from "./messages-en";
  * features can be translated independently. Keys are typed from English;
  * a unit test checks that every locale has exactly the same keys.
  */
-export const NAMESPACES = ["common", "header", "map", "pins", "comments", "media", "moderation", "notifications", "profile", "users", "auth", "admin", "pages"] as const;
+export const NAMESPACES = ["common", "header", "map", "pins", "comments", "media", "moderation", "notifications", "profile", "users", "auth", "admin", "pages", "communities"] as const;
 
 export async function loadMessages(locale: Locale): Promise<Messages> {
   return {
@@ -23,5 +23,6 @@ export async function loadMessages(locale: Locale): Promise<Messages> {
     auth: (await import(`../../messages/${locale}/auth.json`)).default,
     admin: (await import(`../../messages/${locale}/admin.json`)).default,
     pages: (await import(`../../messages/${locale}/pages.json`)).default,
+    communities: (await import(`../../messages/${locale}/communities.json`)).default,
   } as Messages;
 }

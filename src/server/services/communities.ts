@@ -135,16 +135,19 @@ async function assertOwner(communityId: string, userId: string): Promise<void> {
 
 /**
  * Locks the user (live accounts only) and checks the per-user limit.
- * Must run first in the transaction (lock order user → community).
+ * Must run first in the transaction (lock order user → community). The
+ * count is a separate statement: under READ COMMITTED a count in the locking
+ * statement would use the snapshot from before the lock wait and miss a
+ * concurrent join that just committed.
  */
 async function lockUserWithRoom(tx: Pick<typeof db, "execute">, userId: string) {
+  const locked = await tx.execute(sql`
+    SELECT 1 FROM "user" WHERE id = ${userId} AND deleted_at IS NULL FOR NO KEY UPDATE
+  `);
+  if (locked.length === 0) throw HttpError.forbidden("Account not found");
   const [u] = (await tx.execute(sql`
-    SELECT (SELECT count(*)::int FROM community_members m WHERE m.user_id = u.id) AS n
-    FROM "user" u
-    WHERE u.id = ${userId} AND u.deleted_at IS NULL
-    FOR NO KEY UPDATE
+    SELECT count(*)::int AS n FROM community_members WHERE user_id = ${userId}
   `)) as unknown as Array<{ n: number }>;
-  if (!u) throw HttpError.forbidden("Account not found");
   if (Number(u.n) >= COMMUNITY_MAX_PER_USER) {
     throw new HttpError(
       409,
@@ -264,6 +267,13 @@ export async function removeCommunityMember(
 
   await assertOwner(communityId, actorId);
   await db.transaction(async (tx) => {
+    // Lock order user → community (as deleteAccount / community deletes do)
+    // before touching member rows, so neither can deadlock with this.
+    await tx.execute(sql`SELECT 1 FROM "user" WHERE id = ${targetId} FOR KEY SHARE`);
+    const community = await tx.execute(
+      sql`SELECT 1 FROM communities WHERE id = ${communityId} FOR NO KEY UPDATE`
+    );
+    if (community.length === 0) throw notFound();
     const removed = await tx.execute(sql`
       DELETE FROM community_members
       WHERE community_id = ${communityId} AND user_id = ${targetId}
@@ -331,6 +341,11 @@ export async function joinByInvite(code: string, userId: string): Promise<Commun
 
   const joined = await db.transaction(async (tx) => {
     await lockUserWithRoom(tx, userId);
+    // Lock first, then read in a fresh statement (see lockUserWithRoom).
+    const locked = await tx.execute(sql`
+      SELECT 1 FROM communities WHERE id = ${found.id} AND invite_code = ${code} FOR UPDATE
+    `);
+    if (locked.length === 0) throw notFound(); // deleted or code reset meanwhile
     const [c] = (await tx.execute(sql`
       SELECT c.owner_id,
         (SELECT count(*)::int FROM community_members m WHERE m.community_id = c.id) AS n,
@@ -339,10 +354,8 @@ export async function joinByInvite(code: string, userId: string): Promise<Commun
         ) AS removed,
         (c.owner_id IN ${invisibleUserIdsSql(userId)}) AS blocked
       FROM communities c
-      WHERE c.id = ${found.id} AND c.invite_code = ${code}
-      FOR UPDATE
+      WHERE c.id = ${found.id}
     `)) as unknown as Array<{ owner_id: string; n: number; removed: boolean; blocked: boolean }>;
-    if (!c) throw notFound(); // deleted or code reset meanwhile
     if (c.removed) {
       throw new HttpError(403, "FORBIDDEN", "You were removed from this community", {
         reason: "removed",

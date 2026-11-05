@@ -40,12 +40,21 @@
     "emptyHere": "No opinions here yet",
     "nearestLabel": "Show the nearest opinion: {name}, {distance} away",
     "nearestName": "{name} ·",
-    "noneAnywhere": "No opinions yet. Drop the first one!"
+    "noneAnywhere": "No opinions yet. Drop the first one!",
+    "communityEmpty": "No pins from this community here"
   },
   "scope": {
     "label": "Whose pins to show",
     "all": "All",
-    "following": "Following"
+    "following": "Following",
+    "community": "Community",
+    "communitiesMenu": "Communities",
+    "communitiesHeading": "Show pins from",
+    "members": "{count, plural, one {# member} other {# members}}",
+    "noCommunities": "Create a community to see only your circle's pins and opinions.",
+    "loadingCommunities": "Loading…",
+    "manageCommunities": "Your communities",
+    "createCommunity": "Create a community"
   },
   "signInPrompt": {
     "title": "Sign in to join in",

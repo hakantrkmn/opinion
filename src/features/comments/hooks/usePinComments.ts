@@ -6,12 +6,19 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { COMMENTS_PAGE_SIZE, fetchPinComments } from "../lib/api";
 
-/** Comments of a pin, keyed ["pins", id, "comments", sort]. */
-export function usePinComments(pinId: string | null, sort: CommentSort) {
+/**
+ * Comments of a pin, keyed ["pins", id, "comments", sort, community];
+ * `communityId` limits them to that community's members.
+ */
+export function usePinComments(
+  pinId: string | null,
+  sort: CommentSort,
+  communityId: string | null = null
+) {
   const query = useInfiniteQuery({
-    queryKey: queryKeys.pins.comments(pinId ?? "", sort),
+    queryKey: queryKeys.pins.comments(pinId ?? "", sort, communityId ?? ""),
     queryFn: ({ pageParam, signal }) =>
-      fetchPinComments(pinId!, sort, pageParam, signal),
+      fetchPinComments(pinId!, sort, pageParam, signal, communityId),
     initialPageParam: 0,
     getNextPageParam: (last, pages) =>
       last.has_more ? pages.length * COMMENTS_PAGE_SIZE : undefined,

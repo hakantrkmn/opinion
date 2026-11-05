@@ -17,7 +17,7 @@
     "report": "Report"
   },
   "reportDialog": {
-    "title": "Report this {targetType, select, pin {pin} comment {comment} other {user}}",
+    "title": "Report this {targetType, select, pin {pin} comment {comment} community {community} other {user}}",
     "description": "Reports are private. Moderators review them and remove anything that breaks the rules.",
     "legend": "Why are you reporting it?",
     "reasons": {

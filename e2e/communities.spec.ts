@@ -18,7 +18,7 @@ import {
   signUpUser,
   type TestUser,
 } from "./support/api";
-import { expect, test } from "./support/fixtures";
+import { expect, signInContext, test } from "./support/fixtures";
 
 /** A spot away from the seeded Istanbul pins so filters are easy to assert. */
 function quietSpot() {
@@ -212,10 +212,74 @@ test.describe("Communities API", () => {
     }
   });
 
+  test("concurrent requests can't pass the per-user limit", async ({ freshUser: user }) => {
+    for (let i = 0; i < 9; i++) await createCommunity(user, `E2E race ${i}`);
+    const results = await Promise.all(
+      [0, 1, 2].map((i) => user.api.post("/api/communities", { data: { name: `E2E race last ${i}` } }))
+    );
+    expect(results.map((r) => r.status()).sort()).toEqual([201, 409, 409]);
+    const mine = await expectJson<CommunityListResponse>(await user.api.get("/api/communities"), 200);
+    expect(mine.items).toHaveLength(10);
+  });
+
   test("anonymous and invalid requests", async ({ anonApi }) => {
     expect((await anonApi.get("/api/communities")).status()).toBe(401);
     expect((await anonApi.post("/api/communities/invites/abcdefgh")).status()).toBe(401);
     expect((await anonApi.get("/api/communities/invites/doesnotexist")).status()).toBe(404);
     expect((await anonApi.get("/api/communities/invites/x")).status()).toBe(400);
+  });
+});
+
+test.describe("Communities UI", () => {
+  test("create, invite, join and filter the map", async ({ page, context, browser, freshUser: founder }) => {
+    await signInContext(context, founder);
+    await page.goto("/communities");
+    await expect(page.getByRole("heading", { level: 1, name: "Communities" })).toBeVisible();
+    await expect(page.getByText("No communities yet")).toBeVisible();
+
+    await page.getByRole("button", { name: "Create a community" }).click();
+    await page.getByRole("textbox", { name: "Name" }).fill("E2E UI crew");
+    await page.getByRole("textbox", { name: /Description/ }).fill("Made by the UI test");
+    await page.getByRole("button", { name: "Create", exact: true }).click();
+
+    await expect(page).toHaveURL(/\/communities\/[\w-]+$/);
+    const id = page.url().split("/").pop()!;
+    await expect(page.getByRole("heading", { level: 1, name: "E2E UI crew" })).toBeVisible();
+    const link = await page.getByRole("textbox", { name: "Invite link" }).inputValue();
+    expect(link).toMatch(/\/c\/[\w-]+$/);
+
+    // A second person opens the link and joins.
+    const member = await signUpUser();
+    const memberContext = await browser.newContext();
+    try {
+      await signInContext(memberContext, member);
+      const memberPage = await memberContext.newPage();
+      await memberPage.goto(new URL(link).pathname);
+      await expect(memberPage.getByRole("heading", { level: 1, name: "E2E UI crew" })).toBeVisible();
+      await memberPage.getByRole("button", { name: "Join community" }).click();
+      await expect(memberPage).toHaveURL(new RegExp(`/communities/${id}$`));
+      await expect(memberPage.getByText("2 members").first()).toBeVisible();
+    } finally {
+      await memberContext.close();
+      await member.api.dispose();
+    }
+
+    // The founder sees the new member and can filter the map by the community.
+    await page.reload();
+    await expect(page.getByRole("button", { name: `Remove ${member.name}` })).toBeVisible();
+    await page.getByRole("link", { name: "Show on map" }).click();
+    await expect(page).toHaveURL(new RegExp(`scope=community&community=${id}`));
+    const picker = page.getByRole("button", { name: /E2E UI crew/ });
+    await expect(picker).toBeVisible();
+    await picker.click();
+    await expect(page.getByRole("menuitemradio", { name: /E2E UI crew/ })).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
+  });
+
+  test("an unknown invite link explains itself", async ({ page }) => {
+    await page.goto("/c/notarealcode");
+    await expect(page.getByRole("heading", { name: "This invite link doesn't work" })).toBeVisible();
   });
 });
