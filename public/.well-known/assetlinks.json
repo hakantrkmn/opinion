@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.hakanturkmen.opinion",
+      "sha256_cert_fingerprints": ["5C:0A:F9:DD:E5:E0:48:4C:2A:C4:CB:47:7F:22:F9:1C:57:93:10:A7:39:8F:78:52:A6:81:03:8B:97:4F:4E:C0"]
+    }
+  }
+]
