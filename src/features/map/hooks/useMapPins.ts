@@ -86,6 +86,8 @@ function clustersToFC(clusters: PinCluster[]): GeoJSON.FeatureCollection {
         count: c.count,
         count_label: formatCount(c.count),
         pin_id: c.pin_id,
+        // Only for a single community-only pin (the layer tests `has`).
+        ...(c.color ? { color: c.color } : {}),
       },
     })),
   };
@@ -97,7 +99,15 @@ function pinsToFC(pins: PinSummary[]): GeoJSON.FeatureCollection {
     features: pins.map((p) => ({
       type: "Feature",
       geometry: { type: "Point", coordinates: [p.lng, p.lat] },
-      properties: { id: p.id, name: p.name, comments_count: p.comments_count },
+      properties: {
+        id: p.id,
+        name: p.name,
+        comments_count: p.comments_count,
+        // Only set for community-only pins (layers test `has`).
+        ...(p.community
+          ? { community: p.community.name, community_color: p.community.color }
+          : {}),
+      },
     })),
   };
 }

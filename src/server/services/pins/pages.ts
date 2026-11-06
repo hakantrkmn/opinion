@@ -4,7 +4,10 @@ import { db, sql } from "@/server/db";
 import { toIso } from "./sql";
 import { containsText } from "@/server/db/search";
 
-/** Data loaders for the SSR pages (/pin/[id], /location/[slug], sitemap). */
+/**
+ * Data loaders for the SSR pages (/pin/[id], /location/[slug], sitemap) and
+ * link previews. Public pins only: community-only pins never get a page.
+ */
 
 const DELETED_USER_LABEL = "Deleted user";
 
@@ -35,7 +38,7 @@ export const getPinPageData = cache(async (id: string): Promise<PinPageData | nu
            u.avatar_url
     FROM pins p
     JOIN "user" u ON u.id = p.user_id
-    WHERE p.id = ${id}
+    WHERE p.id = ${id} AND p.community_id IS NULL
   `)) as unknown as Array<{
     id: string;
     name: string;
@@ -93,6 +96,7 @@ export const getPinShareQuote = cache(async (pinId: string): Promise<PinShareQuo
   const [row] = (await db.execute(sql`
     SELECT c.text, COALESCE(u.display_name, u.name) AS display_name, c.verified_visit
     FROM comments c
+    JOIN pins p ON p.id = c.pin_id AND p.community_id IS NULL
     JOIN "user" u ON u.id = c.user_id AND u.deleted_at IS NULL
     WHERE c.pin_id = ${pinId}
     ORDER BY (c.likes_count - c.dislikes_count + c.verified_visit::int) DESC,
@@ -116,6 +120,7 @@ export async function getPinPageComments(
            COALESCE(u.display_name, u.name) AS display_name,
            u.avatar_url
     FROM comments c
+    JOIN pins p ON p.id = c.pin_id AND p.community_id IS NULL
     JOIN "user" u ON u.id = c.user_id
     WHERE c.pin_id = ${pinId}
     ORDER BY c.created_at ASC, c.id
@@ -176,6 +181,7 @@ export async function searchPinsByName(term: string, limit = 50): Promise<Locati
     JOIN "user" u ON u.id = p.user_id
     WHERE ${containsText(sql`p.name`, needle)}
       AND p.comments_count > 0
+      AND p.community_id IS NULL
     ORDER BY p.created_at DESC
     LIMIT ${limit}
   `)) as unknown as Array<{
@@ -207,6 +213,7 @@ export async function getSitemapPins(
   const rows = (await db.execute(sql`
     SELECT id, created_at, updated_at
     FROM pins
+    WHERE community_id IS NULL
     ORDER BY created_at DESC
     LIMIT ${limit}
   `)) as unknown as Array<{ id: string; created_at: string; updated_at: string }>;

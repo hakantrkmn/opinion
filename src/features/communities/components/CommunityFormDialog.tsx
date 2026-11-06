@@ -16,8 +16,15 @@ import {
   COMMUNITY_DESCRIPTION_MAX_LENGTH,
   COMMUNITY_NAME_MAX_LENGTH,
 } from "@/constants/limits";
+import {
+  COMMUNITY_COLOR_KEYS,
+  COMMUNITY_COLORS,
+  DEFAULT_COMMUNITY_COLOR,
+  type CommunityColor,
+} from "@/constants/community-colors";
+import { cn } from "@/lib/utils";
 import type { CommunityResponse } from "@/types/api";
-import { Loader2 } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
@@ -25,12 +32,18 @@ interface CommunityFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Editing an existing community; creating when omitted. */
-  initial?: { name: string; description: string | null };
+  initial?: CommunityFormValues;
   pending: boolean;
-  onSubmit: (values: { name: string; description: string | null }) => Promise<CommunityResponse>;
+  onSubmit: (values: CommunityFormValues) => Promise<CommunityResponse>;
 }
 
-/** Name + optional description, for creating and editing a community. */
+export interface CommunityFormValues {
+  name: string;
+  description: string | null;
+  color: CommunityColor;
+}
+
+/** Name, optional description and pin color, for creating and editing a community. */
 export function CommunityFormDialog({
   open,
   onOpenChange,
@@ -41,24 +54,29 @@ export function CommunityFormDialog({
   const t = useTranslations("communities.form");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [color, setColor] = useState<CommunityColor>(DEFAULT_COMMUNITY_COLOR);
   const editing = !!initial;
 
   useEffect(() => {
     if (open) {
       setName(initial?.name ?? "");
       setDescription(initial?.description ?? "");
+      setColor(initial?.color ?? DEFAULT_COMMUNITY_COLOR);
     }
-  }, [open, initial?.name, initial?.description]);
+  }, [open, initial?.name, initial?.description, initial?.color]);
 
   const trimmed = name.trim();
   const unchanged =
-    editing && trimmed === initial.name && description.trim() === (initial.description ?? "");
+    editing &&
+    trimmed === initial.name &&
+    description.trim() === (initial.description ?? "") &&
+    color === initial.color;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (pending || !trimmed || unchanged) return;
     try {
-      await onSubmit({ name: trimmed, description: description.trim() || null });
+      await onSubmit({ name: trimmed, description: description.trim() || null, color });
       onOpenChange(false);
     } catch {
       // The caller shows the error toast.
@@ -117,6 +135,8 @@ export function CommunityFormDialog({
             />
           </div>
 
+          <ColorPicker value={color} onChange={setColor} />
+
           <DialogFooter className="gap-2">
             <Button
               type="button"
@@ -135,5 +155,54 @@ export function CommunityFormDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Swatches for the color of the community's members-only pins. */
+function ColorPicker({
+  value,
+  onChange,
+}: {
+  value: CommunityColor;
+  onChange: (color: CommunityColor) => void;
+}) {
+  const t = useTranslations("communities.form");
+  return (
+    <div className="flex flex-col gap-2">
+      <span id="community-color-label" className="text-sm font-medium">
+        {t("colorLabel")}
+      </span>
+      <div
+        role="radiogroup"
+        aria-labelledby="community-color-label"
+        aria-describedby="community-color-hint"
+        className="flex flex-wrap gap-2"
+      >
+        {COMMUNITY_COLOR_KEYS.map((key) => {
+          const active = key === value;
+          return (
+            <button
+              key={key}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              aria-label={t(`colors.${key}`)}
+              title={t(`colors.${key}`)}
+              onClick={() => onChange(key)}
+              className={cn(
+                "flex size-9 items-center justify-center rounded-full ring-offset-2 ring-offset-background transition-[transform,box-shadow] duration-150 ease-out touch-manipulation active:scale-[0.94] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 pointer-coarse:size-10",
+                active && "ring-2 ring-foreground/80"
+              )}
+              style={{ backgroundColor: COMMUNITY_COLORS[key] }}
+            >
+              {active ? <Check aria-hidden className="size-4 text-white" strokeWidth={3} /> : null}
+            </button>
+          );
+        })}
+      </div>
+      <p id="community-color-hint" className="text-xs text-muted-foreground">
+        {t("colorHint")}
+      </p>
+    </div>
   );
 }

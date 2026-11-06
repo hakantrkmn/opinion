@@ -2,6 +2,7 @@
 
 import { queryKeys } from "@/lib/api/query-keys";
 import type { PinCommentsResponse } from "@/types/api";
+import { ApiError } from "@/lib/api/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -32,6 +33,12 @@ export function useCreatePin() {
         });
       }
       toast.success(t("dropped"), { description: pin.name });
+    },
+    onError: (error, input) => {
+      // Not a member any more: refresh the picker's communities.
+      if (input.communityId && error instanceof ApiError && error.status === 404) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.communities.mine });
+      }
     },
   });
 }

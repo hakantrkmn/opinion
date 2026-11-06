@@ -1,7 +1,7 @@
 import "server-only";
 import { db, sql } from "@/server/db";
 import { toPaginated, type OffsetPagination } from "@/server/http/pagination";
-import { invisibleUserIdsSql, toIso } from "@/server/services/pins/sql";
+import { invisibleUserIdsSql, pinVisibleSql, toIso } from "@/server/services/pins/sql";
 import type { NotificationItem, NotificationType, Paginated } from "@/types/api";
 
 /**
@@ -122,7 +122,7 @@ export async function recordNotifications(params: {
 /**
  * Rows the viewer may see: live actor, neither actor nor pin owner
  * invisible to them (blocked either way, also when blocked after the
- * event); likes need their comment. Needs `JOIN "user" a` (actor) and
+ * event), the pin still visible (community left); likes need their comment. Needs `JOIN "user" a` (actor) and
  * `LEFT JOIN pins p`.
  */
 function visibleRowsSql(recipientId: string) {
@@ -132,6 +132,7 @@ function visibleRowsSql(recipientId: string) {
     AND a.deleted_at IS NULL
     AND n.actor_id NOT IN ${invisible}
     AND (p.user_id IS NULL OR p.user_id NOT IN ${invisible})
+    AND ${pinVisibleSql(recipientId)}
     AND NOT (n.type = 'comment_liked' AND n.comment_id IS NULL)`;
 }
 

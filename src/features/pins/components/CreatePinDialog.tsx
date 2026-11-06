@@ -10,11 +10,13 @@ import {
   ResponsiveDialogPanel,
 } from "@/components/ui/responsive-dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { COMMUNITY_COLORS } from "@/constants/community-colors";
 import {
   COMMENT_MAX_LENGTH,
   PIN_CREATE_MAX_DISTANCE_M,
   PIN_NAME_MAX_LENGTH,
 } from "@/constants";
+import { useMyCommunities } from "@/features/communities/hooks/use-communities";
 import { useGeoErrorMessage } from "@/features/map/hooks/useGeoErrorMessage";
 import { getQuickFix } from "@/features/map/lib/geolocation";
 import { useLocationStore } from "@/features/map/store/location-store";
@@ -23,13 +25,19 @@ import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { useObjectUrl } from "@/features/media/hooks/useObjectUrl";
 import { ApiError, errorMessage } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
-import { AlertCircle, Crosshair, Loader2, MapPin, X } from "lucide-react";
+import type { CommunitySummary } from "@/types/api";
+import { AlertCircle, Crosshair, Globe, Loader2, Lock, MapPin, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useCreatePin } from "../hooks/useCreatePin";
 
-export function CreatePinDialog() {
+export function CreatePinDialog({
+  defaultCommunityId = null,
+}: {
+  /** The map's community filter: new pins start out for that community. */
+  defaultCommunityId?: string | null;
+}) {
   const t = useTranslations("pins.create");
   const draft = useMapUiStore((s) => s.draft);
   const setDraft = useMapUiStore((s) => s.setDraft);
@@ -66,6 +74,7 @@ export function CreatePinDialog() {
             <CreatePinForm
               key={session}
               draft={draft ?? shown}
+              defaultCommunityId={defaultCommunityId}
               onDone={() => setDraft(null)}
             />
           ) : null}
@@ -75,7 +84,15 @@ export function CreatePinDialog() {
   );
 }
 
-function CreatePinForm({ draft, onDone }: { draft: DraftPin; onDone: () => void }) {
+function CreatePinForm({
+  draft,
+  defaultCommunityId,
+  onDone,
+}: {
+  draft: DraftPin;
+  defaultCommunityId: string | null;
+  onDone: () => void;
+}) {
   const t = useTranslations("pins.create");
   const geoErrorMessage = useGeoErrorMessage();
   const setDraft = useMapUiStore((s) => s.setDraft);
@@ -87,12 +104,23 @@ function CreatePinForm({ draft, onDone }: { draft: DraftPin; onDone: () => void 
   const formRef = useRef<HTMLFormElement>(null);
   const previewUrl = useObjectUrl(photo);
   const create = useCreatePin();
+  const communities = useMyCommunities();
+  const [visibility, setVisibility] = useState(defaultCommunityId);
+  const community = communities.data?.find((c) => c.id === visibility) ?? null;
+  // What the picker shows is what gets sent. Until the list loads, keep the
+  // preset community: never fall back to public silently.
+  const communityId = communities.data ? (community?.id ?? null) : visibility;
 
   const tooFar = create.error instanceof ApiError && create.error.code === "TOO_FAR";
   const tooFarIssues = (tooFar ? (create.error as ApiError).issues : null) as {
     distance_m?: number;
     max_distance_m?: number;
   } | null;
+  // 404 for a community pin: no longer a member (the list refreshes).
+  const communityGone =
+    !!create.variables?.communityId &&
+    create.error instanceof ApiError &&
+    create.error.status === 404;
   const pending = create.isPending;
 
   const submit = (e: React.FormEvent) => {
@@ -115,6 +143,7 @@ function CreatePinForm({ draft, onDone }: { draft: DraftPin; onDone: () => void 
         userLng: draft.fix.lng,
         accuracy: draft.fix.accuracy,
         photo,
+        communityId,
       },
       { onSuccess: onDone }
     );
@@ -257,6 +286,18 @@ function CreatePinForm({ draft, onDone }: { draft: DraftPin; onDone: () => void 
         )}
       </div>
 
+      {communities.data?.length ? (
+        <VisibilityPicker
+          communities={communities.data}
+          value={community?.id ?? null}
+          onChange={(id) => {
+            setVisibility(id);
+            if (communityGone) create.reset();
+          }}
+          disabled={pending}
+        />
+      ) : null}
+
       {create.isError ? (
         <div
           role="alert"
@@ -275,7 +316,9 @@ function CreatePinForm({ draft, onDone }: { draft: DraftPin; onDone: () => void 
                     distance: String(Math.round(tooFarIssues?.distance_m ?? 0)),
                     max: String(tooFarIssues?.max_distance_m ?? PIN_CREATE_MAX_DISTANCE_M),
                   })
-                : errorMessage(create.error, t("tryAgain"))}
+                : communityGone
+                  ? t("communityGone")
+                  : errorMessage(create.error, t("tryAgain"))}
             </p>
           </div>
         </div>
@@ -297,6 +340,70 @@ function CreatePinForm({ draft, onDone }: { draft: DraftPin; onDone: () => void 
         </Button>
       </div>
     </form>
+  );
+}
+
+/**
+ * "Who can see it?": Everyone or one of the viewer's communities. Fixed once
+ * the pin is dropped, so the choice is spelled out under the chips.
+ */
+function VisibilityPicker({
+  communities,
+  value,
+  onChange,
+  disabled,
+}: {
+  communities: CommunitySummary[];
+  /** Selected community id, null for everyone. */
+  value: string | null;
+  onChange: (communityId: string | null) => void;
+  disabled: boolean;
+}) {
+  const t = useTranslations("pins.create");
+  const options = [{ id: null, name: t("visibilityEveryone") }, ...communities];
+  const selected = communities.find((c) => c.id === value);
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span id="pin-visibility-label" className="text-sm font-medium">
+        {t("visibilityLabel")}
+      </span>
+      <div
+        role="radiogroup"
+        aria-labelledby="pin-visibility-label"
+        aria-describedby="pin-visibility-hint"
+        className="-mx-5 flex gap-1.5 overflow-x-auto px-5 [scrollbar-width:none] sm:-mx-6 sm:px-6 [&::-webkit-scrollbar]:hidden"
+      >
+        {options.map((o) => {
+          const active = o.id === value;
+          const Icon = o.id ? Lock : Globe;
+          const color = "color" in o ? COMMUNITY_COLORS[o.color] : undefined;
+          return (
+            <button
+              key={o.id ?? "everyone"}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              disabled={disabled}
+              onClick={() => onChange(o.id)}
+              className={cn(
+                "flex h-9 max-w-48 shrink-0 select-none items-center gap-1.5 rounded-full border px-3 text-xs font-medium touch-manipulation transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-[0.97] disabled:opacity-60",
+                active
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+              )}
+            >
+              <Icon aria-hidden className="size-3.5 shrink-0" style={{ color }} />
+              <span className="truncate">{o.name}</span>
+            </button>
+          );
+        })}
+      </div>
+      <p id="pin-visibility-hint" className="text-xs text-muted-foreground">
+        {selected
+          ? t("visibilityCommunityHint", { name: selected.name })
+          : t("visibilityPublicHint")}
+      </p>
+    </div>
   );
 }
 

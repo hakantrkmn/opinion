@@ -2,6 +2,7 @@ import type {
   ExpressionSpecification,
   Map as MapLibreMap,
 } from "maplibre-gl";
+import { COMMUNITY_COLOR_KEYS, COMMUNITY_COLORS } from "@/constants/community-colors";
 import { PIN_ACTIVITY } from "@/features/pins/lib/activity";
 
 /** Pin colors per activity tier (mirrors the detail header). */
@@ -14,10 +15,19 @@ export const PIN_COLORS = {
 type Tier = keyof typeof PIN_COLORS;
 const TIERS = Object.keys(PIN_COLORS) as Tier[];
 const imageId = (tier: Tier) => `dp-pin-${tier}`;
+const COMMUNITY_IMAGE_PREFIX = "dp-pin-community-";
 
-/** icon-image expression choosing the tier image from `comments_count`. */
+/** The community's color image when the feature has `prop`, else `fallback`. */
+function communityOr(prop: string, fallback: ExpressionSpecification | string): ExpressionSpecification {
+  return ["case", ["has", prop], ["concat", COMMUNITY_IMAGE_PREFIX, ["get", prop]], fallback];
+}
+
+/**
+ * icon-image expression: a community-only pin in its community's color,
+ * any other pin in its activity tier color (from `comments_count`).
+ */
 export function pinImageExpression(): ExpressionSpecification {
-  return [
+  return communityOr("community_color", [
     "step",
     ["coalesce", ["get", "comments_count"], 0],
     imageId("new"),
@@ -25,7 +35,12 @@ export function pinImageExpression(): ExpressionSpecification {
     imageId("active"),
     PIN_ACTIVITY.hot.min,
     imageId("hot"),
-  ];
+  ]);
+}
+
+/** icon-image for a server cluster's single pin (`color` set for community pins). */
+export function singlePinImageExpression(): ExpressionSpecification {
+  return communityOr("color", imageId("active"));
 }
 
 // The brand pin (same shapes as components/icons/PinIcon) in a 512 viewBox.
@@ -35,7 +50,7 @@ const PIXEL_RATIO = 2;
 const LOGICAL_W = 32;
 const LOGICAL_H = 40;
 
-const cache = new Map<Tier, ImageData>();
+const cache = new Map<string, ImageData>();
 
 function renderPin(color: string): ImageData | null {
   const canvas = document.createElement("canvas");
@@ -91,17 +106,67 @@ function renderPin(color: string): ImageData | null {
   return ctx.getImageData(0, 0, canvas.width, canvas.height);
 }
 
+/** Badge drawn on community-only pins (a lock in a dark disc). */
+export const LOCK_BADGE_IMAGE = "dp-pin-lock";
+const BADGE_SIZE = 16;
+let lockBadge: ImageData | null = null;
+
+function renderLockBadge(): ImageData | null {
+  const px = BADGE_SIZE * PIXEL_RATIO;
+  const canvas = document.createElement("canvas");
+  canvas.width = px;
+  canvas.height = px;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.scale(PIXEL_RATIO, PIXEL_RATIO);
+
+  // disc with a white ring so it reads on any basemap and on the pin
+  ctx.beginPath();
+  ctx.arc(8, 8, 7.25, 0, Math.PI * 2);
+  ctx.fillStyle = "#1a1a1a";
+  ctx.fill();
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = "#ffffff";
+  ctx.stroke();
+
+  // lock: shackle + body
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.arc(8, 6.6, 1.9, Math.PI, 0);
+  ctx.lineTo(9.9, 7.6);
+  ctx.moveTo(6.1, 6.6);
+  ctx.lineTo(6.1, 7.6);
+  ctx.stroke();
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.roundRect(4.9, 7.5, 6.2, 4.6, 1);
+  ctx.fill();
+
+  return ctx.getImageData(0, 0, px, px);
+}
+
 /** Adds the pin images to the current style (no-op when already present). */
 export function ensurePinImages(map: MapLibreMap) {
-  for (const tier of TIERS) {
-    const id = imageId(tier);
+  if (!map.hasImage(LOCK_BADGE_IMAGE)) {
+    lockBadge ??= renderLockBadge();
+    if (lockBadge) map.addImage(LOCK_BADGE_IMAGE, lockBadge, { pixelRatio: PIXEL_RATIO });
+  }
+  const images: Array<[string, string]> = [
+    ...TIERS.map((tier): [string, string] => [imageId(tier), PIN_COLORS[tier]]),
+    ...COMMUNITY_COLOR_KEYS.map((key): [string, string] => [
+      `${COMMUNITY_IMAGE_PREFIX}${key}`,
+      COMMUNITY_COLORS[key],
+    ]),
+  ];
+  for (const [id, color] of images) {
     if (map.hasImage(id)) continue;
-    let image = cache.get(tier);
+    let image = cache.get(id);
     if (!image) {
-      const rendered = renderPin(PIN_COLORS[tier]);
+      const rendered = renderPin(color);
       if (!rendered) continue;
       image = rendered;
-      cache.set(tier, image);
+      cache.set(id, image);
     }
     map.addImage(id, image, { pixelRatio: PIXEL_RATIO });
   }

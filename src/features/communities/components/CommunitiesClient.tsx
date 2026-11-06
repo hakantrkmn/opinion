@@ -1,5 +1,6 @@
 "use client";
 
+import { COMMUNITY_COLORS } from "@/constants/community-colors";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { COMMUNITY_MAX_PER_USER } from "@/constants/limits";
@@ -15,7 +16,7 @@ import { toast } from "sonner";
 import { useCreateCommunity, useMyCommunities } from "../hooks/use-communities";
 import { communityErrorMessage } from "../lib/errors";
 import { communityMapHref } from "../lib/links";
-import { CommunityFormDialog } from "./CommunityFormDialog";
+import { CommunityFormDialog, type CommunityFormValues } from "./CommunityFormDialog";
 
 const card = "rounded-3xl border border-border/60 bg-card p-5 shadow-xs sm:p-6";
 
@@ -29,7 +30,7 @@ export function CommunitiesClient() {
   const items = query.data;
   const full = (items?.length ?? 0) >= COMMUNITY_MAX_PER_USER;
 
-  const onCreate = async (values: { name: string; description: string | null }) => {
+  const onCreate = async (values: CommunityFormValues) => {
     try {
       const res = await create.mutateAsync(values);
       toast.success(t("form.created"), { description: t("form.createdDescription") });
@@ -128,7 +129,10 @@ function CommunityCard({ community: c }: { community: CommunitySummary }) {
   const t = useTranslations("communities.list");
   return (
     <li className="relative flex items-center gap-3 rounded-2xl border border-border/60 bg-card p-4 shadow-xs transition-colors duration-150 hover:border-border">
-      <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+      <span
+        className="flex size-11 shrink-0 items-center justify-center rounded-2xl text-white"
+        style={{ backgroundColor: COMMUNITY_COLORS[c.color] }}
+      >
         <UsersRound aria-hidden className="size-5" />
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">

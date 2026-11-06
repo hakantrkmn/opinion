@@ -1,5 +1,6 @@
 "use client";
 
+import { COMMUNITY_COLORS } from "@/constants/community-colors";
 import { cn } from "@/lib/utils";
 import type { CommunitySummary } from "@/types/api";
 import { Check, ChevronDown, Globe2, Plus, Users, UsersRound } from "lucide-react";
@@ -207,6 +208,11 @@ function CommunityPicker({
                     close(true);
                   }}
                 >
+                  <span
+                    aria-hidden
+                    className="size-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: COMMUNITY_COLORS[c.color] }}
+                  />
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className="truncate font-medium">{c.name}</span>
                     <span className="text-xs text-muted-foreground">

@@ -3,6 +3,7 @@ import {
   COMMUNITY_DESCRIPTION_MAX_LENGTH,
   COMMUNITY_NAME_MAX_LENGTH,
 } from "@/constants/limits";
+import { COMMUNITY_COLOR_KEYS } from "@/constants/community-colors";
 
 const MAX_COMMENT_LEN = 2000;
 const MAX_PHOTO_URL_LEN = 500;
@@ -68,6 +69,8 @@ export const createPinFormSchema = z.object({
   user_lat: z.coerce.number().min(-90).max(90),
   user_lng: z.coerce.number().min(-180).max(180),
   accuracy: z.coerce.number().min(0).max(100_000),
+  /** Community-only pin (the author must be a member); omitted = public. */
+  community_id: idSchema.optional(),
 });
 
 /** GET /api/pins/:id/comments */
@@ -153,11 +156,13 @@ export const markNotificationsReadSchema = z.union([
 
 const communityNameSchema = z.string().trim().min(1).max(COMMUNITY_NAME_MAX_LENGTH);
 const communityDescriptionSchema = z.string().trim().max(COMMUNITY_DESCRIPTION_MAX_LENGTH);
+const communityColorSchema = z.enum(COMMUNITY_COLOR_KEYS);
 
 /** POST /api/communities */
 export const createCommunitySchema = z.object({
   name: communityNameSchema,
   description: communityDescriptionSchema.nullish(),
+  color: communityColorSchema.optional(),
 });
 
 /** PATCH /api/communities/:id — `description: null` (or "") clears it. */
@@ -165,8 +170,9 @@ export const updateCommunitySchema = z
   .object({
     name: communityNameSchema.optional(),
     description: communityDescriptionSchema.nullable().optional(),
+    color: communityColorSchema.optional(),
   })
-  .refine((b) => b.name !== undefined || b.description !== undefined, {
+  .refine((b) => b.name !== undefined || b.description !== undefined || b.color !== undefined, {
     message: "Nothing to update",
   });
 

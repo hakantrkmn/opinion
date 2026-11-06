@@ -15,6 +15,7 @@ import { AccountSettingsDialog } from "@/features/profile/components/settings/Ac
 import { EmailVerificationBanner } from "@/features/profile/components/settings/EmailVerificationBanner";
 import { ConnectionListDialog } from "@/features/profile/components/social/ConnectionListDialog";
 import { UserSearchDialog } from "@/features/users/components/UserSearchDialog";
+import { pinShareUrl } from "@/features/pins/lib/links";
 import { Button } from "@/components/ui/button";
 import {
   useOwnProfile,
@@ -49,7 +50,7 @@ export function ProfileClient({ initial }: { initial: OwnProfileResponse }) {
   const commentsQuery = useOwnProfileComments(tab === "comments");
 
   const handleSharePin = async (pin: PinSummary) => {
-    const shareUrl = `${window.location.origin}/pin/${pin.id}`;
+    const shareUrl = pinShareUrl(pin);
     try {
       await navigator.clipboard.writeText(shareUrl);
       toast.success(t("linkCopied"), { id: "copy-pin-link", description: pin.name });

@@ -1,5 +1,6 @@
 "use client";
 
+import { COMMUNITY_COLORS } from "@/constants/community-colors";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -174,7 +175,10 @@ function CommunityBody({ community: c }: { community: Community }) {
     <>
       <section className={card} aria-labelledby="community-name">
         <div className="flex items-start gap-4">
-          <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary sm:size-16">
+          <span
+            className="flex size-14 shrink-0 items-center justify-center rounded-2xl text-white sm:size-16"
+            style={{ backgroundColor: COMMUNITY_COLORS[c.color] }}
+          >
             <UsersRound aria-hidden className="size-7" />
           </span>
           <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -240,7 +244,7 @@ function CommunityBody({ community: c }: { community: Community }) {
       <CommunityFormDialog
         open={editing}
         onOpenChange={setEditing}
-        initial={{ name: c.name, description: c.description }}
+        initial={{ name: c.name, description: c.description, color: c.color }}
         pending={update.isPending}
         onSubmit={async (values) => {
           try {
@@ -279,7 +283,7 @@ function CommunityBody({ community: c }: { community: Community }) {
                 : confirm?.kind === "leave"
                   ? td("confirmLeaveDescription")
                   : confirm?.kind === "delete"
-                    ? td("confirmDeleteDescription")
+                    ? td("confirmDeleteDescription", { pins: c.pins_count })
                     : td("confirmResetDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>

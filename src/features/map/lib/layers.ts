@@ -8,8 +8,15 @@ import type {
   LayerSpecification,
   Map as MapLibreMap,
 } from "maplibre-gl";
+import { COMMUNITY_COLORS } from "@/constants/community-colors";
 import { MAP_FONT_BOLD, MAP_FONT_REGULAR } from "./basemaps";
-import { ensurePinImages, PIN_COLORS, pinImageExpression } from "./pin-image";
+import {
+  ensurePinImages,
+  LOCK_BADGE_IMAGE,
+  PIN_COLORS,
+  pinImageExpression,
+  singlePinImageExpression,
+} from "./pin-image";
 
 /* ---------------------------------------------------------------- ids --- */
 
@@ -36,6 +43,7 @@ export const LAYER = {
   pinClusterCount: "dp-pin-cluster-count",
   pinSelectedHalo: "dp-pin-selected-halo",
   pinIcons: "dp-pin-icons",
+  pinBadges: "dp-pin-badges",
   pinLabels: "dp-pin-labels",
   userDotHalo: "dp-user-dot-halo",
   userDot: "dp-user-dot",
@@ -48,6 +56,7 @@ export const INTERACTIVE_LAYERS = [
   LAYER.serverSinglePin,
   LAYER.pinClusterCircle,
   LAYER.pinIcons,
+  LAYER.pinBadges,
 ] as const;
 
 export const EMPTY_FC: GeoJSON.FeatureCollection = {
@@ -65,6 +74,25 @@ const CLUSTER_STRONG = "#047857"; // emerald-700
 const CLUSTER_HOT = "#d97706"; // amber-600
 
 const notCluster: ExpressionSpecification = ["!", ["has", "point_count"]];
+
+/** A pin's own color: its community's for members-only pins, else ACCENT. */
+const pinAccent: ExpressionSpecification = [
+  "match",
+  ["coalesce", ["get", "community_color"], ""],
+  ...Object.entries(COMMUNITY_COLORS).flat(),
+  ACCENT,
+] as unknown as ExpressionSpecification;
+
+/** Pin icon scale by activity; badges follow it to stay on the pin. */
+const pinSize = (small: number, medium: number, large: number): ExpressionSpecification => [
+  "step",
+  num("comments_count"),
+  small,
+  2,
+  medium,
+  11,
+  large,
+];
 
 /** Numeric feature property, 0 when missing/null (no "found null" warnings). */
 const num = (prop: string): ExpressionSpecification => [
@@ -274,7 +302,7 @@ function layers({ dark }: LayerContext): LayerSpecification[] {
       source: SRC.serverClusters,
       filter: ["==", ["get", "count"], 1],
       layout: {
-        "icon-image": "dp-pin-active",
+        "icon-image": singlePinImageExpression(),
         "icon-anchor": "bottom",
         "icon-offset": [0, 3],
         "icon-size": 0.9,
@@ -303,8 +331,8 @@ function layers({ dark }: LayerContext): LayerSpecification[] {
       paint: {
         "circle-radius": 20,
         "circle-translate": [0, -22],
-        "circle-color": ACCENT,
-        "circle-stroke-color": ACCENT,
+        "circle-color": pinAccent,
+        "circle-stroke-color": pinAccent,
         "circle-stroke-width": 2,
         "circle-opacity": [
           "case",
@@ -329,16 +357,30 @@ function layers({ dark }: LayerContext): LayerSpecification[] {
         "icon-image": pinImageExpression(),
         "icon-anchor": "bottom",
         "icon-offset": [0, 3],
-        "icon-size": [
+        "icon-size": pinSize(0.85, 0.95, 1.1),
+        "icon-allow-overlap": true,
+        "symbol-sort-key": num("comments_count"),
+      },
+    },
+    // Lock on the pin's upper right: community-only (members see these).
+    {
+      id: LAYER.pinBadges,
+      type: "symbol",
+      source: SRC.pins,
+      filter: ["all", notCluster, ["has", "community"]],
+      layout: {
+        "icon-image": LOCK_BADGE_IMAGE,
+        "icon-offset": [
           "step",
           num("comments_count"),
-          0.85,
+          ["literal", [8.5, -26]],
           2,
-          0.95,
+          ["literal", [9.5, -29]],
           11,
-          1.1,
+          ["literal", [11, -33.5]],
         ],
         "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
         "symbol-sort-key": num("comments_count"),
       },
     },
@@ -349,7 +391,14 @@ function layers({ dark }: LayerContext): LayerSpecification[] {
       filter: notCluster,
       minzoom: PIN_LABEL_MIN_ZOOM,
       layout: {
-        "text-field": ["get", "name"],
+        // Community-only pins add the community's name on a second line.
+        "text-field": [
+          "format",
+          ["get", "name"],
+          {},
+          ["case", ["has", "community"], ["concat", "\n", ["get", "community"]], ""],
+          { "font-scale": 0.85 },
+        ],
         "text-font": MAP_FONT_REGULAR,
         "text-size": 12,
         "text-max-width": 9,

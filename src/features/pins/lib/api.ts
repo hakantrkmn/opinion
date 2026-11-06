@@ -17,6 +17,8 @@ export interface CreatePinInput {
   userLng: number;
   accuracy: number;
   photo?: File | null;
+  /** Community-only pin; omitted/null = public. */
+  communityId?: string | null;
 }
 
 export function createPin(input: CreatePinInput) {
@@ -29,5 +31,6 @@ export function createPin(input: CreatePinInput) {
   form.append("user_lng", String(input.userLng));
   form.append("accuracy", String(Math.round(input.accuracy)));
   if (input.photo) form.append("photo", input.photo);
+  if (input.communityId) form.append("community_id", input.communityId);
   return apiFormData<CreatePinResponse>("/api/pins", form);
 }

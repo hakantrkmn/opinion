@@ -3,6 +3,8 @@
 import { PinIcon } from "@/components/icons/PinIcon";
 import { formatCount } from "@/features/profile/lib/format";
 import { Button } from "@/components/ui/button";
+import { COMMUNITY_COLORS } from "@/constants/community-colors";
+import { pinMapHref } from "@/features/pins/lib/links";
 import { formatTimeAgo } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { PinSummary } from "@/types/api";
@@ -12,6 +14,7 @@ import {
   ChevronRight,
   Link2,
   Loader2,
+  Lock,
   MessageCircle,
   RotateCcw,
   ThumbsDown,
@@ -32,14 +35,7 @@ export interface ListState {
 }
 
 /** Map deep link: the map opens the pin from `pin` and starts at lat/lng. */
-export function pinMapHref(pin: { id: string; lat?: number; lng?: number }) {
-  const params = new URLSearchParams({ pin: pin.id });
-  if (typeof pin.lat === "number" && typeof pin.lng === "number") {
-    params.set("lat", pin.lat.toFixed(6));
-    params.set("lng", pin.lng.toFixed(6));
-  }
-  return `/?${params.toString()}`;
-}
+export { pinMapHref } from "@/features/pins/lib/links";
 
 const rowCard =
   "rounded-2xl border border-border/60 bg-card transition-[background-color,border-color] duration-150 hover:border-border hover:bg-muted/40";
@@ -244,19 +240,34 @@ export function ProfilePinsList({
             href={pinMapHref(pin)}
             className={cn(focusRing, "flex min-w-0 flex-1 items-center gap-3 rounded-2xl py-3.5 pl-4")}
           >
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <span
+              className={cn(
+                "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                pin.community ? "text-white" : "bg-primary/10 text-primary"
+              )}
+              style={pin.community ? { backgroundColor: COMMUNITY_COLORS[pin.community.color] } : undefined}
+            >
               <PinIcon className="size-4" />
             </span>
             <span className="flex min-w-0 flex-1 flex-col gap-1">
               <span className="truncate text-sm font-semibold text-foreground">{pin.name}</span>
-              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <MessageCircle aria-hidden className="size-3" />
+              <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                <MessageCircle aria-hidden className="size-3 shrink-0" />
                 <span className="tabular-nums">{t("commentsCount", {
                     count: pin.comments_count,
                     formatted: formatCount(pin.comments_count, locale),
                   })}</span>
                 <span aria-hidden>·</span>
-                <time dateTime={pin.created_at}>{formatTimeAgo(pin.created_at, locale)}</time>
+                <time dateTime={pin.created_at} className="shrink-0">{formatTimeAgo(pin.created_at, locale)}</time>
+                {pin.community ? (
+                  <>
+                    <span aria-hidden>·</span>
+                    <span className="flex min-w-0 items-center gap-1">
+                      <Lock aria-hidden className="size-3 shrink-0" />
+                      <span className="truncate">{pin.community.name}</span>
+                    </span>
+                  </>
+                ) : null}
               </span>
             </span>
             {!onShare ? (

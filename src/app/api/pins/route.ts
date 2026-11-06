@@ -52,8 +52,9 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/pins (multipart/form-data)
- *   name, comment, lat, lng, user_lat, user_lng, accuracy, photo?
+ *   name, comment, lat, lng, user_lat, user_lng, accuracy, photo?, community_id?
  * → 201 CreatePinResponse | 422 TOO_FAR | 400 VALIDATION_ERROR
+ *   | 404 when community_id is not a community the author is in
  */
 export async function POST(request: NextRequest) {
   let uploadedPhotoUrl: string | null = null;
@@ -120,6 +121,7 @@ export async function POST(request: NextRequest) {
       lat: input.lat,
       lng: input.lng,
       photo,
+      communityId: input.community_id ?? null,
     });
     uploadedPhotoUrl = null; // now owned by the comment row
 
@@ -130,6 +132,7 @@ export async function POST(request: NextRequest) {
         pinName: body.pin.name,
         lat: body.pin.lat,
         lng: body.pin.lng,
+        communityId: body.pin.community?.id ?? null,
       })
     );
 
