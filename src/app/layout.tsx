@@ -3,6 +3,7 @@ import { LazyToaster } from "@/components/LazyToaster";
 import { ApiErrorTranslator } from "@/components/common/ApiErrorTranslator";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { getBaseUrl } from "@/lib/site-url";
+import { DEFAULT_OG_IMAGE, siteOpenGraph } from "@/lib/site-metadata";
 import {
   createJsonLdScript,
   generateOrganizationSchema,
@@ -38,19 +39,14 @@ export const viewport: Viewport = {
   ],
 };
 
-const OG_LOCALE = { en: "en_US", tr: "tr_TR" } as const;
-
 export async function generateMetadata(): Promise<Metadata> {
-  const [t, locale] = await Promise.all([getTranslations("pages.layout"), getLocale()]);
+  const [t, openGraph] = await Promise.all([getTranslations("pages.layout"), siteOpenGraph()]);
   const title = t("title");
   const description = t("description");
 
   return {
-    icons: {
-      icon: "/favicon.svg",
-      shortcut: "/favicon.svg",
-      apple: "/favicon.svg",
-    },
+    // Icons come from the file conventions: app/favicon.ico, app/icon.svg,
+    // app/apple-icon.png.
     metadataBase: new URL(getBaseUrl()),
     title: {
       default: title,
@@ -65,33 +61,15 @@ export async function generateMetadata(): Promise<Metadata> {
       address: false,
       telephone: false,
     },
-    alternates: {
-      canonical: "/",
-    },
-    openGraph: {
-      type: "website",
-      locale: OG_LOCALE[locale],
-      url: "/",
-      siteName: "droPINion",
-      title,
-      description,
-      images: [
-        {
-          url: "/api/og?type=default",
-          width: 1200,
-          height: 630,
-          alt: t("ogImageAlt"),
-        },
-      ],
-    },
+    // No canonical / og:url here: children would inherit "/" as theirs.
+    // Each indexable page sets its own.
+    openGraph: { ...openGraph, title, description },
     twitter: {
       card: "summary_large_image",
       title,
       description: t("twitterDescription"),
       creator: "@opinion_map",
-      images: [
-        "/api/og?type=default",
-      ],
+      images: [DEFAULT_OG_IMAGE],
     },
     robots: {
       index: true,
@@ -104,9 +82,7 @@ export async function generateMetadata(): Promise<Metadata> {
         "max-snippet": -1,
       },
     },
-    verification: {
-      google: "googleb77d2e6c4cda70af.html",
-    },
+    // Search Console is verified by public/googleb77d2e6c4cda70af.html.
     category: "Social Platform",
     classification: "Interactive Map Platform",
     other: {

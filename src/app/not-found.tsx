@@ -1,6 +1,6 @@
 import Header from "@/components/common/Header";
 import { PinIcon } from "@/components/icons/PinIcon";
-import { Map as MapIcon } from "lucide-react";
+import { Compass, Map as MapIcon } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 
@@ -29,6 +29,13 @@ export default async function NotFound() {
           >
             <MapIcon className="size-4" aria-hidden />
             {t("backToMap")}
+          </Link>
+          <Link
+            href="/explore"
+            className="mt-2 inline-flex h-11 items-center gap-2 rounded-xl px-5 text-sm font-medium text-muted-foreground transition-[transform,background-color,color] duration-150 ease-out hover:bg-muted hover:text-foreground active:scale-[0.97]"
+          >
+            <Compass className="size-4" aria-hidden />
+            {t("explore")}
           </Link>
         </div>
       </main>

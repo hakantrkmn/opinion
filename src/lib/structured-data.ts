@@ -1,157 +1,157 @@
+import type { PinPageComment, PinPageData } from "@/server/services/pins/pages";
+
 export interface StructuredDataConfig {
   baseUrl: string;
 }
 
-interface PinData {
-  id: string;
-  name?: string; // Changed from title to name
-  description?: string;
-  location: string | { type: string; coordinates: [number, number] }; // Can be string or GeoJSON
-  latitude?: number;
-  longitude?: number;
-  comments?: CommentData[];
-  users?: {
-    display_name?: string;
-  }[];
-}
-
-interface CommentData {
-  id: string;
-  text: string; // Changed from content to text
-  created_at: string;
-  upvotes?: number;
-  downvotes?: number;
-  users?: {
-    display_name?: string;
-  }[];
-  pins?: PinData;
-}
-
-interface LocationData {
-  id: string;
-  title?: string;
-  location: string;
-  latitude?: number;
-  longitude?: number;
-}
+/** Stable node ids so the site-wide schemas can reference each other. */
+export const orgId = (baseUrl: string) => `${baseUrl}/#organization`;
+export const siteId = (baseUrl: string) => `${baseUrl}/#website`;
 
 /**
- * Generate Organization schema for the main site
+ * Organization schema for the whole site. The logo is a square PNG, which
+ * Google needs for the logo rich result (it does not take SVG here).
  */
-export function generateOrganizationSchema(config: StructuredDataConfig) {
+export function generateOrganizationSchema({ baseUrl }: StructuredDataConfig) {
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
+    "@id": orgId(baseUrl),
     name: "droPINion",
     description:
       "Interactive map platform where you can share opinions and discover what others think about different locations around the world.",
-    url: config.baseUrl,
-    sameAs: ["https://twitter.com/opinion_map"],
-    contactPoint: {
-      "@type": "ContactPoint",
-      contactType: "customer service",
-      availableLanguage: ["English", "Turkish"],
+    url: `${baseUrl}/`,
+    logo: {
+      "@type": "ImageObject",
+      url: `${baseUrl}/logo-512.png`,
+      width: 512,
+      height: 512,
     },
+    sameAs: ["https://twitter.com/opinion_map"],
   };
 }
 
 /**
- * Generate Place/LocalBusiness schema for pin locations
+ * WebSite schema for the home page: gives Google the site name for search
+ * results. No SearchAction: Google retired the sitelinks search box.
+ */
+export function generateWebSiteSchema({ baseUrl }: StructuredDataConfig) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": siteId(baseUrl),
+    name: "droPINion",
+    alternateName: "dropinion",
+    url: `${baseUrl}/`,
+    publisher: { "@id": orgId(baseUrl) },
+  };
+}
+
+/**
+ * Plain Place schema for a pin, used only when the pin has no visible
+ * opinion to describe it as a discussion.
+ *
+ * No Review / AggregateRating anywhere: droPINion has like / dislike votes,
+ * not star ratings, and Google's review-snippet policy forbids made-up ones.
  */
 export function generatePlaceSchema(
-  pin: PinData,
-  config: StructuredDataConfig
+  pin: { id: string; name?: string; latitude?: number; longitude?: number; hasMap?: string },
+  { baseUrl }: StructuredDataConfig
 ) {
   const schema: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Place",
-    name: pin.name || "Location Pin",
-    description: pin.description || `Opinion shared about ${pin.location}`,
-    url: `${config.baseUrl}/pin/${pin.id}`,
-    address: {
-      "@type": "PostalAddress",
-      addressLocality: pin.location,
-    },
+    name: pin.name,
+    url: `${baseUrl}/pin/${pin.id}`,
   };
-
-  // Add geographic coordinates if available
-  if (pin.latitude && pin.longitude) {
-    schema.geo = {
-      "@type": "GeoCoordinates",
-      latitude: pin.latitude,
-      longitude: pin.longitude,
-    };
+  if (Number.isFinite(pin.latitude) && Number.isFinite(pin.longitude)) {
+    schema.geo = { "@type": "GeoCoordinates", latitude: pin.latitude, longitude: pin.longitude };
   }
-
-  // Add aggregated rating if there are comments with votes
-  if (pin.comments && pin.comments.length > 0) {
-    const totalVotes = pin.comments.reduce(
-      (sum: number, comment: CommentData) => {
-        return sum + (comment.upvotes || 0) - (comment.downvotes || 0);
-      },
-      0
-    );
-
-    if (totalVotes > 0) {
-      schema.aggregateRating = {
-        "@type": "AggregateRating",
-        ratingValue: Math.max(
-          1,
-          Math.min(5, totalVotes / pin.comments.length + 3)
-        ),
-        reviewCount: pin.comments.length,
-        bestRating: 5,
-        worstRating: 1,
-      };
-    }
-  }
-
+  if (pin.hasMap) schema.hasMap = pin.hasMap;
   return schema;
 }
 
 /**
- * Generate Review schema for comments
+ * A pin page is a forum-style thread: the opening opinion plus replies, all
+ * about one place. DiscussionForumPosting is Google's documented type for
+ * user-generated discussion pages.
  */
-export function generateReviewSchema(comment: CommentData) {
-  const rating = Math.max(
-    1,
-    Math.min(5, (comment.upvotes || 0) - (comment.downvotes || 0) + 3)
-  );
+export function generatePinDiscussionSchema(
+  pin: PinPageData,
+  comments: PinPageComment[],
+  { baseUrl, mapUrl }: StructuredDataConfig & { mapUrl: string },
+  fallbackName: string
+): Record<string, unknown> | null {
+  const op = comments.find((c) => c.isFirstComment) ?? comments[0];
+  if (!op) return null;
+  const rest = comments.filter((c) => c.id !== op.id);
+  const pageUrl = `${baseUrl}/pin/${pin.id}`;
+  const absolute = (url: string | null) =>
+    !url ? undefined : /^https?:\/\//.test(url) ? url : `${baseUrl}${url.startsWith("/") ? "" : "/"}${url}`;
+  // Profiles are noindex, so no author.url.
+  const person = (name: string | null) => ({ "@type": "Person", name: name || fallbackName });
+  const votes = (c: PinPageComment) => [
+    {
+      "@type": "InteractionCounter",
+      interactionType: "https://schema.org/LikeAction",
+      userInteractionCount: c.likeCount,
+    },
+    {
+      "@type": "InteractionCounter",
+      interactionType: "https://schema.org/DislikeAction",
+      userInteractionCount: c.dislikeCount,
+    },
+  ];
+  const opImage = absolute(op.photoUrl);
 
   return {
     "@context": "https://schema.org",
-    "@type": "Review",
-    reviewBody: comment.text,
-    datePublished: comment.created_at,
-    author: {
-      "@type": "Person",
-      name: comment.users?.[0]?.display_name || "Anonymous User",
+    "@type": "DiscussionForumPosting",
+    "@id": `${pageUrl}#post`,
+    mainEntityOfPage: pageUrl,
+    url: pageUrl,
+    headline: pin.name || fallbackName,
+    text: op.text,
+    ...(opImage && { image: opImage }),
+    author: person(op.displayName),
+    datePublished: op.createdAt.toISOString(),
+    dateModified: pin.updatedAt.toISOString(),
+    interactionStatistic: [
+      {
+        "@type": "InteractionCounter",
+        interactionType: "https://schema.org/CommentAction",
+        userInteractionCount: Math.max(0, pin.commentsCount - 1),
+      },
+      ...votes(op),
+    ],
+    about: {
+      "@type": "Place",
+      name: pin.name,
+      geo: { "@type": "GeoCoordinates", latitude: pin.lat, longitude: pin.lng },
+      hasMap: `${baseUrl}${mapUrl}`,
     },
-    reviewRating: {
-      "@type": "Rating",
-      ratingValue: rating,
-      bestRating: 5,
-      worstRating: 1,
-    },
-    itemReviewed: comment.pins
-      ? {
-          "@type": "Place",
-          name: comment.pins.name || "Location",
-          address: {
-            "@type": "PostalAddress",
-            addressLocality: comment.pins.location,
-          },
-        }
-      : undefined,
+    comment: rest.map((c) => {
+      const image = absolute(c.photoUrl);
+      return {
+        "@type": "Comment",
+        "@id": `${pageUrl}#c-${c.id}`,
+        url: `${pageUrl}#c-${c.id}`,
+        text: c.text,
+        datePublished: c.createdAt.toISOString(),
+        author: person(c.displayName),
+        ...(image && { image }),
+        interactionStatistic: votes(c),
+      };
+    }),
   };
 }
 
 /**
- * Generate BreadcrumbList schema for navigation
+ * BreadcrumbList schema for navigation
  */
 export function generateBreadcrumbSchema(
   breadcrumbs: Array<{ name: string; url: string }>,
-  config: StructuredDataConfig
+  { baseUrl }: StructuredDataConfig
 ) {
   return {
     "@context": "https://schema.org",
@@ -160,71 +160,54 @@ export function generateBreadcrumbSchema(
       "@type": "ListItem",
       position: index + 1,
       name: crumb.name,
-      item: `${config.baseUrl}${crumb.url}`,
+      item: `${baseUrl}${crumb.url}`,
     })),
   };
 }
 
 /**
- * Generate LocalBusiness schema for location pages
+ * /location/[slug] is a name search over pins, not a real place, so it is
+ * described as a collection page listing those pins.
  */
-export function generateLocationSchema(
+export function generateLocationListSchema(
+  title: string,
   locationName: string,
-  pins: LocationData[],
-  config: StructuredDataConfig
+  pins: Array<{ id: string; name: string }>,
+  { baseUrl }: StructuredDataConfig
 ) {
-  // Calculate average coordinates from pins if available
-  const pinsWithCoords = pins.filter((pin) => pin.latitude && pin.longitude);
-  let avgLat, avgLng;
-
-  if (pinsWithCoords.length > 0) {
-    avgLat =
-      pinsWithCoords.reduce((sum, pin) => sum + pin.latitude!, 0) /
-      pinsWithCoords.length;
-    avgLng =
-      pinsWithCoords.reduce((sum, pin) => sum + pin.longitude!, 0) /
-      pinsWithCoords.length;
-  }
-
-  const schema: Record<string, unknown> = {
+  const url = `${baseUrl}/location/${encodeURIComponent(locationName)}`;
+  return {
     "@context": "https://schema.org",
-    "@type": "Place",
-    name: locationName,
-    description: `Discover opinions and reviews about ${locationName}. Community-shared thoughts and experiences.`,
-    url: `${config.baseUrl}/location/${encodeURIComponent(locationName)}`,
-    address: {
-      "@type": "PostalAddress",
-      addressLocality: locationName,
+    "@type": "CollectionPage",
+    "@id": url,
+    url,
+    name: title,
+    isPartOf: { "@id": siteId(baseUrl) },
+    mainEntity: {
+      "@type": "ItemList",
+      numberOfItems: pins.length,
+      itemListElement: pins.map((p, i) => ({
+        "@type": "ListItem",
+        position: i + 1,
+        url: `${baseUrl}/pin/${p.id}`,
+        name: p.name,
+      })),
     },
   };
-
-  // Add coordinates if available
-  if (avgLat && avgLng) {
-    schema.geo = {
-      "@type": "GeoCoordinates",
-      latitude: avgLat,
-      longitude: avgLng,
-    };
-  }
-
-  return schema;
 }
 
 /**
- * Utility to create JSON-LD script tag content
+ * JSON for an inline <script type="application/ld+json">. Pin names and
+ * comments are user text: escaping <, > and & keeps a "</script>" in them
+ * from closing the tag, and the result is still valid JSON.
  */
+export function serializeJsonLd(data: unknown): string {
+  return JSON.stringify(data)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026");
+}
+
 export function createJsonLdScript(data: Record<string, unknown>) {
-  return {
-    __html: JSON.stringify(data, null, 0),
-  };
-}
-
-/**
- * Utility to render JSON-LD script tag (for use in JSX components)
- */
-export function renderJsonLd(data: Record<string, unknown>) {
-  return {
-    type: "application/ld+json",
-    dangerouslySetInnerHTML: createJsonLdScript(data),
-  };
+  return { __html: serializeJsonLd(data) };
 }

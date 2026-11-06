@@ -5,14 +5,19 @@
   },
   "layout": {
     "title": "droPINion — Discover & Share Place Reviews on the Map",
-    "description": "Drop a pin, share your honest opinion on any location, and discover what locals think. Reviews, ratings, and stories from a global community.",
+    "description": "Drop a pin, share your honest opinion on any location, and discover what locals think. Opinions, photos and stories from a global community.",
     "twitterDescription": "Drop a pin, share your honest opinion on any location, and discover what locals think.",
     "ogImageAlt": "droPINion - Interactive Opinion Map"
+  },
+  "home": {
+    "h1": "droPINion: honest opinions about places, pinned on a map",
+    "intro": "Drop a pin where you are, say what you think about the place, and read what others think of cafes, beaches, bars and spots near you."
   },
   "notFound": {
     "title": "Nothing pinned here",
     "body": "This page doesn't exist, or the pin was removed by its author.",
-    "backToMap": "Back to the map"
+    "backToMap": "Back to the map",
+    "explore": "Explore places"
   },
   "pin": {
     "notFoundTitle": "Pin Not Found",
@@ -38,7 +43,10 @@
     "op": "OP",
     "commentPhoto": "Comment photo",
     "likes": "{count} likes",
-    "dislikes": "{count} dislikes"
+    "dislikes": "{count} dislikes",
+    "nearbyHeading": "More places near {name}",
+    "nearbyMeta": "{count, plural, one {# opinion} other {# opinions}} · {distance}",
+    "exploreMore": "Explore more places"
   },
   "composer": {
     "firstOpinion": "You're the first opinion here!",
@@ -67,7 +75,22 @@
     "placesMany": "50+ places people have pinned in {location}.",
     "by": "by {name}",
     "cta": "Been somewhere in {location}? Share what you think.",
-    "openMap": "Open the map"
+    "openMap": "Open the map",
+    "explore": "Explore more places"
+  },
+  "explore": {
+    "metaTitle": "Explore places people are talking about",
+    "metaDescription": "Browse the most discussed and newest places on droPINion, with honest opinions from people who have been there.",
+    "h1": "Places people are talking about",
+    "intro": "Honest opinions about cafes, bars, beaches and everyday spots, pinned on the map by the droPINion community.",
+    "mostDiscussed": "Most discussed",
+    "recentlyPinned": "Recently pinned",
+    "opinions": "{count, plural, one {# opinion} other {# opinions}}",
+    "untitledPin": "Untitled place",
+    "empty": "No places pinned yet. Be the first to drop one.",
+    "cta": "Been somewhere worth talking about? Drop a pin and share what you think.",
+    "openMap": "Open the map",
+    "breadcrumb": "Explore"
   },
   "privacy": {
     "metaTitle": "Privacy Policy",

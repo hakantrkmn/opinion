@@ -1,13 +1,9 @@
-import {
-  generateLocationKeywords,
-  generateOGMetadata,
-  generateTwitterMetadata,
-} from "@/lib/og-utils";
+import { generateOGMetadata, generateTwitterMetadata } from "@/lib/og-utils";
 import { getBaseUrl } from "@/lib/site-url";
 import {
   createJsonLdScript,
   generateBreadcrumbSchema,
-  generateLocationSchema,
+  generateLocationListSchema,
 } from "@/lib/structured-data";
 import { searchPinsByName } from "@/server/services/pins/pages";
 import { formatShortDate } from "@/lib/formatters";
@@ -16,8 +12,17 @@ import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import Header from "@/components/common/Header";
 import { PinIcon } from "@/components/icons/PinIcon";
-import { ChevronRight, MapPin } from "lucide-react";
+import { ChevronRight, Compass, MapPin } from "lucide-react";
 import { notFound } from "next/navigation";
+
+/** The slug as text, or null for a malformed percent-encoding. */
+function safeDecode(slug: string): string | null {
+  try {
+    return decodeURIComponent(slug);
+  } catch {
+    return null;
+  }
+}
 
 export async function generateMetadata({
   params,
@@ -25,7 +30,9 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const locationName = decodeURIComponent(slug);
+  const locationName = safeDecode(slug);
+  // A malformed slug renders the 404 page; keep it out of the index.
+  if (locationName === null) return { robots: { index: false, follow: true } };
   const baseUrl = getBaseUrl();
   const t = await getTranslations("pages.location");
 
@@ -48,31 +55,18 @@ export async function generateMetadata({
     baseUrl,
   });
 
-  const locationKeywords = generateLocationKeywords(locationName);
-
   return {
     title,
     description,
-    keywords: [
-      "opinions",
-      "reviews",
-      "location",
-      "community",
-      "thoughts",
-      "experiences",
-      locationName,
-      ...locationKeywords,
-    ],
+    // Any substring of any pin name renders a page here, so these are
+    // search results rather than real places: let crawlers follow the pin
+    // links, but don't index the pages themselves.
+    robots: { index: false, follow: true },
     openGraph: {
       ...ogMetadata,
       url: `/location/${encodeURIComponent(locationName)}`,
     },
     twitter: twitterMetadata,
-    other: {
-      "og:locality": locationName,
-      "geo.placename": locationName,
-      "geo.region": locationName,
-    },
     alternates: {
       canonical: `/location/${encodeURIComponent(locationName)}`,
     },
@@ -85,7 +79,8 @@ export default async function LocationPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const locationName = decodeURIComponent(slug);
+  const locationName = safeDecode(slug);
+  if (locationName === null) notFound();
   const baseUrl = getBaseUrl();
 
   // Pins whose name contains the location (trigram index, LIKE-escaped)
@@ -100,15 +95,10 @@ export default async function LocationPage({
     notFound();
   }
 
-  const locationSchema = generateLocationSchema(
+  const locationSchema = generateLocationListSchema(
+    t("title", { location: locationName }),
     locationName,
-    locationPins.map((p) => ({
-      id: p.id,
-      title: p.name,
-      location: p.name,
-      latitude: p.lat,
-      longitude: p.lng,
-    })),
+    locationPins.map((p) => ({ id: p.id, name: p.name })),
     { baseUrl }
   );
   const breadcrumbSchema = generateBreadcrumbSchema(
@@ -215,6 +205,13 @@ export default async function LocationPage({
             >
               <MapPin className="h-4 w-4" aria-hidden />
               {t("openMap")}
+            </Link>
+            <Link
+              href="/explore"
+              className="mt-2 inline-flex h-11 items-center gap-2 rounded-xl px-5 text-sm font-medium text-muted-foreground transition-[transform,background-color,color] duration-150 ease-out hover:bg-muted hover:text-foreground active:scale-[0.97] sm:ml-2 sm:mt-0"
+            >
+              <Compass className="h-4 w-4" aria-hidden />
+              {t("explore")}
             </Link>
           </div>
         </main>

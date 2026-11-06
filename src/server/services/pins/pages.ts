@@ -1,5 +1,6 @@
 import "server-only";
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { db, sql } from "@/server/db";
 import { toIso } from "./sql";
 import { containsText } from "@/server/db/search";
@@ -206,20 +207,124 @@ export async function searchPinsByName(term: string, limit = 50): Promise<Locati
   }));
 }
 
-/** Newest pins for the sitemap; bounded and served by idx_pins_created_at. */
+/**
+ * Newest pins for the sitemap; bounded and served by idx_pins_created_at.
+ * lastModified also moves with new or edited opinions: pins.updated_at
+ * deliberately ignores counter changes, but the page shows every comment.
+ */
 export async function getSitemapPins(
   limit: number
-): Promise<Array<{ id: string; createdAt: Date; updatedAt: Date }>> {
+): Promise<Array<{ id: string; lastModified: Date }>> {
   const rows = (await db.execute(sql`
-    SELECT id, created_at, updated_at
-    FROM pins
-    WHERE community_id IS NULL
-    ORDER BY created_at DESC
+    SELECT p.id, GREATEST(p.updated_at, COALESCE(c.last_comment_at, p.updated_at)) AS last_modified
+    FROM (
+      SELECT id, updated_at, created_at
+      FROM pins
+      WHERE community_id IS NULL
+      ORDER BY created_at DESC
+      LIMIT ${limit}
+    ) p
+    LEFT JOIN LATERAL (
+      SELECT MAX(updated_at) AS last_comment_at FROM comments WHERE pin_id = p.id
+    ) c ON true
+    ORDER BY p.created_at DESC
+  `)) as unknown as Array<{ id: string; last_modified: string }>;
+  return rows.map((r) => ({ id: r.id, lastModified: new Date(toIso(r.last_modified)) }));
+}
+
+export interface ExplorePin {
+  id: string;
+  name: string;
+  commentsCount: number;
+  /** ISO string: unstable_cache round-trips through JSON. */
+  createdAt: string;
+  /** The pin's representative opinion (same pick as link previews). */
+  quote: string | null;
+}
+
+/**
+ * Public pins for the /explore hub. Cached for 10 minutes: the page is a
+ * crawl entry point, not a live feed.
+ */
+export const getExplorePins = unstable_cache(
+  async (order: "discussed" | "recent", limit: number): Promise<ExplorePin[]> => {
+    const orderBy =
+      order === "discussed"
+        ? sql`comments_count DESC, created_at DESC, id`
+        : sql`created_at DESC, id`;
+    // Pick the pins first so the quote lookup runs only for those rows.
+    const rows = (await db.execute(sql`
+      SELECT p.id, p.name, p.comments_count, p.created_at, q.text AS quote
+      FROM (
+        SELECT id, name, comments_count, created_at
+        FROM pins
+        WHERE community_id IS NULL AND comments_count > 0
+        ORDER BY ${orderBy}
+        LIMIT ${limit}
+      ) p
+      LEFT JOIN LATERAL (
+        SELECT c.text
+        FROM comments c
+        JOIN "user" u ON u.id = c.user_id AND u.deleted_at IS NULL
+        WHERE c.pin_id = p.id
+        ORDER BY (c.likes_count - c.dislikes_count + c.verified_visit::int) DESC,
+                 c.is_first_comment DESC, c.created_at, c.id
+        LIMIT 1
+      ) q ON true
+      ORDER BY ${orderBy}
+    `)) as unknown as Array<{
+      id: string;
+      name: string;
+      comments_count: number;
+      created_at: string;
+      quote: string | null;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      commentsCount: Number(r.comments_count),
+      createdAt: toIso(r.created_at),
+      quote: r.quote,
+    }));
+  },
+  ["explore-pins"],
+  { revalidate: 600 }
+);
+
+export interface NearbyPin {
+  id: string;
+  name: string;
+  commentsCount: number;
+  distanceM: number;
+}
+
+/**
+ * Closest other public pins (within 25 km) for the pin page's "More places
+ * near" links. KNN over idx_pins_location, then a distance cut.
+ */
+export async function getNearbyPins(
+  pinId: string,
+  lat: number,
+  lng: number,
+  limit = 6
+): Promise<NearbyPin[]> {
+  const point = sql`ST_SetSRID(ST_MakePoint(${lng}::float8, ${lat}::float8), 4326)`;
+  const rows = (await db.execute(sql`
+    SELECT * FROM (
+      SELECT p.id, p.name, p.comments_count, ST_DistanceSphere(p.location, ${point}) AS distance_m
+      FROM pins p
+      WHERE p.id <> ${pinId} AND p.community_id IS NULL AND p.comments_count > 0
+      ORDER BY p.location <-> ${point}
+      LIMIT 24
+    ) c
+    WHERE distance_m < 25000
+    ORDER BY distance_m
     LIMIT ${limit}
-  `)) as unknown as Array<{ id: string; created_at: string; updated_at: string }>;
+  `)) as unknown as Array<{ id: string; name: string; comments_count: number; distance_m: number }>;
   return rows.map((r) => ({
     id: r.id,
-    createdAt: new Date(toIso(r.created_at)),
-    updatedAt: new Date(toIso(r.updated_at)),
+    name: r.name,
+    commentsCount: Number(r.comments_count),
+    distanceM: Number(r.distance_m),
   }));
 }

@@ -8,8 +8,13 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
-        disallow: ["/auth", "/admin", "/api", "/profile", "/u", "/communities", "/c/"],
+        // Longest match wins: /api/og (share-card images, fetched by Google
+        // and by link-preview bots that honour robots.txt) beats /api/.
+        allow: ["/", "/api/og"],
+        // Only the JSON API is blocked. Account, invite and community pages
+        // stay crawlable so crawlers can read their noindex (X-Robots-Tag in
+        // next.config.ts); a "Disallow: /u" would also block /uploads.
+        disallow: ["/api/"],
       },
     ],
     sitemap: `${baseUrl}/sitemap.xml`,

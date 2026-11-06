@@ -5,6 +5,7 @@ import { inviteCodeParamSchema } from "@/lib/validation/schemas";
 import { HttpError } from "@/server/http/api-helpers";
 import { getServerSession } from "@/server/auth/session";
 import { previewInvite } from "@/server/services/communities";
+import { siteOpenGraph } from "@/lib/site-metadata";
 import type { CommunityInvitePreview } from "@/types/api";
 import { LinkIcon } from "lucide-react";
 import type { Metadata } from "next";
@@ -31,10 +32,14 @@ const loadPreview = cache(async (code: string): Promise<CommunityInvitePreview |
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { code } = await params;
   const t = await getTranslations("communities.meta");
-  const preview = await loadPreview(code);
+  const [preview, openGraph] = await Promise.all([loadPreview(code), siteOpenGraph()]);
+  const title = preview ? t("inviteTitle", { name: preview.community.name }) : t("title");
   return {
-    title: preview ? t("inviteTitle", { name: preview.community.name }) : t("title"),
+    title,
     robots: { index: false, follow: false },
+    // Own og:url / title for chat link previews instead of the home page's.
+    openGraph: { ...openGraph, title, url: `/c/${code}` },
+    twitter: { card: "summary_large_image", title },
   };
 }
 

@@ -6,7 +6,7 @@ import { UserSearchDialog } from "@/features/users/components/UserSearchDialog";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { useUserProfile } from "@/features/profile/hooks/useUserProfile";
 import { cn } from "@/lib/utils";
-import { Coffee, Loader2, LogOut, Search, Shield, UsersRound } from "lucide-react";
+import { Coffee, Compass, Loader2, LogOut, Search, Shield, UsersRound } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -40,13 +40,30 @@ export default function Header() {
           className="mx-auto flex max-w-7xl items-center justify-between gap-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:px-6 lg:px-8"
           style={{ height: "var(--header-height)" }}
         >
-          <Link
-            href="/"
-            className="-mx-1 rounded-lg px-1 text-lg font-bold tracking-tight text-foreground transition-opacity duration-150 hover:opacity-80"
-            aria-label={t("home")}
-          >
-            droPINion
-          </Link>
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <Link
+              href="/"
+              className="-mx-1 rounded-lg px-1 text-lg font-bold tracking-tight text-foreground transition-opacity duration-150 hover:opacity-80"
+              aria-label={t("home")}
+            >
+              droPINion
+            </Link>
+            {/* Plain link in the server HTML: the crawl path from every page to /explore. */}
+            <Link
+              href="/explore"
+              aria-current={pathname === "/explore" ? "page" : undefined}
+              aria-label={t("explore")}
+              title={t("explore")}
+              className={cn(
+                iconButton,
+                "sm:w-auto sm:pointer-coarse:w-auto sm:gap-1.5 sm:px-3 sm:text-xs sm:font-medium sm:[&_svg]:size-3.5",
+                pathname === "/explore" && "bg-primary/10 text-primary"
+              )}
+            >
+              <Compass />
+              <span className="max-sm:hidden">{t("explore")}</span>
+            </Link>
+          </div>
 
           <nav aria-label={t("account")} className="flex items-center gap-1">
             {/* Phones, signed in: the language switch lives in the avatar menu. */}

@@ -1,17 +1,16 @@
-import {
-  generateLocationKeywords,
-  generateOGMetadata,
-  generateTwitterMetadata,
-} from "@/lib/og-utils";
+import { generateOGMetadata, generateTwitterMetadata } from "@/lib/og-utils";
+import { siteOpenGraph } from "@/lib/site-metadata";
 import { getBaseUrl } from "@/lib/site-url";
 import {
   createJsonLdScript,
   generateBreadcrumbSchema,
+  generatePinDiscussionSchema,
   generatePlaceSchema,
 } from "@/lib/structured-data";
 import Header from "@/components/common/Header";
 import { PinIcon } from "@/components/icons/PinIcon";
 import {
+  getNearbyPins,
   getPinPageComments,
   getPinPageData,
   getPinShareQuote,
@@ -24,6 +23,7 @@ import { notFound } from "next/navigation";
 import {
   Calendar,
   ChevronRight,
+  Compass,
   MessageCircle,
   MapPin,
   MapPinCheck,
@@ -42,10 +42,11 @@ export async function generateMetadata({
   const { id } = await params;
   const baseUrl = getBaseUrl();
 
-  const [pin, quote, t] = await Promise.all([
+  const [pin, quote, t, siteOg] = await Promise.all([
     getPinPageData(id),
     getPinShareQuote(id),
     getTranslations("pages.pin"),
+    siteOpenGraph(),
   ]);
 
   if (!pin) {
@@ -87,34 +88,18 @@ export async function generateMetadata({
     imageUrl,
   });
 
-  const locationKeywords = generateLocationKeywords(locationName);
-
   return {
     title,
     description,
-    keywords: [
-      "opinion",
-      "pin",
-      "location",
-      "review",
-      "thoughts",
-      locationName,
-      ...locationKeywords,
-    ],
     openGraph: {
+      siteName: siteOg.siteName,
+      locale: siteOg.locale,
       ...ogMetadata,
       url: `/pin/${id}`,
       publishedTime: pin.createdAt.toISOString(),
-      authors: ["droPINion Community"],
+      modifiedTime: pin.updatedAt.toISOString(),
     },
     twitter: twitterMetadata,
-    other: {
-      "geo.placename": locationName,
-      "geo.region": locationName,
-      "article:author": "droPINion Community",
-      "article:published_time": pin.createdAt.toISOString(),
-      "og:locality": locationName,
-    },
     alternates: {
       canonical: `/pin/${id}`,
     },
@@ -140,22 +125,34 @@ export default async function PinPage({
     notFound();
   }
 
-  const pinComments = await getPinPageComments(id);
+  const [pinComments, nearbyPins] = await Promise.all([
+    getPinPageComments(id),
+    getNearbyPins(pin.id, pin.lat, pin.lng).catch((error) => {
+      console.error("[pin page] nearby pins failed:", error);
+      return [];
+    }),
+  ]);
 
   const lat = pin.lat;
   const lng = pin.lng;
   const mapUrl = `/?pin=${encodeURIComponent(pin.id)}&lat=${lat.toFixed(6)}&lng=${lng.toFixed(6)}`;
   const shareUrl = `${baseUrl}/pin/${id}`;
 
-  const pinData = {
-    id: pin.id,
-    name: pin.name,
-    location: pin.name,
-    latitude: lat,
-    longitude: lng,
-  };
-
-  const placeSchema = generatePlaceSchema(pinData, { baseUrl });
+  const pinSchema =
+    generatePinDiscussionSchema(pin, pinComments, { baseUrl, mapUrl }, t("anonymous")) ??
+    generatePlaceSchema(
+      { id: pin.id, name: pin.name, latitude: lat, longitude: lng, hasMap: `${baseUrl}${mapUrl}` },
+      { baseUrl }
+    );
+  const kilometers = new Intl.NumberFormat(locale, {
+    style: "unit",
+    unit: "kilometer",
+    maximumFractionDigits: 1,
+  });
+  const meters = new Intl.NumberFormat(locale, { style: "unit", unit: "meter", maximumFractionDigits: 0 });
+  /** "40 m" under a kilometre (10 m steps), "2.4 km" above. */
+  const formatDistance = (m: number) =>
+    m < 1000 ? meters.format(Math.max(10, Math.round(m / 10) * 10)) : kilometers.format(m / 1000);
   const breadcrumbSchema = generateBreadcrumbSchema(
     [
       { name: tShared("home"), url: "/" },
@@ -168,7 +165,7 @@ export default async function PinPage({
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={createJsonLdScript(placeSchema)}
+        dangerouslySetInnerHTML={createJsonLdScript(pinSchema)}
       />
       <script
         type="application/ld+json"
@@ -222,7 +219,6 @@ export default async function PinPage({
                   width={36}
                   height={36}
                   className="w-full h-full object-cover"
-                  loading="lazy"
                   decoding="async"
                 />
               ) : (
@@ -247,6 +243,13 @@ export default async function PinPage({
               {t("seeOnMap")}
             </Link>
             <ShareButton url={shareUrl} pinName={pin.name} />
+            <Link
+              href="/explore"
+              className="inline-flex items-center gap-2 h-10 px-4 rounded-xl text-sm font-medium text-muted-foreground transition-[transform,background-color,color] duration-150 ease-out hover:bg-muted hover:text-foreground active:scale-[0.97]"
+            >
+              <Compass className="h-4 w-4" aria-hidden />
+              {t("exploreMore")}
+            </Link>
           </div>
 
           <div className="mb-10">
@@ -283,7 +286,8 @@ export default async function PinPage({
                 {pinComments.map((comment) => (
                   <article
                     key={comment.id}
-                    className="p-4 rounded-2xl border border-border/60 bg-card"
+                    id={`c-${comment.id}`}
+                    className="scroll-mt-20 p-4 rounded-2xl border border-border/60 bg-card"
                   >
                     {/* Comment Header */}
                     <div className="flex items-center gap-2.5 mb-3">
@@ -362,6 +366,39 @@ export default async function PinPage({
               </div>
             )}
           </section>
+
+          {nearbyPins.length > 0 && (
+            <section aria-labelledby="nearby-heading" className="mt-12">
+              <h2 id="nearby-heading" className="text-base font-semibold text-foreground mb-4 [overflow-wrap:anywhere]">
+                {t("nearbyHeading", { name: pin.name || t("thisPlace") })}
+              </h2>
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {nearbyPins.map((p) => (
+                  <li key={p.id}>
+                    <Link
+                      href={`/pin/${p.id}`}
+                      className="flex h-full items-center gap-3 rounded-2xl border border-border/60 bg-card p-3 transition-[border-color,box-shadow] duration-150 hover:border-border hover:shadow-float"
+                    >
+                      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10">
+                        <PinIcon className="size-4 text-emerald-600 dark:text-emerald-400" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-semibold text-foreground">
+                          {p.name || t("untitledPin")}
+                        </span>
+                        <span className="block text-xs text-muted-foreground tabular-nums">
+                          {t("nearbyMeta", {
+                            count: p.commentsCount,
+                            distance: formatDistance(p.distanceM),
+                          })}
+                        </span>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
         </main>
       </div>

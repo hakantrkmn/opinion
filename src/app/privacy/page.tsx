@@ -2,16 +2,20 @@ import type { Metadata } from "next";
 import Header from "@/components/common/Header";
 import { ArrowLeft } from "lucide-react";
 import { formatShortDate } from "@/lib/formatters";
+import { PRIVACY_LAST_UPDATED as LAST_UPDATED } from "@/lib/legal";
+import { DEFAULT_OG_IMAGE, siteOpenGraph } from "@/lib/site-metadata";
 import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { PrivacyBodyEn } from "./PrivacyBodyEn";
 import { PrivacyBodyTr } from "./PrivacyBodyTr";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("pages.privacy");
+  const [t, openGraph] = await Promise.all([getTranslations("pages.privacy"), siteOpenGraph()]);
+  const title = t("metaTitle");
+  const description = t("metaDescription");
   return {
-    title: t("metaTitle"),
-    description: t("metaDescription"),
+    title,
+    description,
     robots: {
       index: true,
       follow: true,
@@ -19,11 +23,12 @@ export async function generateMetadata(): Promise<Metadata> {
     alternates: {
       canonical: "/privacy",
     },
+    openGraph: { ...openGraph, url: "/privacy", title, description },
+    twitter: { card: "summary_large_image", title, description, images: [DEFAULT_OG_IMAGE] },
   };
 }
 
-/** ISO date; formatted at noon UTC so it is the same day in every time zone. */
-const LAST_UPDATED = "2026-05-01";
+// LAST_UPDATED is formatted at noon UTC so it is the same day in every time zone.
 const CONTACT_EMAIL = "hakanturkmendev@gmail.com";
 
 export default async function PrivacyPolicyPage() {

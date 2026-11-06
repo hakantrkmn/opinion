@@ -26,6 +26,12 @@ const nextConfig: NextConfig = {
   outputFileTracingExcludes: { "*": ["./storage/uploads/**"] },
   devIndicators: { position: "top-left" },
   poweredByHeader: false,
+  // Next streams <title>, description, robots and canonical into <body> for
+  // every UA outside its "HTML-limited bots" list, and Googlebot is not on
+  // it. Google only honours rel=canonical in <head>, so always render the
+  // metadata up front. generateMetadata is cheap here (translations and
+  // React-cache()'d queries the page runs anyway).
+  htmlLimitedBots: /.*/,
   // Images are served by our own /uploads route (already re-encoded WebP),
   // so no next/image optimizer / remote patterns are needed.
   compiler: {
@@ -47,6 +53,18 @@ const nextConfig: NextConfig = {
       {
         source: "/uploads/:path*",
         headers: securityHeaders.filter((h) => h.key !== "Content-Security-Policy"),
+      },
+      // Private / account pages: crawlable (robots.txt only blocks /api/) so
+      // search engines can see this noindex, including on the redirects
+      // these routes send to signed-out crawlers. Whole segments only, so
+      // /uploads, /pin and /location are untouched.
+      {
+        source: "/:segment(auth|admin|profile|communities|u|c)",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+      {
+        source: "/:segment(auth|admin|profile|communities|u|c)/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
       },
     ];
   },

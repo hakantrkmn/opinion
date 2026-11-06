@@ -5,14 +5,19 @@
   },
   "layout": {
     "title": "droPINion — Haritada mekan yorumlarını keşfet ve paylaş",
-    "description": "Pin bırak, istediğin yer hakkında dürüst fikrini paylaş, o yeri bilenlerin ne düşündüğünü keşfet. Dünyanın dört bir yanından bir topluluğun yorumları, puanları ve hikâyeleri.",
+    "description": "Pin bırak, istediğin yer hakkında dürüst fikrini paylaş, o yeri bilenlerin ne düşündüğünü keşfet. Bir topluluğun fikirleri, fotoğrafları ve hikâyeleri.",
     "twitterDescription": "Pin bırak, istediğin yer hakkında dürüst fikrini paylaş, o yeri bilenlerin ne düşündüğünü keşfet.",
     "ogImageAlt": "droPINion - Etkileşimli fikir haritası"
+  },
+  "home": {
+    "h1": "droPINion: mekanlar hakkında dürüst fikirler, haritada",
+    "intro": "Bulunduğun yere pin bırak, mekan hakkında ne düşündüğünü yaz; kafeler, plajlar, barlar ve yakınındaki yerler hakkında başkalarının fikirlerini oku."
   },
   "notFound": {
     "title": "Burada pin yok",
     "body": "Bu sayfa yok ya da pin, sahibi tarafından kaldırılmış.",
-    "backToMap": "Haritaya dön"
+    "backToMap": "Haritaya dön",
+    "explore": "Yerleri keşfet"
   },
   "pin": {
     "notFoundTitle": "Pin bulunamadı",
@@ -38,7 +43,10 @@
     "op": "Pin sahibi",
     "commentPhoto": "Yorum fotoğrafı",
     "likes": "{count} beğeni",
-    "dislikes": "{count} beğenmeme"
+    "dislikes": "{count} beğenmeme",
+    "nearbyHeading": "{name} yakınındaki diğer yerler",
+    "nearbyMeta": "{count, plural, other {# fikir}} · {distance}",
+    "exploreMore": "Daha fazla yer keşfet"
   },
   "composer": {
     "firstOpinion": "Buradaki ilk fikir senin!",
@@ -67,7 +75,22 @@
     "placesMany": "{location} civarında insanların pinlediği 50+ yer.",
     "by": "Paylaşan: {name}",
     "cta": "{location} civarında bir yere gittin mi? Ne düşündüğünü paylaş.",
-    "openMap": "Haritayı aç"
+    "openMap": "Haritayı aç",
+    "explore": "Daha fazla yer keşfet"
+  },
+  "explore": {
+    "metaTitle": "Hakkında konuşulan yerleri keşfet",
+    "metaDescription": "droPINion’da en çok konuşulan ve en yeni yerlere göz at; oraya gitmiş kişilerin dürüst fikirlerini oku.",
+    "h1": "Hakkında konuşulan yerler",
+    "intro": "Kafeler, barlar, plajlar ve gündelik mekanlar hakkında droPINion topluluğunun haritaya bıraktığı dürüst fikirler.",
+    "mostDiscussed": "En çok konuşulanlar",
+    "recentlyPinned": "Yeni eklenenler",
+    "opinions": "{count, plural, other {# fikir}}",
+    "untitledPin": "İsimsiz yer",
+    "empty": "Henüz pin bırakılmamış. İlk pini sen bırak.",
+    "cta": "Hakkında konuşmaya değer bir yere mi gittin? Pin bırak, ne düşündüğünü paylaş.",
+    "openMap": "Haritayı aç",
+    "breadcrumb": "Keşfet"
   },
   "privacy": {
     "metaTitle": "Gizlilik Politikası",
