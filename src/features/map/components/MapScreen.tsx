@@ -202,7 +202,9 @@ export default function MapScreen({ initialCenter, initialPinId }: MapScreenProp
         onRequireSignIn={requireSignIn}
         communityId={scope === "community" && !staleCommunity ? filter.communityId : null}
       />
-      <CreatePinDialog />
+      <CreatePinDialog
+        defaultCommunityId={scope === "community" && !staleCommunity ? filter.communityId : null}
+      />
       <SignInPrompt />
     </div>
   );

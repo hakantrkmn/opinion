@@ -31,6 +31,8 @@ const tstz = (name: string) => timestamp(name, { withTimezone: true });
 /**
  * Pins. `comments_count` is maintained by triggers on `comments` (see
  * drizzle/0009_*). A pin whose last comment is deleted is deleted by trigger.
+ * `community_id` set = community-only: visible to that community's members
+ * (and its author); fixed at creation, deleted with the community.
  */
 export const pins = pgTable(
   "pins",
@@ -43,6 +45,9 @@ export const pins = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     location: geometryPoint("location").notNull(),
+    communityId: text("community_id").references(() => communities.id, {
+      onDelete: "cascade",
+    }),
     commentsCount: integer("comments_count").notNull().default(0),
     createdAt: tstz("created_at").notNull().defaultNow(),
     updatedAt: tstz("updated_at").notNull().defaultNow(),
@@ -51,6 +56,9 @@ export const pins = pgTable(
     index("idx_pins_location").using("gist", table.location),
     index("idx_pins_created_at").on(table.createdAt),
     index("idx_pins_user_created").on(table.userId, table.createdAt.desc()),
+    index("idx_pins_community")
+      .on(table.communityId)
+      .where(sql`${table.communityId} IS NOT NULL`),
     // Pin name search (containsText in src/server/db/search.ts).
     index("idx_pins_name_search_trgm").using(
       "gin",
@@ -397,6 +405,8 @@ export const communities = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     description: text("description"),
+    /** Key from COMMUNITY_COLORS; its members-only pins use it on the map. */
+    color: text("color").notNull().default("violet"),
     /** Join code of the invite link; replaced when the founder resets it. */
     inviteCode: text("invite_code").notNull(),
     createdAt: tstz("created_at").notNull().defaultNow(),

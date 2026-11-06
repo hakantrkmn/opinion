@@ -120,6 +120,20 @@
       "when": 1793882714328,
       "tag": "0016_communities",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793964886462,
+      "tag": "0017_community_pins",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793965893213,
+      "tag": "0018_community_color",
+      "breakpoints": true
     }
   ]
 }

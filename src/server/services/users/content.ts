@@ -1,16 +1,27 @@
 import "server-only";
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/server/db";
 import { user } from "@/server/db/schema/auth";
 import { comments, commentVotes, pins } from "@/server/db/schema/app";
 import { toPaginated, type OffsetPagination } from "@/server/http/pagination";
+import { pinVisibleSql } from "@/server/services/pins/sql";
+import { toCommunityColor } from "@/constants/community-colors";
 import { isoRequired, toPhotoMetadata, toUserSummary } from "./mappers";
 import type { Paginated, PinSummary, VoteValue } from "@/types/api";
 import type { UserCommentItem } from "@/types/userTypes";
 
-/** Pins created by `userId`, newest first. */
+/** Community-only pins show only to members (and their author). */
+function pinVisibleTo(viewerId: string) {
+  return pinVisibleSql(viewerId, {
+    communityId: sql`${pins.communityId}`,
+    userId: sql`${pins.userId}`,
+  });
+}
+
+/** Pins created by `userId` that `viewerId` may see, newest first. */
 export async function listUserPins(
   userId: string,
+  viewerId: string,
   page: OffsetPagination
 ): Promise<Paginated<PinSummary>> {
   const rows = await db
@@ -26,10 +37,13 @@ export async function listUserPins(
       avatarUrl: user.avatarUrl,
       deletedAt: user.deletedAt,
       commentsCount: pins.commentsCount,
+      communityId: pins.communityId,
+      communityName: sql<string | null>`(SELECT cm.name FROM communities cm WHERE cm.id = ${pins.communityId})`,
+      communityColor: sql<string | null>`(SELECT cm.color FROM communities cm WHERE cm.id = ${pins.communityId})`,
     })
     .from(pins)
     .innerJoin(user, eq(user.id, pins.userId))
-    .where(eq(pins.userId, userId))
+    .where(and(eq(pins.userId, userId), pinVisibleTo(viewerId)))
     .orderBy(desc(pins.createdAt), desc(pins.id))
     .limit(page.limit + 1)
     .offset(page.offset);
@@ -48,15 +62,22 @@ export async function listUserPins(
       }),
       comments_count: Number(r.commentsCount) || 0,
       created_at: isoRequired(r.createdAt),
+      community:
+        r.communityId && r.communityName
+          ? { id: r.communityId, name: r.communityName, color: toCommunityColor(r.communityColor) }
+          : null,
     })),
     page
   );
 }
 
-/** Comments written by `userId`, newest first, with the pin they belong to. */
+/**
+ * Comments written by `userId`, newest first, with the pin they belong to.
+ * Comments on community-only pins the viewer cannot see are left out.
+ */
 export async function listUserComments(
   userId: string,
-  viewerId: string | null,
+  viewerId: string,
   page: OffsetPagination
 ): Promise<Paginated<UserCommentItem>> {
   const rows = await db
@@ -78,14 +99,12 @@ export async function listUserComments(
       deletedAt: user.deletedAt,
       likes: comments.likesCount,
       dislikes: comments.dislikesCount,
-      myVote: viewerId
-        ? sql<number>`COALESCE((SELECT ${commentVotes.value}::int FROM ${commentVotes} WHERE ${commentVotes.commentId} = ${comments.id} AND ${commentVotes.userId} = ${viewerId}), 0)`
-        : sql<number>`0`,
+      myVote: sql<number>`COALESCE((SELECT ${commentVotes.value}::int FROM ${commentVotes} WHERE ${commentVotes.commentId} = ${comments.id} AND ${commentVotes.userId} = ${viewerId}), 0)`,
     })
     .from(comments)
     .innerJoin(pins, eq(pins.id, comments.pinId))
     .innerJoin(user, eq(user.id, comments.userId))
-    .where(eq(comments.userId, userId))
+    .where(and(eq(comments.userId, userId), pinVisibleTo(viewerId)))
     .orderBy(desc(comments.createdAt), desc(comments.id))
     .limit(page.limit + 1)
     .offset(page.offset);

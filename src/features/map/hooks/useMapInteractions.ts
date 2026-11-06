@@ -68,6 +68,7 @@ export function useMapInteractions(map: MapLibreMap | null, handlers: Handlers) 
     const unpointer = () => (map.getCanvas().style.cursor = "");
 
     map.on("click", LAYER.pinIcons, onPinClick);
+    map.on("click", LAYER.pinBadges, onPinClick);
     map.on("click", LAYER.pinClusterCircle, onClientClusterClick);
     map.on("click", LAYER.serverClusterCircle, onServerClusterClick);
     map.on("click", LAYER.serverSinglePin, onServerClusterClick);
@@ -142,6 +143,7 @@ export function useMapInteractions(map: MapLibreMap | null, handlers: Handlers) 
     return () => {
       cancel();
       map.off("click", LAYER.pinIcons, onPinClick);
+      map.off("click", LAYER.pinBadges, onPinClick);
       map.off("click", LAYER.pinClusterCircle, onClientClusterClick);
       map.off("click", LAYER.serverClusterCircle, onServerClusterClick);
       map.off("click", LAYER.serverSinglePin, onServerClusterClick);

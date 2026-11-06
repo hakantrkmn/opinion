@@ -8,6 +8,7 @@ import type {
   VoteValue,
 } from "@/types/api";
 import type { Envelope } from "./geo";
+import { toCommunityColor } from "@/constants/community-colors";
 
 /**
  * Shared raw-SQL fragments and row mappers for the pin / comment services.
@@ -28,6 +29,38 @@ export function invisibleUserIdsSql(viewerId: string): SQL {
 export function visibleToViewerSql(column: SQL, viewerId: string | null): SQL {
   if (!viewerId) return sql.empty();
   return sql` AND ${column} NOT IN ${invisibleUserIdsSql(viewerId)}`;
+}
+
+/**
+ * `<pin> is visible to <viewer>`: public, the viewer's own, or in a
+ * community the viewer is a member of. Anonymous viewers only see public
+ * pins. Columns default to `pins p`; pass drizzle columns for other aliases.
+ */
+export function pinVisibleSql(
+  viewer: SQL | string | null,
+  cols: { communityId: SQL; userId: SQL } = {
+    communityId: sql`p.community_id`,
+    userId: sql`p.user_id`,
+  }
+): SQL {
+  if (viewer === null) return sql`${cols.communityId} IS NULL`;
+  const v = typeof viewer === "string" ? sql`${viewer}` : viewer;
+  return sql`(${cols.communityId} IS NULL OR ${cols.userId} = ${v} OR EXISTS (
+    SELECT 1 FROM community_members pm
+    WHERE pm.community_id = ${cols.communityId} AND pm.user_id = ${v}
+  ))`;
+}
+
+/**
+ * `<pin p> takes part from <user>` (commenting, voting): public, or the user
+ * is a member of its community. Stricter than pinVisibleSql: an author who
+ * left still sees their pin but can no longer take part.
+ */
+export function pinOpenToSql(userId: string): SQL {
+  return sql`(p.community_id IS NULL OR EXISTS (
+    SELECT 1 FROM community_members pm
+    WHERE pm.community_id = p.community_id AND pm.user_id = ${userId}
+  ))`;
 }
 
 /** Bounding-box predicate on pins.location using the GIST index. */
@@ -78,6 +111,9 @@ export const pinColumnsSql = sql`
   ST_X(p.location) AS lng,
   p.comments_count,
   p.created_at,
+  p.community_id,
+  (SELECT cm.name FROM communities cm WHERE cm.id = p.community_id) AS community_name,
+  (SELECT cm.color FROM communities cm WHERE cm.id = p.community_id) AS community_color,
   ${userColumnsSql}`;
 
 export interface PinRow extends UserRow {
@@ -87,6 +123,9 @@ export interface PinRow extends UserRow {
   lng: number | string;
   comments_count: number | string;
   created_at: string | Date;
+  community_id: string | null;
+  community_name: string | null;
+  community_color: string | null;
 }
 
 export function toPinSummary(row: PinRow): PinSummary {
@@ -98,6 +137,14 @@ export function toPinSummary(row: PinRow): PinSummary {
     user: toUserSummary(row),
     comments_count: Number(row.comments_count),
     created_at: toIso(row.created_at),
+    community:
+      row.community_id && row.community_name
+        ? {
+            id: row.community_id,
+            name: row.community_name,
+            color: toCommunityColor(row.community_color),
+          }
+        : null,
   };
 }
 

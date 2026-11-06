@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/responsive-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { COMMUNITY_COLORS } from "@/constants/community-colors";
 import { CommentComposer } from "@/features/comments/components/CommentComposer";
 import { CommentList } from "@/features/comments/components/CommentList";
 import { CommentSortTabs } from "@/features/comments/components/CommentSortTabs";
@@ -21,7 +22,7 @@ import { ApiError } from "@/lib/api/client";
 import { formatTimeAgo } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { CommentSort, PinSummary } from "@/types/api";
-import { MapPinOff, MessageCircle } from "lucide-react";
+import { Lock, MapPinOff, MessageCircle } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { usePin } from "../hooks/usePin";
@@ -85,13 +86,15 @@ function PinDetail({
   const [sort, setSort] = useState<CommentSort>(DEFAULT_COMMENT_SORT);
   const communities = useMyCommunities();
   const [pickedCommunity, setCommunity] = useState(initialCommunityId);
-  // Only filter by a community the viewer is (still) in.
-  const community = user
-    ? communities.data?.find((c) => c.id === pickedCommunity) ?? null
-    : null;
   const pinQuery = usePin(pinId);
-  const comments = usePinComments(pinId, sort, community?.id ?? null);
   const pin = pinQuery.data;
+  // Only filter by a community the viewer is (still) in, and never on a
+  // community-only pin: everyone there is already a member.
+  const community =
+    user && !pin?.community
+      ? communities.data?.find((c) => c.id === pickedCommunity) ?? null
+      : null;
+  const comments = usePinComments(pinId, sort, community?.id ?? null);
 
   const notFound =
     (pinQuery.error instanceof ApiError && pinQuery.error.status === 404) ||
@@ -126,7 +129,7 @@ function PinDetail({
   const count =
     comments.data && !community ? comments.total : pin?.comments_count ?? 0;
   const listCount = comments.data ? comments.total : count;
-  const showFilter = !!communities.data?.length && count > 0;
+  const showFilter = !!communities.data?.length && count > 0 && !!pin && !pin.community;
 
   return (
     <ResponsiveDialogPanel title={pin?.name ?? t("fallbackTitle")} headerClassName="sr-only">
@@ -182,13 +185,14 @@ function PinHeader({ pin, count }: { pin: PinSummary | undefined; count: number 
   const t = useTranslations("pins");
   const locale = useLocale();
   const activity = pinActivity(count);
-  const tier = PIN_ACTIVITY[activity];
+  // Members-only pins wear their community's color, like on the map.
+  const color = pin?.community ? COMMUNITY_COLORS[pin.community.color] : PIN_ACTIVITY[activity].color;
   return (
     <div className="px-5 pb-4 pt-1 sm:px-6 sm:pt-5">
       <div className="flex items-start gap-3 pr-10">
         <div
           className="flex size-11 shrink-0 items-center justify-center rounded-2xl shadow-sm"
-          style={{ backgroundColor: tier.color }}
+          style={{ backgroundColor: color }}
         >
           <PinIcon className="size-5 text-white" />
         </div>
@@ -217,6 +221,18 @@ function PinHeader({ pin, count }: { pin: PinSummary | undefined; count: number 
               <MessageCircle className="size-3.5" aria-hidden />
               {t("detail.commentCount", { count })}
             </span>
+            {pin?.community ? (
+              <span className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full bg-muted px-2 py-px font-medium text-foreground/80">
+                <Lock
+                  className="size-3 shrink-0"
+                  style={{ color: COMMUNITY_COLORS[pin.community.color] }}
+                  aria-hidden
+                />
+                <span className="truncate">
+                  {t("detail.membersOnly", { name: pin.community.name })}
+                </span>
+              </span>
+            ) : null}
           </div>
           {pin ? (
             <p className="mt-0.5 truncate text-xs text-muted-foreground">

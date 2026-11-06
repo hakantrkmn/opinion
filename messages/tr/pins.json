@@ -30,7 +30,12 @@
     "cancel": "Vazgeç",
     "dropping": "Bırakılıyor…",
     "drop": "Pin bırak",
-    "dropped": "Pin bırakıldı"
+    "dropped": "Pin bırakıldı",
+    "visibilityLabel": "Kimler görsün?",
+    "visibilityEveryone": "Herkes",
+    "visibilityPublicHint": "Herkes görür ve fikrini yazabilir. Sonradan değiştirilemez.",
+    "visibilityCommunityHint": "Yalnızca {name} üyeleri görür ve fikir yazabilir. Sonradan değiştirilemez.",
+    "communityGone": "Bu topluluğa artık üye değilsin. Kimlerin göreceğini yeniden seç."
   },
   "detail": {
     "notFoundTitle": "Pin bulunamadı",
@@ -39,12 +44,14 @@
     "backToMap": "Haritaya dön",
     "fallbackTitle": "Pin",
     "commentCount": "{count, plural, other {# yorum}}",
-    "byline": "<b>{name}</b> bıraktı · {time}"
+    "byline": "<b>{name}</b> bıraktı · {time}",
+    "membersOnly": "Yalnızca {name} üyeleri"
   },
   "actions": {
     "directions": "Yol tarifi",
     "share": "Paylaş",
     "linkCopied": "Bağlantı kopyalandı",
-    "shareThisLink": "Bu bağlantıyı paylaş"
+    "shareThisLink": "Bu bağlantıyı paylaş",
+    "membersOnlyLink": "Bu bağlantıyı yalnızca {name} üyeleri açabilir."
   }
 }

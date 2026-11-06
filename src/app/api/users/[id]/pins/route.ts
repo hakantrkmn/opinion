@@ -33,7 +33,7 @@ export async function GET(
       return errors.notFound("User not found");
     }
     await assertActiveUser(p.data.id);
-    return json(await listUserPins(p.data.id, q.data));
+    return json(await listUserPins(p.data.id, session.user.id, q.data));
   } catch (error) {
     return handleRouteError(error, "GET /api/users/:id/pins");
   }

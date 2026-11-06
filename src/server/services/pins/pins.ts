@@ -24,6 +24,7 @@ import {
   envelopesSql,
   pinColumnsSql,
   toCommentItem,
+  pinVisibleSql,
   toPinSummary,
   visibleToViewerSql,
   type CommentRow,
@@ -32,6 +33,7 @@ import {
 import { notFound } from "./errors";
 import { assertCommunityMember, communityPinFilterSql } from "@/server/services/communities";
 import { HttpError } from "@/server/http/api-helpers";
+import { toCommunityColor } from "@/constants/community-colors";
 import type { SQL } from "drizzle-orm";
 
 export interface MapQuery {
@@ -43,8 +45,8 @@ export interface MapQuery {
 }
 
 /**
- * Scope + block filters shared by the pins and clusters queries. Community
- * scope must have passed `checkScope` first.
+ * Scope + block + community-visibility filters shared by the map queries.
+ * Community scope must have passed `checkScope` first.
  */
 function mapFiltersSql(q: Pick<MapQuery, "scope" | "communityId" | "viewerId">): SQL {
   const { scope, viewerId } = q;
@@ -54,7 +56,7 @@ function mapFiltersSql(q: Pick<MapQuery, "scope" | "communityId" | "viewerId">):
       : scope === "community" && viewerId && q.communityId
         ? communityPinFilterSql(q.communityId, viewerId)
         : sql.empty();
-  return sql`${scoped}${visibleToViewerSql(sql`p.user_id`, viewerId)}`;
+  return sql`${scoped}${visibleToViewerSql(sql`p.user_id`, viewerId)} AND ${pinVisibleSql(viewerId)}`;
 }
 
 /**
@@ -151,10 +153,11 @@ export async function getPinClusters(
       count(*)::int AS count,
       avg(g.lat) AS lat,
       avg(g.lng) AS lng,
-      CASE WHEN count(*) = 1 THEN min(g.id) END AS pin_id
+      CASE WHEN count(*) = 1 THEN min(g.id) END AS pin_id,
+      CASE WHEN count(*) = 1 THEN min(g.color) END AS color
     FROM (
       SELECT
-        p.id, c.lat, c.lng,
+        p.id, c.lat, c.lng, cm.color,
         GREATEST(0, LEAST(${n - 1}::int, floor((c.lng + 180.0) / 360.0 * ${n}::float8)::int)) AS ix,
         GREATEST(0, LEAST(${n - 1}::int, floor(
           (0.5 - ln(tan(pi() / 4.0 + radians(LEAST(${MAX_MERCATOR_LAT}::float8, GREATEST(-${MAX_MERCATOR_LAT}::float8, c.lat))) / 2.0)) / (2.0 * pi()))
@@ -162,6 +165,7 @@ export async function getPinClusters(
         )::int)) AS iy
       FROM pins p
       CROSS JOIN LATERAL (SELECT ST_Y(p.location) AS lat, ST_X(p.location) AS lng) c
+      LEFT JOIN communities cm ON cm.id = p.community_id
       WHERE ${envelopesSql(envelopes)}
         AND p.comments_count > 0
         ${mapFiltersSql(q)}
@@ -182,6 +186,7 @@ export async function getPinClusters(
     lat: number | string;
     lng: number | string;
     pin_id: string | null;
+    color: string | null;
   }>;
 
   return {
@@ -191,11 +196,15 @@ export async function getPinClusters(
       lng: Number(r.lng),
       count: Number(r.count),
       pin_id: r.pin_id ?? null,
+      color: r.color ? toCommunityColor(r.color) : null,
     })),
   };
 }
 
-/** Single pin; 404 when missing or owned by a user invisible to the viewer. */
+/**
+ * Single pin; 404 when missing, owned by a user invisible to the viewer or
+ * in a community the viewer is not in.
+ */
 export async function getPinById(
   pinId: string,
   viewerId: string | null
@@ -206,6 +215,7 @@ export async function getPinById(
     JOIN "user" u ON u.id = p.user_id
     WHERE p.id = ${pinId}
       ${visibleToViewerSql(sql`p.user_id`, viewerId)}
+      AND ${pinVisibleSql(viewerId)}
   `)) as unknown as PinRow[];
   if (!row) throw notFound("Pin");
   return toPinSummary(row);
@@ -218,17 +228,27 @@ export interface CreatePinInput {
   lat: number;
   lng: number;
   photo?: { url: string; metadata: Record<string, unknown> } | null;
+  /** Community-only pin; the author must be a member (404 otherwise). */
+  communityId?: string | null;
 }
 
 /** Pin + first comment in one transaction. Distance rule is checked by the route. */
 export async function createPin(input: CreatePinInput): Promise<CreatePinResponse> {
+  const communityId = input.communityId ?? null;
   const { pinId, commentId } = await db.transaction(async (tx) => {
+    // The membership check is part of the insert: no row when not a member.
     const [pin] = (await tx.execute(sql`
-      INSERT INTO pins (id, user_id, name, location)
-      VALUES (${crypto.randomUUID()}, ${input.userId}, ${input.name},
-              ST_SetSRID(ST_MakePoint(${input.lng}::float8, ${input.lat}::float8), 4326))
+      INSERT INTO pins (id, user_id, name, location, community_id)
+      SELECT ${crypto.randomUUID()}, ${input.userId}, ${input.name},
+             ST_SetSRID(ST_MakePoint(${input.lng}::float8, ${input.lat}::float8), 4326),
+             ${communityId}::text
+      WHERE ${communityId}::text IS NULL OR EXISTS (
+        SELECT 1 FROM community_members
+        WHERE community_id = ${communityId} AND user_id = ${input.userId}
+      )
       RETURNING id
     `)) as unknown as Array<{ id: string }>;
+    if (!pin) throw HttpError.notFound("Community not found");
 
     const [comment] = (await tx.execute(sql`
       INSERT INTO comments
@@ -243,7 +263,7 @@ export async function createPin(input: CreatePinInput): Promise<CreatePinRespons
   });
 
   const [pin, comment] = await Promise.all([
-    getPinById(pinId, null),
+    getPinById(pinId, input.userId),
     (async () => {
       const [row] = (await db.execute(sql`
         SELECT ${commentColumnsSql}, 0 AS my_vote

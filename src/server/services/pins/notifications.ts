@@ -5,6 +5,7 @@ import { isBlockedRelation } from "@/server/services/blocks";
 import { recordNotifications } from "@/server/services/inbox";
 import { pushCopy, recipientLocale } from "@/server/i18n/push-copy";
 import type { Locale } from "@/i18n/config";
+import { pinVisibleSql } from "./sql";
 
 /**
  * Inbox rows and push notifications triggered by pin / comment activity.
@@ -53,8 +54,12 @@ export async function notifyCommentLiked(params: {
   try {
     const [comment] = (await db.execute(sql`
       SELECT c.user_id, c.pin_id, c.text, c.likes_count, u.locale
-      FROM comments c JOIN "user" u ON u.id = c.user_id
+      FROM comments c
+      JOIN "user" u ON u.id = c.user_id
+      JOIN pins p ON p.id = c.pin_id
       WHERE c.id = ${commentId}
+        -- An author who left the pin's community is not told.
+        AND ${pinVisibleSql(sql`c.user_id`)}
     `)) as unknown as Array<{
       user_id: string;
       pin_id: string;
@@ -119,7 +124,8 @@ export async function notifyCommentLiked(params: {
 
 /**
  * "X dropped a new pin" to every follower of the author with an active push
- * token, skipping deleted users and blocked relations — one query.
+ * token, skipping deleted users and blocked relations — one query. A
+ * community-only pin goes to followers in that community only.
  */
 export async function notifyFollowersOfNewPin(params: {
   authorId: string;
@@ -127,6 +133,7 @@ export async function notifyFollowersOfNewPin(params: {
   pinName: string;
   lat: number;
   lng: number;
+  communityId?: string | null;
 }): Promise<void> {
   try {
     const rows = (await db.execute(sql`
@@ -140,6 +147,14 @@ export async function notifyFollowersOfNewPin(params: {
           WHERE (b.blocker_id = f.follower_id AND b.blocked_id = f.following_id)
              OR (b.blocker_id = f.following_id AND b.blocked_id = f.follower_id)
         )
+        ${
+          params.communityId
+            ? sql`AND EXISTS (
+                SELECT 1 FROM community_members m
+                WHERE m.community_id = ${params.communityId} AND m.user_id = f.follower_id
+              )`
+            : sql.empty()
+        }
     `)) as unknown as Array<PushDevice & { locale: string | null }>;
     if (rows.length === 0) return;
 
@@ -194,7 +209,10 @@ export async function notifyPinCommented(params: {
         SELECT c.user_id FROM comments c WHERE c.pin_id = ${pinId}
       ) r
       JOIN "user" u ON u.id = r.user_id AND u.deleted_at IS NULL
+      JOIN pins p ON p.id = ${pinId}
       WHERE r.user_id <> ${commenterId}
+        -- Community-only pins: people who left the community are skipped.
+        AND ${pinVisibleSql(sql`r.user_id`)}
         -- Neither the commenter nor the pin owner may be blocked with the
         -- recipient (the pin would be hidden from them).
         AND NOT EXISTS (

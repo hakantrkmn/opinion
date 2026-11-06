@@ -1,0 +1,1 @@
+ALTER TABLE "communities" ADD COLUMN "color" text DEFAULT 'violet' NOT NULL;

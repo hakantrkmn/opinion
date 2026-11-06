@@ -3,6 +3,7 @@ import { randomBytes } from "crypto";
 import { db, sql } from "@/server/db";
 import type { SQL } from "drizzle-orm";
 import { HttpError } from "@/server/http/api-helpers";
+import { deleteUploadByUrl } from "@/server/uploads";
 import { toPaginated, type OffsetPagination } from "@/server/http/pagination";
 import { recordNotifications } from "@/server/services/inbox";
 import { pushService } from "@/server/services/pushService";
@@ -17,6 +18,11 @@ import {
 } from "@/server/services/pins/sql";
 import { PG_UNIQUE_VIOLATION, pgErrorCode } from "@/server/services/pins/errors";
 import { COMMUNITY_MAX_MEMBERS, COMMUNITY_MAX_PER_USER } from "@/constants/limits";
+import {
+  DEFAULT_COMMUNITY_COLOR,
+  toCommunityColor,
+  type CommunityColor,
+} from "@/constants/community-colors";
 import type {
   CommunityInvitePreview,
   CommunityMember,
@@ -27,8 +33,9 @@ import type {
 
 /**
  * Communities (tables `communities`, `community_members`,
- * `community_removals`). A community is only visible to its members (the
- * invite preview aside); only the founder manages it. Lock order is
+ * `community_removals`) and community-only pins (`pins.community_id`). A
+ * community is only visible to its members (the invite preview aside); only
+ * the founder manages it. Its pins go with it. Lock order is
  * user → community, the same as deleteAccount (user first, then cascades).
  */
 
@@ -41,9 +48,10 @@ function newInviteCode(): string {
 /** Columns for a CommunitySummary from `communities c JOIN "user" u ON u.id = c.owner_id`. */
 function summaryColumnsSql(viewerId: string): SQL {
   return sql`
-    c.id, c.name, c.description, c.created_at, c.invite_code,
+    c.id, c.name, c.description, c.color, c.created_at, c.invite_code,
     (c.owner_id = ${viewerId}) AS is_owner,
     (SELECT count(*)::int FROM community_members m WHERE m.community_id = c.id) AS members_count,
+    (SELECT count(*)::int FROM pins p WHERE p.community_id = c.id) AS pins_count,
     ${userColumnsSql}`;
 }
 
@@ -51,10 +59,12 @@ interface SummaryRow extends UserRow {
   id: string;
   name: string;
   description: string | null;
+  color: string;
   created_at: string | Date;
   invite_code: string;
   is_owner: boolean;
   members_count: number | string;
+  pins_count: number | string;
 }
 
 function toSummary(row: SummaryRow): CommunitySummary {
@@ -64,6 +74,8 @@ function toSummary(row: SummaryRow): CommunitySummary {
     description: row.description ?? null,
     owner: toUserSummary(row),
     members_count: Number(row.members_count),
+    color: toCommunityColor(row.color),
+    pins_count: Number(row.pins_count),
     is_owner: !!row.is_owner,
     created_at: toIso(row.created_at),
   };
@@ -160,14 +172,15 @@ async function lockUserWithRoom(tx: Pick<typeof db, "execute">, userId: string) 
 
 export async function createCommunity(
   userId: string,
-  input: { name: string; description?: string | null }
+  input: { name: string; description?: string | null; color?: CommunityColor }
 ): Promise<CommunityResponse> {
   const id = await db.transaction(async (tx) => {
     await lockUserWithRoom(tx, userId);
     const [row] = (await tx.execute(sql`
-      INSERT INTO communities (id, owner_id, name, description, invite_code)
+      INSERT INTO communities (id, owner_id, name, description, color, invite_code)
       VALUES (${crypto.randomUUID()}, ${userId}, ${input.name},
-              ${input.description || null}, ${newInviteCode()})
+              ${input.description || null}, ${input.color ?? DEFAULT_COMMUNITY_COLOR},
+              ${newInviteCode()})
       RETURNING id
     `)) as unknown as Array<{ id: string }>;
     await tx.execute(sql`
@@ -181,12 +194,13 @@ export async function createCommunity(
 export async function updateCommunity(
   communityId: string,
   userId: string,
-  patch: { name?: string; description?: string | null }
+  patch: { name?: string; description?: string | null; color?: CommunityColor }
 ): Promise<CommunityResponse> {
   await assertOwner(communityId, userId);
   const sets: SQL[] = [sql`updated_at = now()`];
   if (patch.name !== undefined) sets.push(sql`name = ${patch.name}`);
   if (patch.description !== undefined) sets.push(sql`description = ${patch.description || null}`);
+  if (patch.color !== undefined) sets.push(sql`color = ${patch.color}`);
   await db.execute(sql`
     UPDATE communities SET ${sql.join(sets, sql`, `)}
     WHERE id = ${communityId} AND owner_id = ${userId}
@@ -194,15 +208,42 @@ export async function updateCommunity(
   return getCommunity(communityId, userId);
 }
 
-/** Founder only. Members, removals and inbox rows cascade. */
+/**
+ * Photo files of every opinion on the pins of the communities matching
+ * `where` (alias `c`). Read before deleting them: the rows cascade away.
+ */
+export async function communityPinPhotoUrls(where: SQL): Promise<string[]> {
+  const rows = (await db.execute(sql`
+    SELECT cc.photo_url
+    FROM communities c
+    JOIN pins p ON p.community_id = c.id
+    JOIN comments cc ON cc.pin_id = p.id
+    WHERE ${where} AND cc.photo_url IS NOT NULL
+  `)) as unknown as Array<{ photo_url: string }>;
+  return rows.map((r) => r.photo_url);
+}
+
+/** Removes files after the delete committed; failures are only logged. */
+async function deletePhotos(urls: string[]) {
+  await Promise.all(urls.map((url) => deleteUploadByUrl(url)));
+}
+
+/**
+ * Founder only. Members, removals, inbox rows and the community's pins
+ * (with their opinions and photos) cascade.
+ */
 export async function deleteCommunity(communityId: string, userId: string): Promise<void> {
   await assertOwner(communityId, userId);
+  const photos = await communityPinPhotoUrls(sql`c.id = ${communityId}`);
   await db.execute(sql`DELETE FROM communities WHERE id = ${communityId} AND owner_id = ${userId}`);
+  await deletePhotos(photos);
 }
 
 /** Admin removal (moderation). Returns false when it does not exist. */
 export async function deleteCommunityAsAdmin(communityId: string): Promise<boolean> {
+  const photos = await communityPinPhotoUrls(sql`c.id = ${communityId}`);
   const rows = await db.execute(sql`DELETE FROM communities WHERE id = ${communityId} RETURNING id`);
+  await deletePhotos(photos);
   return rows.length > 0;
 }
 
@@ -425,17 +466,18 @@ async function notifyCommunityJoined(
 // ---------------------------------------------------------------- filters
 
 /**
- * `AND <pin> has an opinion by a member visible to the viewer`. Callers must
- * have checked membership (assertCommunityMember).
+ * `AND <pin> is the community's own, or has an opinion by a member visible
+ * to the viewer`. Callers must have checked membership
+ * (assertCommunityMember).
  */
 export function communityPinFilterSql(communityId: string, viewerId: string): SQL {
-  return sql` AND p.id IN (
+  return sql` AND (p.community_id = ${communityId} OR p.id IN (
     SELECT cc.pin_id
     FROM community_members m
     JOIN comments cc ON cc.user_id = m.user_id
     WHERE m.community_id = ${communityId}
       ${visibleToViewerSql(sql`m.user_id`, viewerId)}
-  )`;
+  ))`;
 }
 
 /** `AND <comment c> is by a member`. Callers must have checked membership. */

@@ -30,7 +30,12 @@
     "cancel": "Cancel",
     "dropping": "Dropping…",
     "drop": "Drop pin",
-    "dropped": "Pin dropped"
+    "dropped": "Pin dropped",
+    "visibilityLabel": "Who can see it?",
+    "visibilityEveryone": "Everyone",
+    "visibilityPublicHint": "Anyone can see it and add an opinion. This can't be changed later.",
+    "visibilityCommunityHint": "Only members of {name} can see it and add opinions. This can't be changed later.",
+    "communityGone": "You're no longer in this community. Choose who can see it again."
   },
   "detail": {
     "notFoundTitle": "Pin not found",
@@ -39,12 +44,14 @@
     "backToMap": "Back to the map",
     "fallbackTitle": "Pin",
     "commentCount": "{count, plural, one {# comment} other {# comments}}",
-    "byline": "by <b>{name}</b> · {time}"
+    "byline": "by <b>{name}</b> · {time}",
+    "membersOnly": "Only {name} members"
   },
   "actions": {
     "directions": "Directions",
     "share": "Share",
     "linkCopied": "Link copied",
-    "shareThisLink": "Share this link"
+    "shareThisLink": "Share this link",
+    "membersOnlyLink": "Only members of {name} can open this link."
   }
 }

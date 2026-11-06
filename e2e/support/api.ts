@@ -113,12 +113,12 @@ export async function getComments(api: APIRequestContext, pinId: string, sort = 
 }
 
 /** Drops a pin at `at` with a GPS fix right there (passes the distance rule). */
-export async function createPin(
+export function postPin(
   api: APIRequestContext,
-  input: { name: string; comment: string; at?: { lat: number; lng: number } }
-): Promise<CreatePinResponse> {
+  input: { name: string; comment: string; at?: { lat: number; lng: number }; communityId?: string }
+) {
   const at = input.at ?? ISTANBUL;
-  const res = await api.post("/api/pins", {
+  return api.post("/api/pins", {
     multipart: {
       name: input.name,
       comment: input.comment,
@@ -127,9 +127,16 @@ export async function createPin(
       user_lat: String(at.lat),
       user_lng: String(at.lng),
       accuracy: "10",
+      ...(input.communityId ? { community_id: input.communityId } : {}),
     },
   });
-  return expectJson<CreatePinResponse>(res, 201);
+}
+
+export async function createPin(
+  api: APIRequestContext,
+  input: { name: string; comment: string; at?: { lat: number; lng: number }; communityId?: string }
+): Promise<CreatePinResponse> {
+  return expectJson<CreatePinResponse>(await postPin(api, input), 201);
 }
 
 export async function postComment(api: APIRequestContext, pinId: string, text: string) {

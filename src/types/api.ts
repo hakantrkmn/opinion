@@ -4,6 +4,10 @@
  * strings in UTC. Errors always use a non-2xx status with `ApiError` body.
  */
 
+import type { CommunityColor } from "@/constants/community-colors";
+
+export type { CommunityColor };
+
 export interface ApiError {
   message: string;
   code: ApiErrorCode;
@@ -44,6 +48,8 @@ export interface PinSummary {
   user: UserSummary;
   comments_count: number;
   created_at: string;
+  /** Set for community-only pins (members only); null for public pins. */
+  community: { id: string; name: string; color: CommunityColor } | null;
 }
 
 /**
@@ -76,6 +82,8 @@ export interface PinCluster {
   lng: number;
   count: number;
   pin_id: string | null;
+  /** Community color of a single community-only pin (count 1), else null. */
+  color: CommunityColor | null;
 }
 
 export interface PinClustersResponse {
@@ -240,6 +248,9 @@ export interface CommunitySummary {
   description: string | null;
   owner: UserSummary;
   members_count: number;
+  color: CommunityColor;
+  /** Community-only pins (deleted together with the community). */
+  pins_count: number;
   is_owner: boolean;
   created_at: string;
 }

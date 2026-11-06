@@ -1,5 +1,7 @@
 import type {
   ApiError,
+  PinResponse,
+  PinSummary,
   CommunityInvitePreview,
   CommunityListResponse,
   CommunityMember,
@@ -14,19 +16,22 @@ import {
   deleteComment,
   expectJson,
   getComments,
+  newApi,
   postComment,
+  postPin,
   signUpUser,
   type TestUser,
 } from "./support/api";
-import { expect, signInContext, test } from "./support/fixtures";
+import { ISTANBUL } from "./support/env";
+import { expect, mapCanvas, signInContext, test } from "./support/fixtures";
 
 /** A spot away from the seeded Istanbul pins so filters are easy to assert. */
 function quietSpot() {
   return { lat: 39.9 + Math.random() * 0.5, lng: 32.6 + Math.random() * 0.5 };
 }
 
-async function createCommunity(user: TestUser, name = "E2E community") {
-  const res = await user.api.post("/api/communities", { data: { name, description: "e2e" } });
+async function createCommunity(user: TestUser, name = "E2E community", color?: string) {
+  const res = await user.api.post("/api/communities", { data: { name, description: "e2e", color } });
   return (await expectJson<CommunityResponse>(res, 201)).community;
 }
 
@@ -240,10 +245,15 @@ test.describe("Communities UI", () => {
     await page.getByRole("button", { name: "Create a community" }).click();
     await page.getByRole("textbox", { name: "Name" }).fill("E2E UI crew");
     await page.getByRole("textbox", { name: /Description/ }).fill("Made by the UI test");
+    const colors = page.getByRole("radiogroup", { name: "Pin color" });
+    await expect(colors.getByRole("radio", { name: "Violet" })).toHaveAttribute("aria-checked", "true");
+    await colors.getByRole("radio", { name: "Orange" }).click();
     await page.getByRole("button", { name: "Create", exact: true }).click();
 
     await expect(page).toHaveURL(/\/communities\/[\w-]+$/);
     const id = page.url().split("/").pop()!;
+    const saved = await expectJson<CommunityResponse>(await founder.api.get(`/api/communities/${id}`), 200);
+    expect(saved.community.color).toBe("orange");
     await expect(page.getByRole("heading", { level: 1, name: "E2E UI crew" })).toBeVisible();
     const link = await page.getByRole("textbox", { name: "Invite link" }).inputValue();
     expect(link).toMatch(/\/c\/[\w-]+$/);
@@ -281,5 +291,174 @@ test.describe("Communities UI", () => {
   test("an unknown invite link explains itself", async ({ page }) => {
     await page.goto("/c/notarealcode");
     await expect(page.getByRole("heading", { name: "This invite link doesn't work" })).toBeVisible();
+  });
+});
+
+test.describe("Community-only pins", () => {
+  test("only members see and answer them; they go with the community", async ({
+    freshUser: founder,
+  }) => {
+    const member = await signUpUser();
+    const leaver = await signUpUser();
+    const outsider = await signUpUser();
+    const anonymous = await newApi();
+    try {
+      const community = await createCommunity(founder, "E2E private crew", "pink");
+      expect(community.color).toBe("pink");
+      const code = community.invite_code!;
+      await expectJson<CommunityResponse>(await join(member, code), 200);
+      await expectJson<CommunityResponse>(await join(leaver, code), 200);
+
+      // Only members can drop a pin for the community.
+      const at = quietSpot();
+      await expectJson<ApiError>(
+        await postPin(outsider.api, { name: "E2E sneaky", comment: "x", at, communityId: community.id }),
+        404
+      );
+      const created = await createPin(member.api, {
+        name: "E2E members only",
+        comment: "just us",
+        at,
+        communityId: community.id,
+      });
+      const pinId = created.pin.id;
+      expect(created.pin.community).toEqual({
+        id: community.id,
+        name: "E2E private crew",
+        color: "pink",
+      });
+
+      // The founder recolors it: the pin follows; unknown colors are rejected.
+      await expectJson<ApiError>(
+        await founder.api.patch(`/api/communities/${community.id}`, { data: { color: "green" } }),
+        400
+      );
+      const recolored = await expectJson<CommunityResponse>(
+        await founder.api.patch(`/api/communities/${community.id}`, { data: { color: "sky" } }),
+        200
+      );
+      expect(recolored.community.color).toBe("sky");
+
+      const onMap = async (api: typeof founder.api, scope?: string) => {
+        const params = {
+          ...bboxAround(at.lat, at.lng, 0.01),
+          ...(scope ? { scope, community_id: community.id } : {}),
+        };
+        const res = await expectJson<PinsInBoundsResponse>(await api.get("/api/pins", { params }), 200);
+        return res.pins.find((p) => p.id === pinId) ?? null;
+      };
+
+      // Members see it on every map; nobody else does, anywhere.
+      expect((await onMap(founder.api))?.community).toEqual({
+        id: community.id,
+        name: "E2E private crew",
+        color: "sky",
+      });
+      expect(await onMap(founder.api, "community")).not.toBeNull();
+      expect(await onMap(outsider.api)).toBeNull();
+      expect(await onMap(anonymous)).toBeNull();
+      await expectJson<PinResponse>(await founder.api.get(`/api/pins/${pinId}`), 200);
+      await expectJson<ApiError>(await outsider.api.get(`/api/pins/${pinId}`), 404);
+      await expectJson<ApiError>(await anonymous.get(`/api/pins/${pinId}`), 404);
+      await expectJson<ApiError>(await outsider.api.get(`/api/pins/${pinId}/comments`), 404);
+      expect((await anonymous.get(`/pin/${pinId}`)).status()).toBe(404);
+      const outsiderView = await expectJson<Paginated<PinSummary>>(
+        await outsider.api.get(`/api/users/${member.id}/pins`),
+        200
+      );
+      expect(outsiderView.items.map((p) => p.id)).not.toContain(pinId);
+      const founderView = await expectJson<Paginated<PinSummary>>(
+        await founder.api.get(`/api/users/${member.id}/pins`),
+        200
+      );
+      expect(founderView.items.map((p) => p.id)).toContain(pinId);
+
+      // Members answer and vote; outsiders can't.
+      const reply = await expectJson<{ comment: { id: string } }>(
+        await postComment(founder.api, pinId, "founder here"),
+        201
+      );
+      await expectJson<ApiError>(await postComment(outsider.api, pinId, "let me in"), 404);
+      await expectJson<ApiError>(
+        await outsider.api.put(`/api/comments/${reply.comment.id}/vote`, { data: { value: 1 } }),
+        404
+      );
+      expect(
+        (await leaver.api.put(`/api/comments/${reply.comment.id}/vote`, { data: { value: 1 } })).status()
+      ).toBe(200);
+
+      // Leaving takes the pin away; its author keeps seeing their own pin.
+      expect(
+        (await leaver.api.delete(`/api/communities/${community.id}/members/${leaver.id}`)).status()
+      ).toBe(204);
+      await expectJson<ApiError>(await leaver.api.get(`/api/pins/${pinId}`), 404);
+      await expectJson<ApiError>(await postComment(leaver.api, pinId, "still here?"), 404);
+      expect(
+        (await member.api.delete(`/api/communities/${community.id}/members/${member.id}`)).status()
+      ).toBe(204);
+      await expectJson<PinResponse>(await member.api.get(`/api/pins/${pinId}`), 200);
+      await expectJson<ApiError>(
+        await member.api.put(`/api/comments/${reply.comment.id}/vote`, { data: { value: 1 } }),
+        404
+      );
+
+      // The founder's delete takes the community's pins along.
+      const before = await expectJson<CommunityResponse>(
+        await founder.api.get(`/api/communities/${community.id}`),
+        200
+      );
+      expect(before.community.pins_count).toBe(1);
+      expect((await founder.api.delete(`/api/communities/${community.id}`)).status()).toBe(204);
+      await expectJson<ApiError>(await member.api.get(`/api/pins/${pinId}`), 404);
+    } finally {
+      await anonymous.dispose();
+      await member.api.dispose();
+      await leaver.api.dispose();
+      await outsider.api.dispose();
+    }
+  });
+});
+
+test.describe("Community-only pins (UI)", () => {
+  test.use({
+    geolocation: { latitude: ISTANBUL.lat, longitude: ISTANBUL.lng, accuracy: 8 },
+    permissions: ["geolocation"],
+  });
+
+  test("the drop form presets the map's community and says who will see it", async ({
+    page,
+    context,
+    freshUser,
+    errors,
+  }) => {
+    const community = await createCommunity(freshUser, "E2E UI private");
+    await signInContext(context, freshUser);
+    await page.goto(`/?scope=community&community=${community.id}`);
+    await expect(mapCanvas(page)).toBeVisible();
+
+    await page.getByRole("button", { name: "Drop a pin" }).click();
+    const dialog = page.getByRole("dialog", { name: /What's your droPINion\?/ });
+    const picker = dialog.getByRole("radiogroup", { name: "Who can see it?" });
+    await expect(picker.getByRole("radio", { name: "E2E UI private" })).toHaveAttribute("aria-checked", "true");
+    await expect(dialog.getByText("Only members of E2E UI private can see it")).toBeVisible();
+
+    await picker.getByRole("radio", { name: "Everyone" }).click();
+    await expect(dialog.getByText("Anyone can see it and add an opinion")).toBeVisible();
+    await picker.getByRole("radio", { name: "E2E UI private" }).click();
+
+    await dialog.getByLabel("Place name").fill("E2E UI private pin");
+    await dialog.getByLabel("Your opinion").fill("Members only.");
+    const created = page.waitForResponse(
+      (r) => new URL(r.url()).pathname === "/api/pins" && r.request().method() === "POST"
+    );
+    await dialog.getByRole("button", { name: "Drop pin" }).click();
+    const body = (await (await created).json()) as { pin: PinSummary; comment: { id: string } };
+    expect(body.pin.community).toEqual({ id: community.id, name: "E2E UI private", color: "violet" });
+    await expect(dialog).toBeHidden();
+    expect(errors.messages).toEqual([]);
+
+    // Deleting the community takes the pin along.
+    expect((await freshUser.api.delete(`/api/communities/${community.id}`)).status()).toBe(204);
+    await expectJson<ApiError>(await freshUser.api.get(`/api/pins/${body.pin.id}`), 404);
   });
 });

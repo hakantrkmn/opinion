@@ -14,6 +14,7 @@ import {
 } from "@/server/db/schema/app";
 import { UPLOAD_DIR } from "@/server/storage";
 import { deleteUploadByUrl, type UploadFolder } from "@/server/uploads";
+import { communityPinPhotoUrls } from "@/server/services/communities";
 
 const SAFE_ID = /^[a-zA-Z0-9_-]{1,64}$/;
 
@@ -22,7 +23,7 @@ const SAFE_ID = /^[a-zA-Z0-9_-]{1,64}$/;
  * deletion ("ban").
  *
  * - Removes the user's votes, comments (and their photos), follows, blocks,
- *   communities they founded, memberships, filed reports, inbox rows
+ *   communities they founded (with their community-only pins), memberships, filed reports, inbox rows
  *   (received and caused), push tokens, sessions and credentials.
  * - Pins left without comments are removed by the comment-deletion trigger;
  *   pins that still have other people's comments stay, shown with an
@@ -46,6 +47,8 @@ export async function deleteAccount(userId: string): Promise<boolean> {
     .select({ photoUrl: comments.photoUrl })
     .from(comments)
     .where(eq(comments.userId, userId));
+  // Founded communities are deleted below, with their pins and opinions.
+  const communityPhotos = await communityPinPhotoUrls(sql`c.owner_id = ${userId}`);
 
   await db.transaction(async (tx) => {
     // The user row first: in-flight inbox writers (recordNotifications)
@@ -110,6 +113,7 @@ export async function deleteAccount(userId: string): Promise<boolean> {
   // File cleanup happens after the commit; failures are logged, not fatal.
   await Promise.all([
     ...photoRows.map((r) => deleteUploadByUrl(r.photoUrl)),
+    ...communityPhotos.map((url) => deleteUploadByUrl(url)),
     deleteUploadByUrl(existing.avatarUrl),
   ]);
   if (SAFE_ID.test(userId)) {

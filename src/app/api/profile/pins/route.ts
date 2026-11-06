@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const q = parseQuery(request, offsetPaginationSchema());
     if (q.error) return q.error;
 
-    return json(await listUserPins(session.user.id, q.data));
+    return json(await listUserPins(session.user.id, session.user.id, q.data));
   } catch (error) {
     return handleRouteError(error, "GET /api/profile/pins");
   }

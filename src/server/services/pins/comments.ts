@@ -14,6 +14,8 @@ import {
 } from "@/server/services/communities";
 import {
   commentColumnsSql,
+  pinOpenToSql,
+  pinVisibleSql,
   toCommentItem,
   visibleToViewerSql,
   type CommentRow,
@@ -98,6 +100,7 @@ export async function listPinComments(params: {
       FROM pins p
       WHERE p.id = ${pinId}
         ${visibleToViewerSql(sql`p.user_id`, viewerId)}
+        AND ${pinVisibleSql(viewerId)}
     `) as unknown as Promise<Array<{ total: number; my_comment_id: string | null }>>,
     db.execute(sql`
       SELECT ${commentColumnsSql}, ${mv.column}
@@ -152,10 +155,15 @@ function assertOwnedPhoto(url: string, userId: string) {
   }
 }
 
-/** Pin owner + coordinates, for block and "Was here" checks. */
-async function getPinForComment(pinId: string) {
+/**
+ * Pin owner + coordinates, for block and "Was here" checks. Null when the
+ * pin is missing or in a community the user is not in.
+ */
+async function getPinForComment(pinId: string, userId: string) {
   const [pin] = (await db.execute(sql`
-    SELECT user_id, ST_Y(location) AS lat, ST_X(location) AS lng FROM pins WHERE id = ${pinId}
+    SELECT p.user_id, ST_Y(p.location) AS lat, ST_X(p.location) AS lng
+    FROM pins p
+    WHERE p.id = ${pinId} AND ${pinOpenToSql(userId)}
   `)) as unknown as Array<{ user_id: string; lat: number; lng: number }>;
   return pin ? { userId: pin.user_id, lat: Number(pin.lat), lng: Number(pin.lng) } : null;
 }
@@ -175,7 +183,7 @@ export async function createComment(params: {
   const photoUrl = params.photoUrl || null;
   if (photoUrl) assertOwnedPhoto(photoUrl, userId);
 
-  const found = await getPinForComment(pinId);
+  const found = await getPinForComment(pinId, userId);
   if (!found) throw notFound("Pin");
   const pin = { user_id: found.userId };
   const verified = params.device
@@ -209,7 +217,8 @@ export async function createComment(params: {
 }
 
 /**
- * PATCH /api/comments/:id — owner only (404 otherwise). A device fix near
+ * PATCH /api/comments/:id — owner only (404 otherwise; also after leaving
+ * the pin's community). A device fix near
  * the pin marks the comment "Was here" ("I'm here now"; 422 TOO_FAR when
  * too far) without counting as an edit.
  */
@@ -230,6 +239,7 @@ export async function updateComment(params: {
       SELECT c.photo_url, ST_Y(p.location) AS lat, ST_X(p.location) AS lng
       FROM comments c JOIN pins p ON p.id = c.pin_id
       WHERE c.id = ${commentId} AND c.user_id = ${userId}
+        AND ${pinOpenToSql(userId)}
       FOR UPDATE OF c
     `)) as unknown as Array<{ photo_url: string | null; lat: number; lng: number }>;
     if (!current) throw notFound("Comment");

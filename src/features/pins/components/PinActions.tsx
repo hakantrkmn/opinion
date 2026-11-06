@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { ReportContentButton } from "@/features/moderation/components/ReportContentButton";
 import type { PinSummary } from "@/types/api";
+import { pinShareUrl } from "../lib/links";
 import { Navigation, Share2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -18,7 +19,9 @@ export function PinActions({ pin }: { pin: PinSummary }) {
   };
 
   const share = async () => {
-    const url = `${window.location.origin}/pin/${pin.id}`;
+    const url = pinShareUrl(pin);
+    // Only members can open a community pin's link: say so.
+    const note = pin.community ? t("membersOnlyLink", { name: pin.community.name }) : pin.name;
     if (navigator.share) {
       try {
         await navigator.share({ title: pin.name, url });
@@ -29,7 +32,7 @@ export function PinActions({ pin }: { pin: PinSummary }) {
     }
     try {
       await navigator.clipboard.writeText(url);
-      toast.success(t("linkCopied"), { description: pin.name });
+      toast.success(t("linkCopied"), { description: note });
     } catch {
       toast.info(t("shareThisLink"), { description: url, duration: 8000 });
     }

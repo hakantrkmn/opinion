@@ -1,5 +1,6 @@
 "use client";
 
+import { COMMUNITY_COLORS } from "@/constants/community-colors";
 import { cn } from "@/lib/utils";
 import type { CommunitySummary } from "@/types/api";
 import { UsersRound } from "lucide-react";
@@ -43,7 +44,13 @@ export function CommunityCommentFilter({
                 : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
             )}
           >
-            {o.id ? <UsersRound aria-hidden className="size-3.5 shrink-0" /> : null}
+            {"color" in o ? (
+              <UsersRound
+                aria-hidden
+                className="size-3.5 shrink-0"
+                style={{ color: COMMUNITY_COLORS[o.color] }}
+              />
+            ) : null}
             <span className="truncate">{o.name}</span>
           </button>
         );

@@ -1,5 +1,6 @@
 "use client";
 
+import type { CommunityColor } from "@/constants/community-colors";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { usePaginatedQuery } from "@/hooks/use-paginated";
 import { apiClient } from "@/lib/api/client";
@@ -70,10 +71,16 @@ function useInvalidateCommunities() {
   };
 }
 
+interface CommunityInput {
+  name: string;
+  description: string | null;
+  color: CommunityColor;
+}
+
 export function useCreateCommunity() {
   const invalidate = useInvalidateCommunities();
   return useMutation({
-    mutationFn: (input: { name: string; description: string | null }) =>
+    mutationFn: (input: CommunityInput) =>
       apiSend<CommunityResponse>("/api/communities", { method: "POST", json: input }),
     onSuccess: invalidate,
   });
@@ -82,11 +89,13 @@ export function useCreateCommunity() {
 export function useUpdateCommunity(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { name: string; description: string | null }) =>
+    mutationFn: (input: CommunityInput) =>
       apiSend<CommunityResponse>(base(id), { method: "PATCH", json: input }),
     onSuccess: (data) => {
       queryClient.setQueryData(queryKeys.communities.detail(id), data);
       void queryClient.invalidateQueries({ queryKey: queryKeys.communities.mine });
+      // Community-only pins carry the community's name.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.pins.all });
     },
   });
 }

@@ -4,7 +4,7 @@ import type { VoteResponse, VoteValue } from "@/types/api";
 import { isBlockedRelation } from "@/server/services/blocks";
 import { notFound } from "./errors";
 import { HttpError } from "@/server/http/api-helpers";
-import { toVoteValue } from "./sql";
+import { pinOpenToSql, toVoteValue } from "./sql";
 
 export interface VoteResult extends VoteResponse {
   /** True when this request turned the viewer's vote into a like. */
@@ -26,8 +26,10 @@ export async function voteComment(params: {
 }): Promise<VoteResult> {
   const { commentId, userId, value } = params;
 
+  // Community-only pins: members only (404, like a missing comment).
   const [target] = (await db.execute(sql`
-    SELECT user_id FROM comments WHERE id = ${commentId}
+    SELECT c.user_id FROM comments c JOIN pins p ON p.id = c.pin_id
+    WHERE c.id = ${commentId} AND ${pinOpenToSql(userId)}
   `)) as unknown as Array<{ user_id: string }>;
   if (!target) throw notFound("Comment");
   if (await isBlockedRelation(userId, target.user_id)) {
